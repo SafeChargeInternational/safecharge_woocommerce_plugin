@@ -10,13 +10,17 @@
 
 define('SC_GATEWAY_TITLE', 'SafeCharge');
 
+// list of endpoints Test URLs
+//$sc_test_endpoint_host = 'http://192.168.103.237:8080';
+//$sc_test_endpoint_host = 'https://192.168.103.237';
+//$sc_test_endpoint_host = 'https://apmtest.gate2shop.com';
+//$sc_test_endpoint_host = 'https://ppp-test.safecharge.com';
+$sc_test_endpoint_host = 'https://srv-bsf-devppptrunk.gw-4u.com';
+
 // URLs for session token
 define('SC_LIVE_SESSION_TOKEN_URL', 'https://secure.safecharge.com/ppp/api/v1/getSessionToken.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-//    define('SC_TEST_SESSION_TOKEN_URL', 'http://192.168.103.237:8080/ppp/api/getSessionToken.do');
-//    define('SC_TEST_SESSION_TOKEN_URL', 'https://192.168.103.237/ppp/api/getSessionToken.do');
-//    define('SC_TEST_SESSION_TOKEN_URL', 'https://apmtest.gate2shop.com/ppp/api/getSessionToken.do');
-    define('SC_TEST_SESSION_TOKEN_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/getSessionToken.do');
+    define('SC_TEST_SESSION_TOKEN_URL', $sc_test_endpoint_host . '/ppp/api/v1/getSessionToken.do');
 }
 else {
     define('SC_TEST_SESSION_TOKEN_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/getSessionToken.do');
@@ -25,10 +29,7 @@ else {
 // get merchant payment methods URLs for REST API
 define('SC_LIVE_REST_PAYMENT_METHODS_URL', 'https://secure.safecharge.com/ppp/api/v1/getMerchantPaymentMethods.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-//    define('SC_TEST_REST_PAYMENT_METHODS_URL', 'http://192.168.103.237:8080/ppp/api/getMerchantPaymentMethods.do');
-//    define('SC_TEST_REST_PAYMENT_METHODS_URL', 'https://192.168.103.237/ppp/api/getMerchantPaymentMethods.do');
-//    define('SC_TEST_REST_PAYMENT_METHODS_URL', 'https://apmtest.gate2shop.com/ppp/api/getMerchantPaymentMethods.do');
-    define('SC_TEST_REST_PAYMENT_METHODS_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/getMerchantPaymentMethods.do');
+    define('SC_TEST_REST_PAYMENT_METHODS_URL', $sc_test_endpoint_host . '/ppp/api/v1/getMerchantPaymentMethods.do');
 }
 else {
     define('SC_TEST_REST_PAYMENT_METHODS_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/getMerchantPaymentMethods.do');
@@ -37,9 +38,7 @@ else {
 // refund REST URLs
 define('SC_LIVE_REFUND_URL', 'https://secure.safecharge.com/ppp/api/v1/refundTransaction.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-//    define('SC_TEST_REFUND_URL', 'https://192.168.103.237/ppp/api/v1/refundTransaction.do');
-//    define('SC_TEST_REFUND_URL', 'https://apmtest.gate2shop.com/ppp/api/v1/refundTransaction.do');
-    define('SC_TEST_REFUND_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/refundTransaction.do');
+    define('SC_TEST_REFUND_URL', $sc_test_endpoint_host . '/ppp/api/v1/refundTransaction.do');
 }
 else {
     define('SC_TEST_REFUND_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/refundTransaction.do');
@@ -48,9 +47,7 @@ else {
 // void URLs
 define('SC_LIVE_VOID_URL', 'https://secure.safecharge.com/ppp/api/v1/voidTransaction.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-//    define('SC_TEST_VOID_URL', 'https://192.168.103.237/ppp/api/v1/voidTransaction.do');
-//    define('SC_TEST_REFUND_URL', 'https://apmtest.gate2shop.com/ppp/api/v1/voidTransaction.do');
-    define('SC_TEST_VOID_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/voidTransaction.do');
+    define('SC_TEST_VOID_URL', $sc_test_endpoint_host . '/ppp/api/v1/voidTransaction.do');
 }
 else {
     define('SC_TEST_VOID_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/voidTransaction.do');
@@ -59,9 +56,7 @@ else {
 // payment URLs
 define('SC_LIVE_PAYMENT_URL', 'https://secure.safecharge.com/ppp/api/v1/paymentAPM.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-//    define('SC_TEST_PAYMENT_URL', 'https://192.168.103.237/ppp/api/paymentAPM.do');
-//    define('SC_TEST_PAYMENT_URL', 'https://apmtest.gate2shop.com/ppp/api/paymentAPM.do');
-    define('SC_TEST_PAYMENT_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/paymentAPM.do');
+    define('SC_TEST_PAYMENT_URL', $sc_test_endpoint_host . '/ppp/api/v1/paymentAPM.do');
 }
 else {
     define('SC_TEST_PAYMENT_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/paymentAPM.do');
@@ -70,9 +65,7 @@ else {
 // Cashier payments URLs
 define('SC_LIVE_CASHIER_URL', 'https://secure.safecharge.com/ppp/purchase.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-//    define('SC_TEST_CASHIER_URL', 'https://192.168.103.237/ppp/purchase.do');
-//    define('SC_TEST_CASHIER_URL', 'https://apmtest.gate2shop.com/ppp/purchase.do');
-    define('SC_TEST_CASHIER_URL', 'https://ppp-test.safecharge.com/ppp/purchase.do');
+    define('SC_TEST_CASHIER_URL', $sc_test_endpoint_host . '/ppp/purchase.do');
 }
 else {
     define('SC_TEST_CASHIER_URL', 'https://ppp-test.safecharge.com/ppp/purchase.do');
@@ -81,9 +74,7 @@ else {
 // dynamic 3D payment
 define('SC_LIVE_D3D_URL', 'https://secure.safecharge.com/ppp/api/v1/dynamic3D.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-//    define('SC_TEST_D3D_URL', 'https://192.168.103.237/ppp/dynamic3D.do');
-//    define('SC_TEST_D3D_URL', 'https://apmtest.gate2shop.com/ppp/dynamic3D.do');
-    define('SC_TEST_D3D_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/dynamic3D.do');
+    define('SC_TEST_D3D_URL', $sc_test_endpoint_host . '/ppp/api/v1/dynamic3D.do');
 }
 else {
     define('SC_TEST_D3D_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/dynamic3D.do');
@@ -92,9 +83,7 @@ else {
 // payment 3D
 define('SC_LIVE_P3D_URL', 'https://secure.safecharge.com/ppp/api/v1/payment3D.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-//    define('SC_TEST_P3D_URL', 'https://192.168.103.237/ppp/payment3D.do');
-//    define('SC_TEST_P3D_URL', 'https://apmtest.gate2shop.com/ppp/payment3D.do');
-    define('SC_TEST_P3D_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/payment3D.do');
+    define('SC_TEST_P3D_URL', $sc_test_endpoint_host . '/ppp/api/v1/payment3D.do');
 }
 else {
     define('SC_TEST_P3D_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/payment3D.do');
@@ -103,9 +92,7 @@ else {
 // payment with CC (cards) - not used at the moment
 define('SC_LIVE_PAYMENT_CC_URL', 'https://secure.safecharge.com/ppp/api/v1/paymentCC.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-//    define('SC_TEST_PAYMENT_CC_URL', 'https://192.168.103.237/ppp/paymentCC.do');
-//    define('SC_TEST_PAYMENT_CC_URL', 'https://apmtest.gate2shop.com/ppp/paymentCC.do');
-    define('SC_TEST_PAYMENT_CC_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/paymentCC.do');
+    define('SC_TEST_PAYMENT_CC_URL', $sc_test_endpoint_host . '/ppp/api/v1/paymentCC.do');
 }
 else {
     define('SC_TEST_PAYMENT_CC_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/paymentCC.do');
@@ -114,9 +101,7 @@ else {
 // Settle the Order
 define('SC_LIVE_SETTLE_URL', 'https://secure.safecharge.com/ppp/api/v1/settleTransaction.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-//    define('SC_TEST_SETTLE_URL', 'https://192.168.103.237/ppp/settleTransaction.do');
-//    define('SC_TEST_PAYMENT_CC_URL', 'https://apmtest.gate2shop.com/ppp/settleTransaction.do');
-    define('SC_TEST_SETTLE_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/settleTransaction.do');
+    define('SC_TEST_SETTLE_URL', $sc_test_endpoint_host . '/ppp/api/v1/settleTransaction.do');
 }
 else {
     define('SC_TEST_SETTLE_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/settleTransaction.do');
