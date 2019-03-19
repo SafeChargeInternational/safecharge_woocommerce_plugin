@@ -1034,6 +1034,7 @@ class WC_SC extends WC_Payment_Gateway
             isset($_REQUEST['clientUniqueId'], $_REQUEST['transactionType'])
             && $_REQUEST['clientUniqueId'] != ''
             && ($_REQUEST['transactionType'] == 'Void' || $_REQUEST['transactionType'] == 'Settle')
+            && $this->checkAdvancedCheckSum()
         ) {
             $this->create_log('', $_REQUEST['transactionType']);
             
@@ -1058,6 +1059,7 @@ class WC_SC extends WC_Payment_Gateway
         if(
             (@$_REQUEST['action'] == 'refund' || @$_REQUEST['transactionType'] == 'Credit')
             && !empty($req_status)
+            && $this->checkAdvancedCheckSum()
         ) {
             $this->create_log('', 'Refund.');
             
