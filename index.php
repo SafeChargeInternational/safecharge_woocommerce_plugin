@@ -33,26 +33,27 @@ function woocommerce_sc_init()
     $wc_sc = new WC_SC();
     
     add_filter('woocommerce_payment_gateways', 'woocommerce_add_sc_gateway' );
-	add_action('init', 'sc_enqueue'); // need WC_SC
-	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
-    // Check checkout for selected apm ONLY when payment api is REST
-    add_action( 'woocommerce_checkout_process', 'sc_check_checkout_apm', 20 );
-    // add void and/or settle buttons to completed orders
+	add_action('init', 'sc_enqueue');
+    // add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
     add_action( 'woocommerce_order_item_add_action_buttons', 'sc_add_buttons');
-    // Refun hook, when create refund from WC, we do not want this to be activeted from DMN
+    // Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
+    // we check in the method is this order made via SC paygate
     add_action('woocommerce_create_refund', 'sc_create_refund');
     
-    // for WPML plugin
-    if(
-        is_plugin_active('sitepress-multilingual-cms' . DIRECTORY_SEPARATOR . 'sitepress.php')
-        && $wc_sc->settings['use_wpml_thanks_page'] == 'yes'
-    ) {
-        add_filter( 'woocommerce_get_checkout_order_received_url', 'sc_wpml_thank_you_page', 10, 2 );
-    }
-    
-    // if the merchant needs to rewrite the DMN URL
-    if(isset($wc_sc->settings['rewrite_dmn']) && $wc_sc->settings['rewrite_dmn'] == 'yes') {
-        add_action('template_redirect', 'sc_rewrite_return_url'); // need WC_SC
+    // those actions are valid only when the plugin is enabled
+    if($wc_sc->settings['enabled'] == 'yes') {
+        // for WPML plugin
+        if(
+            is_plugin_active('sitepress-multilingual-cms' . DIRECTORY_SEPARATOR . 'sitepress.php')
+            && $wc_sc->settings['use_wpml_thanks_page'] == 'yes'
+        ) {
+            add_filter( 'woocommerce_get_checkout_order_received_url', 'sc_wpml_thank_you_page', 10, 2 );
+        }
+
+        // if the merchant needs to rewrite the DMN URL
+        if(isset($wc_sc->settings['rewrite_dmn']) && $wc_sc->settings['rewrite_dmn'] == 'yes') {
+            add_action('template_redirect', 'sc_rewrite_return_url'); // need WC_SC
+        }
     }
 }
 
@@ -183,6 +184,17 @@ function sc_create_refund()
         if(isset($_REQUEST['order_id']) && $_REQUEST['order_id'] != '') {
             try {
                 $order = new WC_Order( (int)$_REQUEST['order_id'] );
+                
+                // to show SC buttons we must be sure the order is paid via SC Paygate
+                if(
+                    !$order->get_meta(SC_AUTH_CODE_KEY)
+                    && !$order->get_meta(SC_GW_TRANS_ID_KEY)
+                    && !$order->get_meta(SC_GW_P3D_RESP_TR_TYPE)
+                ) {
+                    echo json_encode(array('status' => 0));
+                    exit;
+                }
+                
                 $refunds = $order->get_refunds();
             }
             catch (Exception $ex) {
@@ -331,6 +343,15 @@ function sc_add_buttons()
     catch (Exception $ex) {
         echo '<script type="text/javascript">console.error("'
             . $ex->getMessage() . '")</script>';
+        exit;
+    }
+    
+    // to show SC buttons we must be sure the order is paid via SC Paygate
+    if(
+        !$order->get_meta(SC_AUTH_CODE_KEY)
+        && !$order->get_meta(SC_GW_TRANS_ID_KEY)
+        && !$order->get_meta(SC_GW_P3D_RESP_TR_TYPE)
+    ) {
         exit;
     }
     

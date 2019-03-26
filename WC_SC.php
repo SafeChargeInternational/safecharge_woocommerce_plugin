@@ -1349,26 +1349,36 @@ class WC_SC extends WC_Payment_Gateway
     
     public function set_notify_url()
     {
-        $protocol = '';
-        $url = $_SERVER['HTTP_HOST'] . '/?wc-api=';
+//        $protocol = '';
+//        $url = $_SERVER['HTTP_HOST'] . '/?wc-api=';
+//        
+//        // force Notification URL protocol
+//        if(isset($this->use_http) && $this->use_http == 'yes') {
+//            $protocol = 'http://';
+//        }
+//        else {
+//            if(
+//                (isset($_SERVER["HTTPS"]) && !empty($_SERVER["HTTPS"]) && strtolower ($_SERVER['HTTPS']) != 'off')
+//                || (isset($_SERVER["SERVER_PROTOCOL"]) && strpos($_SERVER["SERVER_PROTOCOL"], 'HTTPS/') !== false)
+//            ) {
+//                $protocol = 'https://';
+//            }
+//            elseif(isset($_SERVER["SERVER_PROTOCOL"]) && strpos($_SERVER["SERVER_PROTOCOL"], 'HTTP/') !== false) {
+//                $protocol = 'http://';
+//            }
+//        }
+//        
+//        return $protocol . $url;
         
-        // force Notification URL protocol
-        if(isset($this->use_http) && $this->use_http == 'yes') {
-            $protocol = 'http://';
-        }
-        else {
-            if(
-                (isset($_SERVER["HTTPS"]) && !empty($_SERVER["HTTPS"]) && strtolower ($_SERVER['HTTPS']) != 'off')
-                || (isset($_SERVER["SERVER_PROTOCOL"]) && strpos($_SERVER["SERVER_PROTOCOL"], 'HTTPS/') !== false)
-            ) {
-                $protocol = 'https://';
-            }
-            elseif(isset($_SERVER["SERVER_PROTOCOL"]) && strpos($_SERVER["SERVER_PROTOCOL"], 'HTTP/') !== false) {
-                $protocol = 'http://';
-            }
+        $url = get_site_url() . '?wc-api=';
+        
+        // force Notification URL protocol to http
+        if(isset($this->use_http) && $this->use_http == 'yes' && strpos($url, 'https://') !== false) {
+            $url = str_replace('https://', '', $url);
+            $url = 'http://' . $url;
         }
         
-        return $protocol . $url;
+        return $url;
     }
     
     /**

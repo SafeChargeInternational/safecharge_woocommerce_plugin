@@ -28,6 +28,29 @@ if(
     && !empty($_SESSION['SC_Variables']['merchantSiteId'])
     && in_array($_SESSION['SC_Variables']['payment_api'], array('cashier', 'rest'))
 ) {
+    // when enable or disable SC Checkout
+    if(in_array(@$_POST['enableDisableSCCheckout'], array('enable', 'disable'))) {
+        require dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-includes/plugin.php';
+        
+        if($_POST['enableDisableSCCheckout'] == 'enable') {
+            add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
+            add_action( 'woocommerce_checkout_process', 'sc_check_checkout_apm');
+
+            echo json_encode(array('status' => 1));
+            exit;
+        }
+        else {
+            remove_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
+            remove_action( 'woocommerce_checkout_process', 'sc_check_checkout_apm');
+
+            echo json_encode(array('status' => 1));
+            exit;
+        }
+
+        echo json_encode(array('status' => 1, data => 'action error.'));
+        exit;
+    }
+    
     require_once 'SC_REST_API.php';
     
     // when merchant cancel the order via Void button
@@ -109,4 +132,8 @@ elseif(
         'msg' => $_SESSION['SC_Variables']['payment_api'] != 'rest'
             ? 'You are using Cashier API. APMs are not available with it.' : 'Missing some of conditions to using REST API.'
     ));
+    exit;
 }
+
+echo json_encode(array('status' => 0));
+exit;

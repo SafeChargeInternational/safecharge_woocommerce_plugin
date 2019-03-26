@@ -488,7 +488,7 @@ class SC_REST_API
                 $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,
                 'Call REST API for Session Token with URL: '
             );
-            self::create_log($params, 'Call REST API for Session Token with params: ');
+            self::create_log('', 'Call REST API for Session Token. ');
 
             $resp_arr = self::call_rest_api(
                 $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,

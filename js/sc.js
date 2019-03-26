@@ -16,14 +16,22 @@ var billing_country_first_val = '';
   * When click save on modal, check for mandatory fields and validate them.
   */
 function scValidateAPMFields() {
+    if(jQuery('input[name="payment_method"]:checked').val() != 'sc') {
+        jQuery('form.woocommerce-checkout').submit();
+        return;
+    }
+    
     var formValid = true;
      
     if(jQuery('li.apm_container').length > 0) {
+        formValid = false;
+        
         jQuery('li.apm_container').each(function(){
             var self = jQuery(this);
             var radioBtn = self.find('input.sc_payment_method_field');
             
             if(radioBtn.is(':checked')) {
+                formValid = true;
                 var apmField = self.find('.apm_field input');
                 selectedPM = radioBtn.val();
                 
@@ -67,7 +75,7 @@ function scValidateAPMFields() {
                     email:      jQuery("#billing_email").val(),
                     firstName:  jQuery("#billing_first_name").val(),
                     lastName:   jQuery("#billing_last_name").val(),
-                },
+                }, 
                 cardData: {
                     cardNumber:         jQuery('#' + selectedPM + '_' + tokAPMsFields.cardNumber).val(),
                     cardHolderName:     jQuery('#' + selectedPM + '_' + tokAPMsFields.cardHolderName).val(),
@@ -105,6 +113,15 @@ function scValidateAPMFields() {
             jQuery('form.woocommerce-checkout').submit();
         }
     }
+    else {
+        jQuery('form.woocommerce-checkout').prepend(
+            '<ul class="woocommerce-error" role="alert">'
+                +'<li><strong>Please, choose payment method, and fill required fields!</strong></li>'
+            +'</ul>'
+        );
+
+        window.location.hash = '#main';
+    }
  }
  
  /**
@@ -130,7 +147,7 @@ function safechargeResultHandler(resp) {
         );
 
         window.location.hash = '#main';
-        window.location = window.location.hash;
+    //    window.location = window.location.hash;
     }
     else if(resp.status == 'SUCCESS') {
         jQuery('#' + selectedPM + '_' + tokAPMsFields.cardNumber).val(resp.ccTempToken);
@@ -160,6 +177,11 @@ function showErrorLikeInfo(elemId) {
  }
  
 function getAPMs() {
+    // do not get SC APMs if user do not use SC paygate
+    if(jQuery('input[name="payment_method"]:checked').val() != 'sc') {
+        return;
+    }
+    
     if(jQuery("#billing_country").val() != billing_country_first_val) {
         manualChangedCountry = true;
         billing_country_first_val = jQuery("#billing_country").val();
@@ -179,6 +201,7 @@ function getAPMs() {
                     return;
                 }
         
+                // if resp.status == 2 the user use Cashier
                 if(
                     typeof resp != 'undefined'
                     && resp.status == 1
@@ -187,10 +210,7 @@ function getAPMs() {
                 ) {
                     var html = '';
                     var pMethods = resp.data['paymentMethods'];
-
-                    html +=
-                        '<ul id="sc_apms_list">';
-
+                    console.log(pMethods.length)
                     for(var i in pMethods) {
                         var pmMsg = '';
                         if(
@@ -205,18 +225,18 @@ function getAPMs() {
                             newImg = '<img src="'+ pMethods[i]['logoURL'].replace('/svg/', '/svg/solid-white/')
                                     +'" alt="'+ pmMsg +'">';
                         }
-                        
+
                         // for cc_card CVV field is mandtory, if miss, add it:
                         if(pMethods[i].paymentMethod == 'cc_card') {
                             var addCVVField = true;
-                            
+
                             for(var f in pMethods[i].fields) {
                                 if(pMethods[i].fields[f].name.toLowerCase() == 'cvv') {
                                     addCVVField = false;
                                     break;
                                 }
                             }
-                            
+
                             if(addCVVField) {
                                 pMethods[i].fields.push({
                                     name: 'CVV'
@@ -295,33 +315,14 @@ function getAPMs() {
                                 '</div>'
                             +'</li>';
                     }
-                    
-                    html +=
-                        '</ul>';
 
-                    // wait until checkout is updated
-                    jQuery( document ).on( 'updated_checkout', function() {
-                        // remove old apms
-                        jQuery('#payment').find('.sc_apms').remove();
+                    print_apms_options(html)
 
-                        if(html != '') {
-                            // clean old APMs
-                            if(jQuery('.payment_method_sc:last').find('ul#sc_apms_list').length > 0) {
-                                jQuery('.payment_method_sc:last').find('ul#sc_apms_list').remove();
-                            }
-
-                            // insert the html
-                            jQuery('.payment_method_sc:last').append(html);
-                            jQuery('form[name="checkout"]').attr('onsubmit', "return false;");
-                            
-                            // add loading screen
-                            jQuery('#payment').append('<div id="custom_loader" class="blockUI"></div>');
-
-                            // change submit button type and behavior
-                            jQuery('form.woocommerce-checkout button[type=submit]')
-                                .attr('type', 'button')
-                                .attr('onclick', 'scValidateAPMFields()');
-                        }
+                    // WP js trigger - wait until checkout is updated, but because it not always fired
+                    // print the APMs one more time befor it
+                    jQuery( document.body ).on( 'updated_checkout', function(){
+                        console.log('updated_checkout')
+                        print_apms_options(html)
                     });
                 }
                 // show some error
@@ -331,11 +332,34 @@ function getAPMs() {
                             +'<li><strong>Error when try to get APMs. Please, try again later!</strong></li>'
                         +'</ul>'
                     );
+            
+                    window.location.hash = '#main';
                 }
-                // if resp.status == 2 the user use Cashier
             });
     }
- }
+}
+
+/**
+ * @param {string} html - html code for the options
+ */
+function print_apms_options(html) {
+    // apend APMs holder
+    if(jQuery('form.woocommerce-checkout').find('#sc_apms_list').length == 0) {
+        jQuery('div.payment_method_sc').append('<ul id="sc_apms_list"></div>');
+    }
+    else {
+        // remove old apms
+        jQuery('#sc_apms_list').html('');
+    }
+
+    // insert the html
+    jQuery('#sc_apms_list').append(html);
+
+    // change submit button type and behavior
+    jQuery('form.woocommerce-checkout button[type=submit]')
+        .attr('type', 'button')
+        .attr('onclick', 'scValidateAPMFields()');
+}
  
 // when the admin select to Settle or Void the Order
 function settleAndCancelOrder(question, action, orderId) {
@@ -409,12 +433,53 @@ function deleteOldestLogs() {
     }
 }
 
+/**
+ * Function enableDisableSCCheckout
+ * Enable or disable SC Checkout
+ * 
+ * @param {string} action - disable|enable
+ */
+function enableDisableSCCheckout(action) {
+    // add another loader
+    if(jQuery('#custom_loader_2').length == 0) {
+        jQuery('.wc_payment_methods ').append('<div style="width: 100%; height: 100%;position: absolute; top: 0px;opacity: 0.7; z-index: 3; background: white;"><div id="custom_loader_2" class="blockUI blockOverlay"></div></div>');
+    }
+    else {
+        jQuery('#custom_loader_2').parent('div').show();
+    }
+    
+    jQuery.ajax({
+        type: "POST",
+        url: myAjax.ajaxurl,
+        data: { enableDisableSCCheckout: action },
+        dataType: 'json'
+    })
+        .done(function(resp) {
+            // go to DMN page to change order status
+            if(resp && typeof resp.status != 'undefined' && resp.status == 1) {
+                if(jQuery('#sc_apms_list').length == 0) {
+                    getAPMs();
+                }
+            }
+            else {
+                alert('Error with the Response.');
+            }
+            
+            jQuery('#custom_loader_2').parent('div').hide();
+        });
+}
+
 jQuery(function() {
+    jQuery('#payment').append('<div id="custom_loader" class="blockUI"></div>');
+    
     billing_country_first_val = jQuery("#billing_country").val();
     
-    jQuery("#billing_country").change(function() {
+    jQuery("#billing_country").on('change', function() {
+        console.log('test');
         getAPMs();
     });
+    
+    enableDisableSCCheckout(jQuery('input[name="payment_method"]:checked').val() == 'sc' ? 'enable' : 'disable');
     
     // when click on APM payment method
     jQuery('form.woocommerce-checkout').on('click', '.apm_title', function() {
@@ -450,13 +515,9 @@ jQuery(function() {
         jQuery('.apm_error').hide();
     });
     
-    // check for APMs in case jQuery("#billing_country").change was fired
-    if(
-        jQuery('body').find('form.woocommerce-checkout').length > 0
-        && jQuery('form.woocommerce-checkout').find('#sc_apms_list').length == 0
-    ) {
-        getAPMs();
-    }
-    
+    // when we change selected paymenth method (the radio buttons)
+    jQuery('form.woocommerce-checkout').on('change', 'input[name="payment_method"]', function(){
+        enableDisableSCCheckout(jQuery(this).val() == 'sc' ? 'enable' : 'disable');
+    });
 });
 // document ready function END
