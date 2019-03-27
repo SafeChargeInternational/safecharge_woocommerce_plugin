@@ -210,7 +210,7 @@ function getAPMs() {
                 ) {
                     var html = '';
                     var pMethods = resp.data['paymentMethods'];
-                    console.log(pMethods.length)
+                    
                     for(var i in pMethods) {
                         var pmMsg = '';
                         if(
@@ -219,11 +219,16 @@ function getAPMs() {
                         ) {
                             pmMsg = pMethods[i]['paymentMethodDisplayName'][0].message;
                         }
+                        // fix when there is no display name
+                        else if(pMethods[i]['paymentMethod'] != '') {
+                            pmMsg = pMethods[i]['paymentMethod'].replace('apmgw_', '');
+                            pmMsg = pmMsg.replace(/_/g, ' ');
+                        }
 
                         var newImg = pmMsg;
                         if(typeof pMethods[i]['logoURL'] != 'undefined') {
                             newImg = '<img src="'+ pMethods[i]['logoURL'].replace('/svg/', '/svg/solid-white/')
-                                    +'" alt="'+ pmMsg +'">';
+                                +'" alt="'+ pmMsg +'">';
                         }
 
                         // for cc_card CVV field is mandtory, if miss, add it:
@@ -278,12 +283,17 @@ function getAPMs() {
 
                                 var placeholder = '';
                                 try {
-                                    placeholder = pMethods[i].fields[j].caption[0].message;
-                                    if(placeholder === undefined) {
-                                        placeholder = '';
+                                    if(typeof pMethods[i].fields[j].caption[0] == 'undefined') {
+                                        placeholder = pMethods[i].fields[j].name;
+                                        placeholder = placeholder.replace(/_/g, ' ');
+                                    }
+                                    else {
+                                        placeholder = pMethods[i].fields[j].caption[0].message;
                                     }
                                 }
-                                catch(e) {}
+                                catch(e) {
+                                    placeholder = '';
+                                }
 
                                 var fieldErrorMsg = '';
                                 try {

@@ -527,7 +527,7 @@ class WC_SC extends WC_Payment_Gateway
             && (!isset($_SESSION['SC_CASHIER_FORM_RENDED']) || !$_SESSION['SC_CASHIER_FORM_RENDED'])
         ) {
             // specified parameter for the Cashier
-            $params['webMasterId'] = WOOCOMMERCE_VERSION;
+            $params['webMasterId'] = SC_PLUGIN_NAME . ' ' . WOOCOMMERCE_VERSION;
             
             // this parameter is for the REST API
             unset($params['items']);
@@ -599,7 +599,7 @@ class WC_SC extends WC_Payment_Gateway
             
             $params['site_url']             = get_site_url(); // TODO this parameter does not present in REST docs !!!
             $params['client_request_id']    = $TimeStamp .'_'. uniqid();
-            $params['sg_WebMasterID']       = WOOCOMMERCE_VERSION;
+            $params['sg_WebMasterID']       = SC_PLUGIN_NAME . ' ' . WOOCOMMERCE_VERSION;
             
             $params['urlDetails'] = array(
                 'successUrl'        => $this->get_return_url(),
