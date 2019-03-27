@@ -63,8 +63,9 @@ div.payment_method_sc {
     color: #14B5F1;
 }
 
-.apm_field input {
+.apm_field input, .apm_field input:focus {
     border: 0 !important;
+    outline: 0 !important;
     background-color: inherit !important;
     border-bottom: .1rem solid #9B9B9B !important;
     border-radius: 0px !important;

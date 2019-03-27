@@ -246,7 +246,7 @@ function getAPMs() {
                                 pMethods[i].fields.push({
                                     name: 'CVV'
                                     ,regex: '^[0-9]{3,4}$'
-                                    ,type: 'number'
+                                    ,type: 'text'
                                     ,validationmessage: [{
                                         message: 'CVV must be 3 or 4 digits!'
                                         ,language: 'en'
