@@ -110,6 +110,9 @@ class WC_SC extends WC_Payment_Gateway
 		add_action('woocommerce_checkout_process', array($this, 'sc_checkout_process'));
 		add_action('woocommerce_receipt_'.$this->id, array($this, 'receipt_page'));
 		add_action('woocommerce_api_sc_listener', array($this, 'process_sc_notification'));
+        /* Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
+        we check in the method is this order made via SC paygate */
+        add_action('woocommerce_create_refund', array($this, 'create_refund_in_wc' ));
 	}
 
     /**
@@ -340,8 +343,9 @@ class WC_SC extends WC_Payment_Gateway
         $order = new WC_Order($order_id);
         $order_status = strtolower($order->get_status());
         
-        $cust_fields = $order->get_meta_data();
-        $cust_fields2 = get_post_meta($order_id, 'payment_method_sc', true);
+        // TODO do we use them ???
+    //    $cust_fields = $order->get_meta_data();
+    //    $cust_fields2 = get_post_meta($order_id, 'payment_method_sc', true);
         
         $order->add_order_note(__("User is redicted to ".SC_GATEWAY_TITLE." Payment page.", 'sc'));
         $order->save();
@@ -1493,6 +1497,191 @@ class WC_SC extends WC_Payment_Gateway
     public function process_refund( $order_id, $amount = null, $reason = '' ) {
         return false;
 	}
+    
+    /**
+     * Function create_refund
+     * Create Refund in SC by Refund from WC
+     * 
+     * @param object $refund_data
+     */
+    public function create_refund_in_wc($refund)
+    {
+        if(isset($_REQUEST['wc-api']) || !$refund) {
+            $this->create_log($_REQUEST, 'Refund request params: ');
+            $this->create_log($refund, 'Refund object: ');
+            return;
+        }
+        
+        // get order refunds
+        try {
+            $refund_data = $refund->get_data();
+            
+            // the hooks calling this method fired twice when change status
+            // to Refunded, but we do not want to try more than one SC Refunds
+            if(isset($_SESSION['sc_last_refund_id'])) {
+                $this->create_log($_SESSION['sc_last_refund_id'], 'we have session: ');
+                $this->create_log($refund_data['id'], 'refund id: ');
+                
+                if(intval($_SESSION['sc_last_refund_id']) == intval($refund_data['id'])) {
+                    unset($_SESSION['sc_last_refund_id']);
+                    return;
+                }
+                else {
+                    $_SESSION['sc_last_refund_id'] = $refund_data['id'];
+                }
+            }
+            else {
+                $this->create_log($refund_data['id'], 'create session: ');
+                $_SESSION['sc_last_refund_id'] = $refund_data['id'];
+            }
+            
+            $order_id = intval(@$_REQUEST['order_id']);
+            // when we set status to Refunded
+            if(isset($_REQUEST['post_ID'])) {
+                $order_id = intval($_REQUEST['post_ID']);
+            }
+            
+            $order = new WC_Order($order_id);
+            
+            $order_meta_data = array(
+                'order_tr_id'   => $order->get_meta(SC_GW_TRANS_ID_KEY),
+                'auth_code'     => $order->get_meta(SC_AUTH_CODE_KEY),
+            );
+        }
+        catch (Exception $ex) {
+            $this->create_log($ex->getMessage(), 'sc_create_refund() Exception: ');
+            return;
+        }
+        
+        if(!$order_meta_data['order_tr_id'] && !$order_meta_data['auth_code']) {
+            $order->add_order_note(__('Missing Auth code and Transaction ID.', 'sc'));
+            $order->save();
+            
+            return;
+        }
+
+        if(!is_array($refund_data)) {
+            $order->add_order_note(__('There is no refund data. If refund was made, delete it manually!', 'sc'));
+            $order->save();
+            
+            return;
+        }
+
+        // call refund method
+        require_once 'SC_REST_API.php';
+
+        $notify_url = $this->set_notify_url();
+        
+        // execute refund, the response must be array('msg' => 'some msg', 'new_order_status' => 'some status')
+        $resp = SC_REST_API::refund_order(
+            $this->settings
+            ,$refund_data
+            ,$order_meta_data
+            ,get_woocommerce_currency()
+            ,$notify_url . 'sc_listener&action=refund&order_id=' . $order_id
+        );
+        
+        $refund_url = SC_TEST_REFUND_URL;
+        $cpanel_url = SC_TEST_CPANEL_URL;
+
+        if($this->settings['test'] == 'no') {
+            $refund_url = SC_LIVE_REFUND_URL;
+            $cpanel_url = SC_LIVE_CPANEL_URL;
+        }
+
+        $msg = '';
+        $error_note = 'Please manually delete request Refund #'
+            .$refund_data['id'].' form the order or login into <i>'. $cpanel_url
+            .'</i> and refund Transaction ID '.$order_meta_data['order_tr_id'];
+
+        if($resp === false) {
+            $msg = 'The REST API retun false. ' . $error_note;
+
+            $order->add_order_note(__($msg, 'sc'));
+            $order->save();
+            
+            return;
+        }
+
+        $json_arr = $resp;
+        if(!is_array($resp)) {
+            parse_str($resp, $json_arr);
+        }
+
+        if(!is_array($json_arr)) {
+            $msg = 'Invalid API response. ' . $error_note;
+
+            $order->add_order_note(__($msg, 'sc'));
+            $order->save();
+            
+            return;
+        }
+
+        // in case we have message but without status
+        if(!isset($json_arr['status']) && isset($json_arr['msg'])) {
+            // save response message in the History
+            $msg = 'Request Refund #' . $refund_data['id'] . ' problem: ' . $json_arr['msg'];
+
+            $order->add_order_note(__($msg, 'sc'));
+            $order->save();
+            
+            return;
+        }
+
+        // the status of the request is ERROR
+        if(@$json_arr['status'] == 'ERROR') {
+            $msg = 'Request ERROR - "' . $json_arr['reason'] .'" '. $error_note;
+
+            $order->add_order_note(__($msg, 'sc'));
+            $order->save();
+            
+            return;
+        }
+
+        // the status of the request is SUCCESS, check the transaction status
+        if(@$json_arr['transactionStatus'] == 'ERROR') {
+            if(isset($json_arr['gwErrorReason']) && !empty($json_arr['gwErrorReason'])) {
+                $msg = $json_arr['gwErrorReason'];
+            }
+            elseif(isset($json_arr['paymentMethodErrorReason']) && !empty($json_arr['paymentMethodErrorReason'])) {
+                $msg = $json_arr['paymentMethodErrorReason'];
+            }
+            else {
+                $msg = 'Transaction error';
+            }
+
+            $msg .= '. ' .$error_note;
+
+            $order->add_order_note(__($msg, 'sc'));
+            $order->save();
+            return;
+        }
+
+        if(@$json_arr['transactionStatus'] == 'DECLINED') {
+            $msg = 'The refun was declined. ' .$error_note;
+
+            $order->add_order_note(__($msg, 'sc'));
+            $order->save();
+            
+            return;
+        }
+
+        if(@$json_arr['transactionStatus'] == 'APPROVED') {
+            $msg = 'Your request - Refund #' . $refund_data['id'] . ', was successful.';
+
+            $order->add_order_note(__($msg, 'sc'));
+            $order->save();
+            
+            return;
+        }
+
+        $msg = 'The status of request - Refund #' . $refund_data['id'] . ', is UNKONOWN.';
+
+        $order->add_order_note(__($msg, 'sc'));
+        $order->save();
+        
+        return;
+    }
     
     /**
      * Function sc_refund_order

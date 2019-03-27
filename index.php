@@ -3,7 +3,7 @@
 Plugin Name: SafeCharge WooCommerce PlugIn
 Plugin URI: http://www.safecharge.com
 Description: SafeCharge gateway for woocommerce
-Version: 1.8.2
+Version: 1.9
 Author: SafeCharge
 Author URI: http://safecharge.com
 */
@@ -36,9 +36,6 @@ function woocommerce_sc_init()
 	add_action('init', 'sc_enqueue');
     // add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
     add_action( 'woocommerce_order_item_add_action_buttons', 'sc_add_buttons');
-    // Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
-    // we check in the method is this order made via SC paygate
-    add_action('woocommerce_create_refund', 'sc_create_refund');
     
     // those actions are valid only when the plugin is enabled
     if($wc_sc->settings['enabled'] == 'yes') {
@@ -172,155 +169,6 @@ function sc_show_final_text()
     echo $msg;
 }
 
-function sc_create_refund()
-{
-    if(!isset($_REQUEST['wc-api'])) {
-        // get GW so we can use its settings
-        global $wc_sc;
-
-        $notify_url = $wc_sc->set_notify_url();
-
-        // get order refunds
-        if(isset($_REQUEST['order_id']) && $_REQUEST['order_id'] != '') {
-            try {
-                $order = new WC_Order( (int)$_REQUEST['order_id'] );
-                
-                // to show SC buttons we must be sure the order is paid via SC Paygate
-                if(
-                    !$order->get_meta(SC_AUTH_CODE_KEY)
-                    && !$order->get_meta(SC_GW_TRANS_ID_KEY)
-                    && !$order->get_meta(SC_GW_P3D_RESP_TR_TYPE)
-                ) {
-                    echo json_encode(array('status' => 0));
-                    exit;
-                }
-                
-                $refunds = $order->get_refunds();
-            }
-            catch (Exception $ex) {
-                create_log($ex->getMessage(), 'sc_create_refund() Exception: ');
-                wp_send_json_success();
-            }
-            
-            if(!$refunds || !isset($refunds[0]) || !is_array($refunds[0]->data)) {
-                $order -> add_order_note(__('There are no refunds data. If refund was made, delete it manually!', 'sc'));
-                $order->save();
-                wp_send_json_success();
-            }
-
-            $order_meta_data = array(
-                'order_tr_id' => $order->get_meta(SC_GW_TRANS_ID_KEY),
-                'auth_code' => $order->get_meta(SC_AUTH_CODE_KEY),
-            );
-
-            // call refund method
-            require_once 'SC_REST_API.php';
-
-            // execute refund, the response must be array('msg' => 'some msg', 'new_order_status' => 'some status')
-            $resp = SC_REST_API::refund_order(
-                $wc_sc->settings
-                ,$refunds[0]->data
-                ,$order_meta_data
-                ,get_woocommerce_currency()
-                ,$notify_url . 'sc_listener&action=refund&order_id=' . $_REQUEST['order_id']
-            );
-            
-            $refund_url = SC_TEST_REFUND_URL;
-            $cpanel_url = SC_TEST_CPANEL_URL;
-
-            if($wc_sc->settings['test'] == 'no') {
-                $refund_url = SC_LIVE_REFUND_URL;
-                $cpanel_url = SC_LIVE_CPANEL_URL;
-            }
-            
-            $msg = '';
-            $error_note = 'Please manually delete request Refund #'
-                .$refunds[0]->data['id'].' form the order or login into <i>'. $cpanel_url
-                .'</i> and refund Transaction ID '.$order_meta_data['order_tr_id'];
-
-            if($json_arr === false) {
-                $msg = 'The REST API retun false. ' . $error_note;
-                
-                $order->add_order_note(__($msg, 'sc'));
-                $order->save();
-                wp_send_json_success();
-            }
-
-            if(!is_array($json_arr)) {
-                parse_str($resp, $json_arr);
-            }
-
-            if(!is_array($json_arr)) {
-                $msg = 'Invalid API response. ' . $error_note;
-                
-                $order->add_order_note(__($msg, 'sc'));
-                $order->save();
-                wp_send_json_success();
-            }
-            
-            // in case we have message but without status
-            if(!isset($json_arr['status']) && isset($json_arr['msg'])) {
-                // save response message in the History
-                $msg = 'Request Refund #' . $refunds[0]->data['id'] . ' problem: ' . $json_arr['msg'];
-
-                $order->add_order_note(__($msg, 'sc'));
-                $order->save();
-                wp_send_json_success();
-            }
-
-            // the status of the request is ERROR
-            if(@$json_arr['status'] == 'ERROR') {
-                $msg = 'Request ERROR - "' . $json_arr['reason'] .'" '. $error_note;
-                
-                $order->add_order_note(__($msg, 'sc'));
-                $order->save();
-                wp_send_json_success();
-            }
-
-            // the status of the request is SUCCESS, check the transaction status
-            if(@$json_arr['transactionStatus'] == 'ERROR') {
-                if(isset($json_arr['gwErrorReason']) && !empty($json_arr['gwErrorReason'])) {
-                    $msg = $json_arr['gwErrorReason'];
-                }
-                elseif(isset($json_arr['paymentMethodErrorReason']) && !empty($json_arr['paymentMethodErrorReason'])) {
-                    $msg = $json_arr['paymentMethodErrorReason'];
-                }
-                else {
-                    $msg = 'Transaction error';
-                }
-                
-                $msg .= '. ' .$error_note;
-                
-                $order->add_order_note(__($msg, 'sc'));
-                $order->save();
-                wp_send_json_success();
-            }
-
-            if(@$json_arr['transactionStatus'] == 'DECLINED') {
-                $msg = 'The refun was declined. ' .$error_note;
-                
-                $order->add_order_note(__($msg, 'sc'));
-                $order->save();
-                wp_send_json_success();
-            }
-
-            if(@$json_arr['transactionStatus'] == 'APPROVED') {
-                $msg = 'Your request - Refund #' . $refunds[0]->data['id'] . ', was successful.';
-                
-                $order->add_order_note(__($msg, 'sc'));
-                $order->save();
-                wp_send_json_success();
-            }
-
-            $msg = 'The status of request - Refund #' . $refunds[0]->data['id'] . ', is UNKONOWN.';
-                
-            $order->add_order_note(__($msg, 'sc'));
-            $order->save();
-            wp_send_json_success();
-        }
-    }
-}
-
 function sc_check_checkout_apm()
 {
     // if custom fields are empty stop checkout process displaying an error notice.
@@ -350,7 +198,6 @@ function sc_add_buttons()
     if(
         !$order->get_meta(SC_AUTH_CODE_KEY)
         && !$order->get_meta(SC_GW_TRANS_ID_KEY)
-        && !$order->get_meta(SC_GW_P3D_RESP_TR_TYPE)
     ) {
         exit;
     }

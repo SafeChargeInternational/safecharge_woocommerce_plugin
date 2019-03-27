@@ -14,8 +14,8 @@ define('SC_GATEWAY_TITLE', 'SafeCharge');
 //$sc_test_endpoint_host = 'http://192.168.103.237:8080';
 //$sc_test_endpoint_host = 'https://192.168.103.237';
 //$sc_test_endpoint_host = 'https://apmtest.gate2shop.com';
-//$sc_test_endpoint_host = 'https://ppp-test.safecharge.com/ppp/api/v1';
-$sc_test_endpoint_host = 'https://srv-bsf-devppptrunk.gw-4u.com/ppp/api';
+$sc_test_endpoint_host = 'https://ppp-test.safecharge.com/ppp/api/v1';
+//$sc_test_endpoint_host = 'https://srv-bsf-devppptrunk.gw-4u.com/ppp/api';
 
 // URLs for session token
 define('SC_LIVE_SESSION_TOKEN_URL', 'https://secure.safecharge.com/ppp/api/v1/getSessionToken.do');
@@ -65,7 +65,7 @@ else {
 // Cashier payments URLs
 define('SC_LIVE_CASHIER_URL', 'https://secure.safecharge.com/ppp/purchase.do');
 if(strpos(@$_SERVER['HTTP_HOST'], 'gw-4u.com') !== false || strpos(@$_SERVER['HTTP_HOST'], 'wordpress.mdev') !== false) {
-    define('SC_TEST_CASHIER_URL', 'https://srv-bsf-devppptrunk.gw-4u.com/ppp/purchase.do');
+    define('SC_TEST_CASHIER_URL', 'https://ppp-test.safecharge.com/ppp/purchase.do');
 }
 else {
     define('SC_TEST_CASHIER_URL', 'https://ppp-test.safecharge.com/ppp/purchase.do');

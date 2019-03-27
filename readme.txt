@@ -42,6 +42,10 @@ Please, contact out Tech-Support team (tech-support@safecharge.com) in case of q
 
 == Changelog ==
 
+= 1.9 - 2019-03-26 =
+* New - Better logic for add and remove SC hooks for the checkout. Hide SC buttons when edit order if, it not made via SC.
+* Add - Will be added functionality to create Full Refund, when merchant change order status to Refunded.
+
 = 1.8.2 - 2018-12-19 =
 * New - Added option in the settings, to use Cashier in iFrame.
 
