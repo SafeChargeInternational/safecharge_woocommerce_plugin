@@ -332,8 +332,6 @@ class WC_SC extends WC_Payment_Gateway
      **/
     public function generate_sc_form($order_id)
     {
-        global $woocommerce;
-        
         // prevent generate_sc_form() to render form twice
         if(!isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
             $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
@@ -1776,8 +1774,6 @@ class WC_SC extends WC_Payment_Gateway
             $request = $res_args;
         }
         
-        global $woocommerce;
-        
         switch($status) {
             case 'CANCELED':
                 $message = 'Payment status changed to:' . $status
@@ -1845,7 +1841,6 @@ class WC_SC extends WC_Payment_Gateway
                 }
 
                 $order->add_order_note($this->msg['message']);
-                $woocommerce->cart->empty_cart();
             break;
 
             case 'ERROR':
@@ -1920,7 +1915,6 @@ class WC_SC extends WC_Payment_Gateway
 
                 $order->add_order_note($this->msg['message']);
                 $order->update_status('on-hold');
-                $woocommerce->cart->empty_cart();
             break;
         }
         

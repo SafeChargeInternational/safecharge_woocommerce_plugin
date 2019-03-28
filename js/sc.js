@@ -16,13 +16,16 @@ var billing_country_first_val = '';
   * When click save on modal, check for mandatory fields and validate them.
   */
 function scValidateAPMFields() {
+    jQuery('#payment').append('<div id="custom_loader" class="blockUI"></div>');
+    jQuery('#custom_loader').show();
+    
     if(jQuery('input[name="payment_method"]:checked').val() != 'sc') {
         jQuery('form.woocommerce-checkout').submit();
-        return;
+        return; // just in case the submiting is too slow
     }
     
     var formValid = true;
-     
+    
     if(jQuery('li.apm_container').length > 0) {
         formValid = false;
         
@@ -49,6 +52,7 @@ function scValidateAPMFields() {
                             .show();
                     
                         formValid = false;
+                        jQuery('#custom_loader').remove();
                     }
                     // HIDE error
                     else {
@@ -62,8 +66,6 @@ function scValidateAPMFields() {
     if(formValid) {
         // check if method needed tokenization
         if(tokAPMs.indexOf(selectedPM) > -1) {
-            jQuery('#custom_loader').show();
-            
             var payload = {
                 merchantSiteId: '',
                 // we set environment only if its test
@@ -110,7 +112,7 @@ function scValidateAPMFields() {
         }
         // or just submit the form
         else {
-            jQuery('form.woocommerce-checkout').submit();
+        //    jQuery('form.woocommerce-checkout').submit();
         }
     }
     else {

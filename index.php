@@ -34,6 +34,7 @@ function woocommerce_sc_init()
     
     add_filter('woocommerce_payment_gateways', 'woocommerce_add_sc_gateway' );
 	add_action('init', 'sc_enqueue');
+    add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
     // add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
     add_action( 'woocommerce_order_item_add_action_buttons', 'sc_add_buttons');
     
@@ -128,7 +129,7 @@ function sc_show_final_text()
                     . (isset($_REQUEST['PPP_TransactionID']) ? $_REQUEST['PPP_TransactionID'] : "");
 
                 $order->add_order_note("User returned from Safecharge Payment page; ". $transactionId. $pppTransactionId);
-                $woocommerce -> cart -> empty_cart();
+                $woocommerce->cart->empty_cart();
             }
             
             $order->save();
@@ -144,7 +145,7 @@ function sc_show_final_text()
             $msg = __("Your payment failed. Please, try again.", 'sc');
         }
         else {
-            $woocommerce -> cart -> empty_cart();
+            $woocommerce->cart->empty_cart();
         }
     }
     
