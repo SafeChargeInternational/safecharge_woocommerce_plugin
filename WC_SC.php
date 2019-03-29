@@ -24,7 +24,7 @@ class WC_SC extends WC_Payment_Gateway
     {
         require_once 'SC_Versions_Resolver.php';
         
-        $this->$webMasterId .= WOOCOMMERCE_VERSION;
+        $this->webMasterId .= WOOCOMMERCE_VERSION;
         $plugin_dir = basename(dirname(__FILE__));
         $this->plugin_path = plugin_dir_path( __FILE__ ) . $plugin_dir . '/';
         $this->plugin_url = get_site_url() . '/wp-content/plugins/'.$plugin_dir.'/';
@@ -520,7 +520,7 @@ class WC_SC extends WC_Payment_Gateway
         $params['total_amount']     = SC_Versions_Resolver::get_order_data($order, 'order_total');
         $params['currency']         = get_woocommerce_currency();
         $params['merchantLocale']   = get_locale();
-        $params['webMasterId']      = $this->$webMasterId;
+        $params['webMasterId']      = $this->webMasterId;
         
         # Cashier payment
         if(
@@ -887,7 +887,7 @@ class WC_SC extends WC_Payment_Gateway
                 @$_SESSION['SC_Variables']['test'] == 'yes' ? SC_TEST_P3D_URL : SC_LIVE_P3D_URL
                 ,@$_SESSION['SC_P3D_Params']
                 ,$_SESSION['SC_P3D_Params']['checksum']
-                ,array('webMasterId' => $this->$webMasterId)
+                ,array('webMasterId' => $this->webMasterId)
             );
         }
         catch (Exception $e) {
@@ -1514,7 +1514,7 @@ class WC_SC extends WC_Payment_Gateway
         // get order refunds
         try {
             $refund_data = $refund->get_data();
-            $refund_data['webMasterId'] = $this->$webMasterId; // need this param for the API
+            $refund_data['webMasterId'] = $this->webMasterId; // need this param for the API
             
             // the hooks calling this method fired twice when change status
             // to Refunded, but we do not want to try more than one SC Refunds
