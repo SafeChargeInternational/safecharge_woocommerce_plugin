@@ -18,11 +18,13 @@ class WC_SC extends WC_Payment_Gateway
 {
     # payments URL
     private $URL = '';
+    private $webMasterId = 'WooCommerce ';
     
     public function __construct()
     {
         require_once 'SC_Versions_Resolver.php';
         
+        $this->$webMasterId .= WOOCOMMERCE_VERSION;
         $plugin_dir = basename(dirname(__FILE__));
         $this->plugin_path = plugin_dir_path( __FILE__ ) . $plugin_dir . '/';
         $this->plugin_url = get_site_url() . '/wp-content/plugins/'.$plugin_dir.'/';
@@ -518,15 +520,13 @@ class WC_SC extends WC_Payment_Gateway
         $params['total_amount']     = SC_Versions_Resolver::get_order_data($order, 'order_total');
         $params['currency']         = get_woocommerce_currency();
         $params['merchantLocale']   = get_locale();
+        $params['webMasterId']      = $this->$webMasterId;
         
         # Cashier payment
         if(
             $this->payment_api == 'cashier'
             && (!isset($_SESSION['SC_CASHIER_FORM_RENDED']) || !$_SESSION['SC_CASHIER_FORM_RENDED'])
         ) {
-            // specified parameter for the Cashier
-            $params['webMasterId'] = SC_PLUGIN_NAME . ' ' . WOOCOMMERCE_VERSION;
-            
             // this parameter is for the REST API
             unset($params['items']);
             
@@ -597,7 +597,6 @@ class WC_SC extends WC_Payment_Gateway
             
             $params['site_url']             = get_site_url(); // TODO this parameter does not present in REST docs !!!
             $params['client_request_id']    = $TimeStamp .'_'. uniqid();
-            $params['sg_WebMasterID']       = SC_PLUGIN_NAME . ' ' . WOOCOMMERCE_VERSION;
             
             $params['urlDetails'] = array(
                 'successUrl'        => $this->get_return_url(),
@@ -888,6 +887,7 @@ class WC_SC extends WC_Payment_Gateway
                 @$_SESSION['SC_Variables']['test'] == 'yes' ? SC_TEST_P3D_URL : SC_LIVE_P3D_URL
                 ,@$_SESSION['SC_P3D_Params']
                 ,$_SESSION['SC_P3D_Params']['checksum']
+                ,array('webMasterId' => $this->$webMasterId)
             );
         }
         catch (Exception $e) {
@@ -1498,7 +1498,8 @@ class WC_SC extends WC_Payment_Gateway
     
     /**
      * Function create_refund
-     * Create Refund in SC by Refund from WC
+     * Create Refund in SC by Refund from WC, after the merchant
+     * click refund button or set Status to Refunded
      * 
      * @param object $refund_data
      */
@@ -1513,6 +1514,7 @@ class WC_SC extends WC_Payment_Gateway
         // get order refunds
         try {
             $refund_data = $refund->get_data();
+            $refund_data['webMasterId'] = $this->$webMasterId; // need this param for the API
             
             // the hooks calling this method fired twice when change status
             // to Refunded, but we do not want to try more than one SC Refunds
@@ -1683,7 +1685,8 @@ class WC_SC extends WC_Payment_Gateway
     
     /**
      * Function sc_refund_order
-     * Process Order Refund through Code
+     * Process Order Refund through Code - create refund in WC after
+     * refund in CPanel.
      * 
      * @param int $order_id
      * @param string $refund_reason

@@ -62,6 +62,7 @@ class SC_REST_API
                 'authCode'              => $order_meta_data['auth_code'],
                 'comment'               => $refund['reason'], // optional
                 'url'                   => $notify_url,
+                'webMasterId'           => $refund['webMasterId'],
                 'timeStamp'             => $time,
             );
 
@@ -382,7 +383,7 @@ class SC_REST_API
                 'urlDetails'        => $data['urlDetails'],
                 'timeStamp'         => $data['time_stamp'],
                 'checksum'          => $data['checksum'],
-                'sg_WebMasterID'    => $data['sg_WebMasterID'],
+                'WebMasterID'       => $data['WebMasterID'],
                 'deviceDetails'     => self::get_device_details()
             );
 

@@ -405,7 +405,7 @@ function settleAndCancelOrder(question, action, orderId) {
                     window.location = '//' + window.location.host + '/wp-admin/edit.php?post_type=shop_order';
                 }
                 else {
-                    alert('Error with the Response.');
+                    alert('Response error.');
                 }
             });
     }
