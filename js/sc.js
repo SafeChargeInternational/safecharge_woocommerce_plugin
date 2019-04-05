@@ -126,7 +126,7 @@ function scValidateAPMFields() {
     }
  }
  
- /**
+/**
   * Function safechargeResultHandler
   * This function is just a handler for createToken method.
   * It just replaces the card number with a token.
@@ -159,7 +159,7 @@ function safechargeResultHandler(resp) {
             .append('<input type="hidden" name="lst", value="'+resp.sessionToken+'" />')
             .submit();
     }
- }
+}
  
  /**
   * Function showErrorLikeInfo
@@ -230,7 +230,7 @@ function getAPMs() {
                         var newImg = pmMsg;
                         if(typeof pMethods[i]['logoURL'] != 'undefined') {
                             newImg = '<img src="'+ pMethods[i]['logoURL'].replace('/svg/', '/svg/solid-white/')
-                                +'" alt="'+ pmMsg +'">';
+                                +'" alt="'+ pmMsg +'" />';
                         }
 
                         // for cc_card CVV field is mandtory, if miss, add it:

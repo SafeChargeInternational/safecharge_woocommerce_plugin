@@ -383,7 +383,7 @@ class SC_REST_API
                 'urlDetails'        => $data['urlDetails'],
                 'timeStamp'         => $data['time_stamp'],
                 'checksum'          => $data['checksum'],
-                'WebMasterID'       => $data['WebMasterID'],
+                'WebMasterID'       => @$data['WebMasterID'],
                 'deviceDetails'     => self::get_device_details()
             );
 

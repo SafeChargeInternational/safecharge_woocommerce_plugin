@@ -667,13 +667,13 @@ class WC_SC extends WC_Payment_Gateway
                 $error_txt = 'Payment error';
                 
                 if(@$resp['reason'] != '') {
-                    $error_txt = ': ' . $resp['reason'] . '.';
+                    $error_txt .= ': ' . $resp['reason'] . '.';
                 }
                 elseif(@$resp['transactionStatus'] != '') {
-                    $error_txt = ': ' . $resp['transactionStatus'] . '.';
+                    $error_txt .= ': ' . $resp['transactionStatus'] . '.';
                 }
                 elseif(@$resp['threeDReason'] != '') {
-                    $error_txt = ': ' . $resp['threeDReason'] . '.';
+                    $error_txt .= ': ' . $resp['threeDReason'] . '.';
                 }
                 
                 $order->add_order_note($error_txt);
