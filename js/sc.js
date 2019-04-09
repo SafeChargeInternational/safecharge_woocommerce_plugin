@@ -491,7 +491,7 @@ jQuery(function() {
         getAPMs();
     });
     
-    if(jQuery('input[name="payment_method"]').length > 0)
+    if(jQuery('input[name="payment_method"]').length > 0) {
         enableDisableSCCheckout(jQuery('input[name="payment_method"]:checked').val() == 'sc' ? 'enable' : 'disable');
     }
     
