@@ -46,7 +46,7 @@ class WC_SC extends WC_Payment_Gateway
         $this->secret           = @$this->settings['secret'] ? $this->settings['secret'] : '';
 		$this->test             = @$this->settings['test'] ? $this->settings['test'] : 'yes';
 		$this->use_http         = @$this->settings['use_http'] ? $this->settings['use_http'] : 'yes';
-		$this->show_thanks_msg  = @$this->settings['show_thanks_msg'] ? $this->settings['show_thanks_msg'] : 'no';
+	//	$this->show_thanks_msg  = @$this->settings['show_thanks_msg'] ? $this->settings['show_thanks_msg'] : 'no';
         $this->save_logs        = @$this->settings['save_logs'] ? $this->settings['save_logs'] : 'yes';
         $this->hash_type        = @$this->settings['hash_type'] ? $this->settings['hash_type'] : 'sha256';
 		$this->payment_api      = @$this->settings['payment_api'] ? $this->settings['payment_api'] : 'cashier';
@@ -110,7 +110,7 @@ class WC_SC extends WC_Payment_Gateway
     //    add_action('woocommerce_update_options_payment_gateways', array( $this, 'process_admin_options' ));
         
 		add_action('woocommerce_checkout_process', array($this, 'sc_checkout_process'));
-		add_action('woocommerce_receipt_'.$this->id, array($this, 'receipt_page'));
+		add_action('woocommerce_receipt_'.$this->id, array($this, 'generate_sc_form'));
 		add_action('woocommerce_api_sc_listener', array($this, 'process_sc_notification'));
         /* Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
         we check in the method is this order made via SC paygate */
@@ -216,12 +216,12 @@ class WC_SC extends WC_Payment_Gateway
                 'label' => __('Works only if you have installed and configured WPML plugin. Please, use it careful, this option can brake your "Thank you" page and DMN recieve page!', 'sc'),
                 'default' => 'no'
             ),
-            'show_thanks_msg' => array(
-                'title' => __('Show "Loading message"', 'sc'),
-                'type' => 'checkbox',
-                'label' => __('Show "Loading message" when redirect to secure Cashier. Does not work on the REST API.', 'sc'),
-                'default' => 'no'
-            ),
+//            'show_thanks_msg' => array(
+//                'title' => __('Show "Loading message"', 'sc'),
+//                'type' => 'checkbox',
+//                'label' => __('Show "Loading message" when redirect to secure Cashier. Does not work on the REST API.', 'sc'),
+//                'default' => 'no'
+//            ),
             'save_logs' => array(
                 'title' => __('Save logs', 'sc'),
                 'type' => 'checkbox',
@@ -314,14 +314,6 @@ class WC_SC extends WC_Payment_Gateway
         // echo here some html if needed
     }
 
-	/**
-     * Receipt Page
-     **/
-    public function receipt_page($order_id)
-    {
-       $this->generate_sc_form($order_id);
-    }
-
 	 /**
       * Function generate_sc_form
       * 
@@ -334,9 +326,13 @@ class WC_SC extends WC_Payment_Gateway
      **/
     public function generate_sc_form($order_id)
     {
-        // prevent generate_sc_form() to render form twice
-        if(!isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
+        // prevent execute this method twice
+        if( ! isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
             $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
+        }
+        elseif($_SESSION['SC_CASHIER_FORM_RENDED'] === true) {
+            $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
+            exit;
         }
         
 		$TimeStamp = date('Ymdhis');
@@ -429,8 +425,10 @@ class WC_SC extends WC_Payment_Gateway
         }
         
         $return_url = $this->get_return_url();
-        $return_url .= '?use_iframe=1';
-		
+        if($this->cashier_in_iframe == 'yes') {
+            $return_url .= '?use_iframe=1';
+        }
+        
         $params['success_url']          = $return_url;
 		$params['pending_url']          = $return_url;
 		$params['error_url']            = $return_url;
@@ -523,16 +521,15 @@ class WC_SC extends WC_Payment_Gateway
         $params['webMasterId']      = $this->webMasterId;
         
         # Cashier payment
-        if(
-            $this->payment_api == 'cashier'
-            && (!isset($_SESSION['SC_CASHIER_FORM_RENDED']) || !$_SESSION['SC_CASHIER_FORM_RENDED'])
-        ) {
+        if($this->payment_api == 'cashier') {
+            $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
+            
             // this parameter is for the REST API
             unset($params['items']);
-            
+
             // be sure there are no array elements in $params !!!
             $params['checksum'] = hash($this->hash_type, stripslashes($this->secret . implode('', $params)));
-            
+
             $params_array = array();
             foreach($params as $key => $value) {
                 if(!is_array($value)) {
@@ -544,52 +541,41 @@ class WC_SC extends WC_Payment_Gateway
             $this->create_log($this->hash_type, '$this->hash_type: ');
             $this->create_log($params, 'Order params');
             
+            $info_msg = 
+                '<table style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
+                    .'<td style="padding: 0px;"><img src="'.$this->plugin_url.'icons/loading.gif" alt="Redirecting!" style="width:100px; float:left; margin-right: 10px;" /></td>'
+                    .'<td style="text-align: center;"><span>'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'</span></td>'
+                .'</tr></table';
+
             $html = '<form action="'.$this->URL.'" method="post" id="sc_payment_form">';
-            
+
             if($this->cashier_in_iframe == 'yes') {
                 $html = '<form action="'.$this->URL.'" method="post" id="sc_payment_form" target="i_frame">';
             }
-            
+
             $html .=
                     implode('', $params_array)
                     .'<noscript>'
                         .'<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'.__('Pay via '. SC_GATEWAY_TITLE, 'sc').'" /><a class="button cancel" href="'.$order->get_cancel_order_url().'">'.__('Cancel order &amp; restore cart', 'sc').'</a>'
                     .'</noscript>'
                     .'<script type="text/javascript">'
-                        .'jQuery(function(){';
-
-            if(isset($this->show_thanks_msg) && $this->show_thanks_msg == 'yes') {
-                $html .=
-                            'jQuery("body").block({'
-                                .'message: \'<img src="'.$this->plugin_url.'icons/loading.gif" alt="Redirecting!" style="width:100px; float:left; margin-right: 10px;" />'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'\','
-                                .'overlayCSS: {background: "#fff", opacity: 0.6},'
-                                .'css: {'
-                                    .'padding: 20,'
-                                    .'textAlign: "center",'
-                                    .'color: "#555",'
-                                    .'border: "3px solid #aaa",'
-                                    .'backgroundColor: "#fff",'
-                                    .'cursor: "wait",'
-                                    .'lineHeight: "32px"'
-                                .'}'
-                            .'});';
-            }
-
-            $html .=
-                            'jQuery("#sc_payment_form").submit();'
+                        .'jQuery(function(){'
+                            .'jQuery("header.entry-header").prepend(\''.$info_msg.'\');'
+                        //    .'//jQuery("#sc_payment_form").submit();'
                         .'});'
                     .'</script>'
                 .'</form>';
-            
+
             if($this->cashier_in_iframe == 'yes') {
                 $html .= '<iframe name="i_frame" onLoad=""; style="width: 100%; height: 1000px;"></iframe>';
             }
 
-            $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
             echo $html;
         }
         # REST API payment
         elseif($this->payment_api == 'rest') {
+            $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
+            
             // map here variables names different for Cashier and REST
             $params['merchantId']           = $this->merchantId;
             $params['merchantSiteId']       = $this->merchantSiteId;
@@ -840,9 +826,12 @@ class WC_SC extends WC_Payment_Gateway
             
             exit;
         }
-        # ERROR - not existing payment api
+        # ERROR - not existing payment api or error with SC_CASHIER_FORM_RENDED
         else {
-            $this->create_log('the payment api is set to: '.$this->payment_api, 'Payment form ERROR: ');
+            $this->create_log(
+                'Wrong paiment api ('. $this->payment_api .') or error with SC_CASHIER_FORM_RENDED session var.'
+                , 'Payment form ERROR: '
+            );
             
             echo 
                 '<script>'
@@ -990,11 +979,73 @@ class WC_SC extends WC_Payment_Gateway
         
         $req_status = $this->get_request_status();
         
+        # Sale and Auth
+        if(
+            isset($_REQUEST['transactionType'], $_REQUEST['invoice_id'])
+            && in_array($_REQUEST['transactionType'], array('Sale', 'Auth'))
+            && $this->checkAdvancedCheckSum()
+        ) {
+            $this->create_log('A sale/auth.');
+            $order_id = 0;
+            
+            // Cashier
+            if(!empty($_REQUEST['invoice_id'])) {
+                $this->create_log('Cashier sale.');
+                
+                try {
+                    $arr = explode("_", $_REQUEST['invoice_id']);
+                    $order_id  = intval($arr[0]);
+                }
+                catch (Exception $ex) {
+                    $this->create_log($ex->getMessage(), 'Cashier DMN Exception when try to get Order ID: ');
+                    echo 'DMN Exception: ' . $ex->getMessage();
+                    exit;
+                }
+            }
+            // REST
+            else {
+                $this->create_log('REST sale.');
+                
+                try {
+                    $order_id = $_REQUEST['merchant_unique_id'];
+                }
+                catch (Exception $ex) {
+                    $this->create_log($ex->getMessage(), 'REST DMN Exception when try to get Order ID: ');
+                    echo 'DMN Exception: ' . $ex->getMessage();
+                    exit;
+                }
+            }
+            
+            try {
+                $order = new WC_Order($order_id);
+                $order_status = strtolower($order->get_status());
+                
+                $order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, $_REQUEST['transactionType']);
+                
+                if($order_status != 'completed') {
+                    $this->change_order_status($order, $arr[0], $req_status, $_REQUEST['transactionType']);
+                }
+            }
+            catch (Exception $ex) {
+                $this->create_log($ex->getMessage(), 'Sale DMN Exception: ');
+                echo 'DMN Exception: ' . $ex->getMessage();
+                exit;
+            }
+            
+            $order->add_order_note(
+                __('DMN for Order #' . $order_id . ', was received.', 'sc')
+            );
+            $order->save();
+            
+            echo 'DMN received.';
+            exit;
+        }
+        
+        /*
         # Cashier sale, the invoice_id parameter has value
         if(
             isset($_REQUEST['transactionType'], $_REQUEST['invoice_id'])
             && $_REQUEST['transactionType'] == 'Sale'
-            && !empty($_REQUEST['invoice_id'])
             && $this->checkAdvancedCheckSum()
         ) {
             $this->create_log('', 'Cashier sale.');
@@ -1029,6 +1080,7 @@ class WC_SC extends WC_Payment_Gateway
             echo 'DMN received.';
             exit;
         }
+         */
         
         # Void, Settle
         if(
@@ -1049,6 +1101,11 @@ class WC_SC extends WC_Payment_Gateway
                     'process_dmns() REST API DMN DMN Exception: probably invalid order number'
                 );
             }
+            
+            $order->add_order_note(
+                __('DMN for Order #' . $order_id . ', was received.', 'sc')
+            );
+            $order->save();
             
             echo 'DMN received.';
             exit;

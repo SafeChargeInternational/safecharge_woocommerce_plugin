@@ -119,8 +119,15 @@ if(
         
         exit;
     }
-    // here we no need REST API
-    else {}
+    // here we no need APMs
+    else {
+        echo json_encode(array(
+            'status' => 2,
+            'msg' => $_SESSION['SC_Variables']['payment_api'] != 'rest'
+                ? 'You are using Cashier API. APMs are not available with it.' : 'Missing some of conditions to using REST API.'
+        ));
+        exit;
+    }
 }
 elseif(
     @$_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
