@@ -543,8 +543,12 @@ class WC_SC extends WC_Payment_Gateway
             
             $info_msg = 
                 '<table style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
-                    .'<td style="padding: 0px;"><img src="'.$this->plugin_url.'icons/loading.gif" alt="Redirecting!" style="width:100px; float:left; margin-right: 10px;" /></td>'
-                    .'<td style="text-align: center;"><span>'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'</span></td>'
+                    .'<td style="padding: 0px; border: 0px; width: 100px;">'
+                        . '<img src="'.$this->plugin_url.'icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
+                    . '</td>'
+                    .'<td style="text-align: left; border: 0px;">'
+                        . '<span>'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'</span>'
+                    . '</td>'
                 .'</tr></table';
 
             $html = '<form action="'.$this->URL.'" method="post" id="sc_payment_form">';
@@ -561,7 +565,7 @@ class WC_SC extends WC_Payment_Gateway
                     .'<script type="text/javascript">'
                         .'jQuery(function(){'
                             .'jQuery("header.entry-header").prepend(\''.$info_msg.'\');'
-                        //    .'//jQuery("#sc_payment_form").submit();'
+                            .'jQuery("#sc_payment_form").submit();'
                         .'});'
                     .'</script>'
                 .'</form>';
