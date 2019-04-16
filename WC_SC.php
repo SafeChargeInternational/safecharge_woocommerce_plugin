@@ -410,7 +410,7 @@ class WC_SC extends WC_Payment_Gateway
             $total_tax_prec += $data['rate'];
         }
         
-        $params['total_tax'] = number_format($total_tax_prec, 2, '.', '');
+    //    $params['total_tax'] = number_format($total_tax_prec, 2, '.', '');
 		$params['merchant_id'] = $this->merchantId;
 		$params['merchant_site_id'] = $this->merchantSiteId;
 		$params['time_stamp'] = $TimeStamp;
@@ -1577,7 +1577,7 @@ class WC_SC extends WC_Payment_Gateway
             $refund_data = $refund->get_data();
             $refund_data['webMasterId'] = $this->webMasterId; // need this param for the API
             
-            // the hooks calling this method fired twice when change status
+            // the hooks calling this metho, fired twice when change status
             // to Refunded, but we do not want to try more than one SC Refunds
             if(isset($_SESSION['sc_last_refund_id'])) {
                 $this->create_log($_SESSION['sc_last_refund_id'], 'we have session: ');

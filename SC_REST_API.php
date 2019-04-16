@@ -62,7 +62,6 @@ class SC_REST_API
                 'authCode'              => $order_meta_data['auth_code'],
                 'comment'               => $refund['reason'], // optional
                 'url'                   => $notify_url,
-                'webMasterId'           => $refund['webMasterId'],
                 'timeStamp'             => $time,
             );
 
@@ -70,13 +69,15 @@ class SC_REST_API
             foreach($ref_parameters as $val) {
                 $checksum .= $val;
             }
+            
             $checksum = hash(
                 $settings['hash_type'],
                 $checksum . $settings['secret']
             );
-
+            
             $other_params = array(
-                'urlDetails'            => array('notificationUrl' => $notify_url),
+                'urlDetails'    => array('notificationUrl' => $notify_url),
+                'webMasterId'   => $refund['webMasterId'], // webMasterId is not part of the checksum
             );
         }
         catch(Exception $e) {
