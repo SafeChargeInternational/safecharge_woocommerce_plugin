@@ -533,5 +533,19 @@ jQuery(function() {
     jQuery('form.woocommerce-checkout').on('change', 'input[name="payment_method"]', function(){
         enableDisableSCCheckout(jQuery(this).val() == 'sc' ? 'enable' : 'disable');
     });
+    
+    // in the settings when user change 'Cashier in IFrame' or 'Payment API' option
+    jQuery('#woocommerce_sc_cashier_in_iframe').on('change', function(){
+        jQuery('#woocommerce_sc_payment_api option').prop('selected', false);
+        jQuery('#woocommerce_sc_payment_api option:first').prop('selected', true);
+    });
+    
+    jQuery('#woocommerce_sc_payment_api').on('change', function() {
+        if(jQuery(this).val() == 'rest') {
+            jQuery('#woocommerce_sc_cashier_in_iframe').prop('checked', false);
+            jQuery('#woocommerce_sc_cashier_in_iframe').val(0);
+        }
+    });
+    // in the settings when user change 'Cashier in IFrame' or 'Payment API' option END
 });
 // document ready function END
