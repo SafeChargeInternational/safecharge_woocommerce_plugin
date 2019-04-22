@@ -26,6 +26,8 @@ function woocommerce_sc_init()
         return;
     }
     
+//    var_dump(get_option( 'permalink_structure' ));
+    
     require_once 'WC_SC.php';
     require_once ABSPATH . 'wp-admin/includes/plugin.php';
     
@@ -34,8 +36,12 @@ function woocommerce_sc_init()
     
     add_filter('woocommerce_payment_gateways', 'woocommerce_add_sc_gateway' );
 	add_action('init', 'sc_enqueue');
+    // replace the text at thank you page
     add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
-    // add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
+    // eliminates the problem with different permalinks
+    add_action('template_redirect', 'sc_iframe_redirect');
+    
+// add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
     add_action( 'woocommerce_order_item_add_action_buttons', 'sc_add_buttons');
     
     // those actions are valid only when the plugin is enabled
@@ -158,16 +164,57 @@ function sc_show_final_text()
         unset($_SESSION['SC_CASHIER_FORM_RENDED']);
     }
     
+    return $msg;
+}
+
+function sc_iframe_redirect()
+{
+    global $wp;
+    global $wc_sc;
+    
+    if(!is_checkout()) {
+        return;
+    }
+    
+    if(!isset($_REQUEST['order-received'])) {
+        $url_parts = explode('/', trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/'));
+        
+        if(!$url_parts || empty($url_parts)) {
+            return;
+        }
+        
+        if(!in_array('order-received', $url_parts)) {
+            return;
+        }
+    }
+    
     // when we use iframe
-    if(@$_REQUEST['use_iframe'] == 1 && $wc_sc->checkAdvancedCheckSum()) {
-        echo
-            '<script type="text/javascript">'
-                .'window.top.location.href = window.location.href.replace("use_iframe=1&", "");'
+    if(@$_REQUEST['use_iframe'] == 1) {
+        if(!$wc_sc->checkAdvancedCheckSum()) {
+            create_log('Call with use_iframe from untrusted source!');
+            exit;
+        }
+        
+        echo 
+            '<table id="sc_pay_msg" style="border: 0px; cursor: wait; line-height: 32px; width: 100%;"><tr>'
+                .'<td style="padding: 0px; border: 0px; width: 100px;">'
+                    . '<img src="'. get_site_url() .'/wp-content/plugins/' .basename(dirname(__FILE__)) .'/icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
+                . '</td>'
+                .'<td style="text-align: left; border: 0px;">'
+                    . '<span>'. __('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc') .'</span>'
+                . '</td>'
+            .'</tr></table>'
+            
+            .'<script type="text/javascript">'
+                . 'var scNewUrl = window.location.toLocaleString().replace("use_iframe=1&", "");'
+                
+                . 'parent.postMessage({'
+                    . 'scAction: "scRedirect",'
+                    . 'scUrl: scNewUrl'
+                . '}, window.location.origin);'
             .'</script>';
         exit;
     }
-    
-    echo $msg;
 }
 
 function sc_check_checkout_apm()

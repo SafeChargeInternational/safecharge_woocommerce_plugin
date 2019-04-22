@@ -482,6 +482,13 @@ function enableDisableSCCheckout(action) {
 }
 
 jQuery(function() {
+    // listener for the iFrane
+    window.addEventListener('message', function(event) {
+        if(window.location.origin === event.origin && event.data.scAction === 'scRedirect') {
+            window.location.href = event.data.scUrl;
+        }
+    }, false);
+    
     jQuery('#payment').append('<div id="custom_loader" class="blockUI"></div>');
     
     billing_country_first_val = jQuery("#billing_country").val();
@@ -547,5 +554,9 @@ jQuery(function() {
         }
     });
     // in the settings when user change 'Cashier in IFrame' or 'Payment API' option END
+    
+    jQuery('#i_frame').on('load', function(){
+        jQuery('#sc_pay_msg').hide();
+    });
 });
 // document ready function END

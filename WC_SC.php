@@ -426,7 +426,12 @@ class WC_SC extends WC_Payment_Gateway
         
         $return_url = $this->get_return_url();
         if($this->cashier_in_iframe == 'yes') {
-            $return_url .= '?use_iframe=1';
+            if(strpos($return_url, '?') !== false) {
+                $return_url .= '&use_iframe=1';
+            }
+            else {
+                $return_url .= '?use_iframe=1';
+            }
         }
         
         $params['success_url']          = $return_url;
@@ -542,7 +547,7 @@ class WC_SC extends WC_Payment_Gateway
             $this->create_log($params, 'Order params');
             
             $info_msg = 
-                '<table style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
+                '<table id="sc_pay_msg" style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
                     .'<td style="padding: 0px; border: 0px; width: 100px;">'
                         . '<img src="'.$this->plugin_url.'icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
                     . '</td>'
@@ -566,12 +571,13 @@ class WC_SC extends WC_Payment_Gateway
                         .'jQuery(function(){'
                             .'jQuery("header.entry-header").prepend(\''.$info_msg.'\');'
                             .'jQuery("#sc_payment_form").submit();'
+                            .'document.getElementById("i_frame").scrollIntoView();;'
                         .'});'
                     .'</script>'
                 .'</form>';
 
             if($this->cashier_in_iframe == 'yes') {
-                $html .= '<iframe name="i_frame" onLoad=""; style="width: 100%; height: 1000px;"></iframe>';
+                $html .= '<iframe id="i_frame" name="i_frame" onLoad=""; style="width: 100%; height: 1000px;"></iframe>';
             }
 
             echo $html;
