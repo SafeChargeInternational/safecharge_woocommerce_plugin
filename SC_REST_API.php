@@ -56,7 +56,7 @@ class SC_REST_API
                 'merchantSiteId'        => $settings['merchantSiteId'],
                 'clientRequestId'       => $time . '_' . $ord_tr_id,
                 'clientUniqueId'        => $refund['id'],
-                'amount'                => number_format($refund['amount'], 2),
+                'amount'                => number_format($refund['amount'], 2, '.', ''),
                 'currency'              => $currency,
                 'relatedTransactionId'  => $ord_tr_id, // GW Transaction ID
                 'authCode'              => $order_meta_data['auth_code'],
