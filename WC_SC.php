@@ -418,7 +418,8 @@ class WC_SC extends WC_Payment_Gateway
 		$params['version'] = '4.0.0';
 
     //    $payment_page = SC_Versions_Resolver::get_page_id($order, 'pay');
-        $payment_page = wc_get_page_permalink($order);
+    //    $payment_page = wc_get_page_permalink($order);
+        $payment_page = wc_get_cart_url();
         
 		if ( get_option( 'woocommerce_force_ssl_checkout' ) == 'yes' ) {
             $payment_page = str_replace( 'http:', 'https:', $payment_page );
@@ -543,7 +544,6 @@ class WC_SC extends WC_Payment_Gateway
             }
 
             $this->create_log($this->URL, 'Endpoint URL: ');
-            $this->create_log($this->hash_type, '$this->hash_type: ');
             $this->create_log($params, 'Order params');
             
             $info_msg = 
@@ -571,7 +571,10 @@ class WC_SC extends WC_Payment_Gateway
                         .'jQuery(function(){'
                             .'jQuery("header.entry-header").prepend(\''.$info_msg.'\');'
                             .'jQuery("#sc_payment_form").submit();'
-                            .'document.getElementById("i_frame").scrollIntoView();;'
+                
+                            .'if(jQuery("#i_frame").length > 0) {'
+                                .'jQuery("#i_frame")[0].scrollIntoView();'
+                            .'}'
                         .'});'
                     .'</script>'
                 .'</form>';

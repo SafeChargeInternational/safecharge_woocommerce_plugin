@@ -190,12 +190,7 @@ function sc_iframe_redirect()
     
     // when we use iframe
     if(@$_REQUEST['use_iframe'] == 1) {
-        if(!$wc_sc->checkAdvancedCheckSum()) {
-            create_log('Call with use_iframe from untrusted source!');
-            exit;
-        }
-        
-        echo 
+        echo
             '<table id="sc_pay_msg" style="border: 0px; cursor: wait; line-height: 32px; width: 100%;"><tr>'
                 .'<td style="padding: 0px; border: 0px; width: 100px;">'
                     . '<img src="'. get_site_url() .'/wp-content/plugins/' .basename(dirname(__FILE__)) .'/icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
