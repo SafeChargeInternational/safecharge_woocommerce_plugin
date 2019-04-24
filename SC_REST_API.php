@@ -430,13 +430,13 @@ class SC_REST_API
             }
 
             self::create_log($params, 'Call REST API when Process Payment: ');
-            self::create_log(
-                $sc_variables['merchantId'] . $sc_variables['merchantSiteId']
-                    .$data['client_request_id'] . ((string) $data['total_amount'])
-                    .$data['currency']. $data['time_stamp']
-                ,'Call REST API when Process Payment checksum string without the secret: '
-            );
-            self::create_log($data['checksum'], 'Checksum sent to REST: ');
+//            self::create_log(
+//                $sc_variables['merchantId'] . $sc_variables['merchantSiteId']
+//                    .$data['client_request_id'] . ((string) $data['total_amount'])
+//                    .$data['currency']. $data['time_stamp']
+//                ,'Call REST API when Process Payment checksum string without the secret: '
+//            );
+//            self::create_log($data['checksum'], 'Checksum sent to REST: ');
 
             $resp = self::call_rest_api(
                 $endpoint_url,

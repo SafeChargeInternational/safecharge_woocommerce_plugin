@@ -353,18 +353,23 @@ class WC_SC extends WC_Payment_Gateway
         $params['items'] = array();
         
         $items = $order->get_items();
-		$i = 1;
+		$i = 0;
 		
         foreach ( $items as $item ) {
+            $i++;
+            
 			$params['item_name_'.$i]        = $item['name'];
 			$params['item_number_'.$i]      = $item['product_id'];
             $params['item_quantity_'.$i]    = $item['qty'];
             
-            // $item['line_total']  = price - discount
-        //    $amount                         = number_format($item['line_total'] / (int) $item['qty'], 2, '.', '');
             // this is the real price
-            $item_price                     = number_format($item['line_subtotal'] / (int) $item['qty'], 2, '.', '');
-			$params['item_amount_'.$i]      = $item_price;
+            $item_qty   = intval($item['qty']);
+            $item_price = ($item['line_subtotal'] + $item['line_subtotal_tax']) / $item_qty;
+            
+//            echo '<pre>'.print_r('line_subtotal '.$item['line_subtotal'], true).'</pre>';
+//            echo '<pre>'.print_r('line_subtotal_tax '.$item['line_subtotal_tax'], true).'</pre>';
+            
+            $params['item_amount_'.$i] = number_format($item_price, 2, '.', '');
             
             // set product img url
 //            $prod_img_path = '';
@@ -385,17 +390,23 @@ class WC_SC extends WC_Payment_Gateway
             //$params['item_discount_'.$i]    = number_format(($item_price - $amount), 2, '.', '');
             
             $params['items'][] = array(
-                'name' => $item['name'],
-                'price' => $item_price,
-                'quantity' => $item['qty'],
+                'name'      => $item['name'],
+                'price'     => $params['item_amount_'.$i],
+                'quantity'  => $item['qty'],
             );
-            
-            $i++;
 		}
         
-        $params['numberofitems'] = $i-1;
+        $params['numberofitems'] = $i;
         
-        $params['handling'] = SC_Versions_Resolver::get_shipping($order);
+        $params['handling'] = number_format(
+            (SC_Versions_Resolver::get_shipping($order) + $this->get_order_data($order, 'order_shipping_tax')),
+            2, '.', ''
+        );
+        
+//        echo '<pre>'.print_r('handling '.SC_Versions_Resolver::get_shipping($order), true).'</pre>';
+//        echo '<pre>'.print_r('shipping_tax '.$this->get_order_data($order, 'order_shipping_tax'), true).'</pre>';
+//        die;
+        
         $params['discount'] = number_format($order->get_discount_total(), 2, '.', '');
         
 		if ($params['handling'] < 0) {
@@ -522,6 +533,13 @@ class WC_SC extends WC_Payment_Gateway
         }
 		
         $params['total_amount']     = SC_Versions_Resolver::get_order_data($order, 'order_total');
+        
+//        echo '<pre>'.print_r('order_tax '.SC_Versions_Resolver::get_order_data($order, 'order_tax'), true).'</pre>';
+//        echo '<pre>'.print_r('total_amount '.$params['total_amount'], true).'</pre>';
+//        
+//        echo '<pre>'.print_r($params, true).'</pre>';
+        //die;
+        
         $params['currency']         = get_woocommerce_currency();
         $params['merchantLocale']   = get_locale();
         $params['webMasterId']      = $this->webMasterId;

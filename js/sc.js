@@ -401,8 +401,11 @@ function settleAndCancelOrder(question, action, orderId) {
                     && (resp.status == 1 || resp.status == 0)
                 ) {
                     jQuery('#custom_loader').hide();
-                    alert('You will be redirected to Orders list.')
-                    window.location = '//' + window.location.host + '/wp-admin/edit.php?post_type=shop_order';
+                    alert('You will be redirected to Orders list.');
+                    
+                    var urlParts = window.location.toString().split('post.php');
+                //    window.location = '//' + window.location.host + '/wp-admin/edit.php?post_type=shop_order';
+                    window.location = urlParts[0] + 'edit.php?post_type=shop_order';
                 }
                 else {
                     alert('Response error.');
