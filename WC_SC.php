@@ -26,8 +26,10 @@ class WC_SC extends WC_Payment_Gateway
         
         $this->webMasterId .= WOOCOMMERCE_VERSION;
         $plugin_dir = basename(dirname(__FILE__));
-        $this->plugin_path = plugin_dir_path( __FILE__ ) . $plugin_dir . '/';
-        $this->plugin_url = get_site_url() . '/wp-content/plugins/'.$plugin_dir.'/';
+        $this->plugin_path = plugin_dir_path( __FILE__ ) . $plugin_dir . DIRECTORY_SEPARATOR;
+        $this->plugin_url = get_site_url() . DIRECTORY_SEPARATOR . 'wp-content'
+            . DIRECTORY_SEPARATOR . 'plugins' . DIRECTORY_SEPARATOR . $plugin_dir
+            . DIRECTORY_SEPARATOR;
         
         # settings to get/save options
 		$this->id                   = 'sc';
@@ -36,7 +38,6 @@ class WC_SC extends WC_Payment_Gateway
         $this->icon                 = $this->plugin_url."icons/safecharge.png";
 		$this->has_fields           = false;
 
-		$this->init_form_fields();
 		$this->init_settings();
         
 		$this->title            = @$this->settings['title'] ? $this->settings['title'] : '';
@@ -59,6 +60,8 @@ class WC_SC extends WC_Payment_Gateway
             @$this->settings['cashier_in_iframe'] ? $this->settings['cashier_in_iframe'] : 'no';
         
         $this->supports         = array('products', 'refunds'); // to enable auto refund support
+        
+        $this->init_form_fields();
         
         # set session variables for REST API, according REST variables names
         $_SESSION['SC_Variables']['merchantId']         = $this->merchantId;
@@ -184,6 +187,13 @@ class WC_SC extends WC_Payment_Gateway
                     'Auth' => 'Auth and Settle',
                     'Sale' => 'Sale',
                 )
+            ),
+            'notify_url' => array(
+                'title' => __('Notify URL', 'sc'),
+                'type' => 'text',
+                'default' => $this->set_notify_url(),
+                'readonly' => true,
+                'custom_attributes' => array('readonly' => 'readonly'),
             ),
             'test' => array(
                 'title' => __('Test mode', 'sc'),
@@ -450,7 +460,7 @@ class WC_SC extends WC_Payment_Gateway
 		$params['pending_url']          = $return_url;
 		$params['error_url']            = $return_url;
 		$params['back_url']             = $payment_page;
-		$params['notify_url']           = $notify_url . 'sc_listener';
+		$params['notify_url']           = $notify_url;
 		$params['invoice_id']           = $order_id.'_'.$TimeStamp;
 		$params['merchant_unique_id']   = $order_id;
         
@@ -619,7 +629,7 @@ class WC_SC extends WC_Payment_Gateway
                 'successUrl'        => $this->get_return_url(),
                 'failureUrl'        => $this->get_return_url(),
                 'pendingUrl'        => $this->get_return_url(),
-                'notificationUrl'   => $notify_url . 'sc_listener',
+                'notificationUrl'   => $notify_url,
             );
                 
             $params['checksum'] = hash($this->settings['hash_type'], stripslashes(
@@ -1125,6 +1135,7 @@ class WC_SC extends WC_Payment_Gateway
             try {
                 $order = new WC_Order($_REQUEST['clientUniqueId']);
                 $this->change_order_status($order, $_REQUEST['clientUniqueId'], $req_status, $_REQUEST['transactionType']);
+                $order_id = @$_REQUEST['clientUniqueId'];
             }
             catch (Exception $ex) {
                 $this->create_log(
@@ -1133,9 +1144,13 @@ class WC_SC extends WC_Payment_Gateway
                 );
             }
             
-            $order->add_order_note(
-                __('DMN for Order #' . $order_id . ', was received.', 'sc')
-            );
+            $msg = __('DMN for Order #' . $order_id . ', was received.', 'sc');
+            
+            if(@$_REQUEST['Reason'] && !empty($_REQUEST['Reason'])) {
+                $msg .= ' ' . __($_REQUEST['Reason'] . '.', 'sc');
+            }
+            
+            $order->add_order_note($msg);
             $order->save();
             
             echo 'DMN received.';
@@ -1206,10 +1221,13 @@ class WC_SC extends WC_Payment_Gateway
                 $order->save();
             }
             elseif($req_status == 'ERROR') {
-                $order -> add_order_note(__('DMN message: Your try to Refund #'
-                    .$_REQUEST['clientUniqueId'] . ' faild with ERROR: "'
-                    . @$_REQUEST['Reason'] . '".' , 'sc'));
+                $msg = __('DMN message: Your try to Refund #' . $_REQUEST['clientUniqueId'] . 'fail. ', 'sc');
+                
+                if(@$_REQUEST['Reason']) {
+                    $msg .= _('ERROR: "' . $_REQUEST['Reason'] . '".', 'sc');
+                }
 
+                $order -> add_order_note($msg);
                 $order->save();
             }
             elseif(
@@ -1439,28 +1457,7 @@ class WC_SC extends WC_Payment_Gateway
     
     public function set_notify_url()
     {
-//        $protocol = '';
-//        $url = $_SERVER['HTTP_HOST'] . '/?wc-api=';
-//        
-//        // force Notification URL protocol
-//        if(isset($this->use_http) && $this->use_http == 'yes') {
-//            $protocol = 'http://';
-//        }
-//        else {
-//            if(
-//                (isset($_SERVER["HTTPS"]) && !empty($_SERVER["HTTPS"]) && strtolower ($_SERVER['HTTPS']) != 'off')
-//                || (isset($_SERVER["SERVER_PROTOCOL"]) && strpos($_SERVER["SERVER_PROTOCOL"], 'HTTPS/') !== false)
-//            ) {
-//                $protocol = 'https://';
-//            }
-//            elseif(isset($_SERVER["SERVER_PROTOCOL"]) && strpos($_SERVER["SERVER_PROTOCOL"], 'HTTP/') !== false) {
-//                $protocol = 'http://';
-//            }
-//        }
-//        
-//        return $protocol . $url;
-        
-        $url = get_site_url() . '?wc-api=';
+        $url = get_site_url() . '?wc-api=sc_listener';
         
         // force Notification URL protocol to http
         if(isset($this->use_http) && $this->use_http == 'yes' && strpos($url, 'https://') !== false) {
@@ -1604,7 +1601,7 @@ class WC_SC extends WC_Payment_Gateway
             $refund_data = $refund->get_data();
             $refund_data['webMasterId'] = $this->webMasterId; // need this param for the API
             
-            // the hooks calling this metho, fired twice when change status
+            // the hooks calling this method, fired twice when change status
             // to Refunded, but we do not want to try more than one SC Refunds
             if(isset($_SESSION['sc_last_refund_id'])) {
                 $this->create_log($_SESSION['sc_last_refund_id'], 'we have session: ');
@@ -1666,7 +1663,7 @@ class WC_SC extends WC_Payment_Gateway
             ,$refund_data
             ,$order_meta_data
             ,get_woocommerce_currency()
-            ,$notify_url . 'sc_listener&action=refund&order_id=' . $order_id
+            ,$notify_url . '&action=refund&order_id=' . $order_id
         );
         
         $refund_url = SC_TEST_REFUND_URL;

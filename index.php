@@ -271,7 +271,7 @@ function sc_add_buttons()
             'payment_api'           => 'rest',
             'save_logs'             => $wc_sc->settings['save_logs'],
             'urlDetails'            => array(
-                'notificationUrl'       => $notify_url . 'sc_listener&clientRequestId=' . $_REQUEST['post']
+                'notificationUrl'       => $notify_url . '&clientRequestId=' . $_REQUEST['post']
             ),
         );
         

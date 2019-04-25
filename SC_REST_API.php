@@ -30,8 +30,8 @@ class SC_REST_API
         
         $time = date('YmdHis', time());
         
-        self::create_log($refund, 'Refund data: ');
-        self::create_log($settings, 'Refund Settings data: ');
+    //    self::create_log($refund, 'Refund data: ');
+    //    self::create_log($settings, 'Refund Settings data: ');
         
         try {
             $refund_url = SC_TEST_REFUND_URL;
@@ -189,7 +189,7 @@ class SC_REST_API
         self::create_log($params, 'SC_REST_API, parameters for the REST API call: ');
         
         $json_post = json_encode($params);
-        self::create_log($json_post, 'params as json: ');
+    //    self::create_log($json_post, 'params as json: ');
         
         try {
             $header =  array(
@@ -212,7 +212,7 @@ class SC_REST_API
             curl_close ($ch);
             
             self::create_log($url, 'REST API URL: ');
-            self::create_log($resp, 'REST API response: ');
+        //    self::create_log($resp, 'REST API response: ');
         }
         catch(Exception $e) {
             self::create_log($e->getMessage(), 'Exception ERROR when call REST API: ');
@@ -429,7 +429,7 @@ class SC_REST_API
                     return false;
             }
 
-            self::create_log($params, 'Call REST API when Process Payment: ');
+//            self::create_log($params, 'Call REST API when Process Payment: ');
 //            self::create_log(
 //                $sc_variables['merchantId'] . $sc_variables['merchantSiteId']
 //                    .$data['client_request_id'] . ((string) $data['total_amount'])

@@ -394,18 +394,18 @@ function settleAndCancelOrder(question, action, orderId) {
             dataType: 'json'
         })
             .done(function(resp) {
-                // go to DMN page to change order status
-                if(
-                    resp
-                    && typeof resp.status != 'undefined'
-                    && (resp.status == 1 || resp.status == 0)
-                ) {
-                    jQuery('#custom_loader').hide();
-                    alert('You will be redirected to Orders list.');
-                    
-                    var urlParts = window.location.toString().split('post.php');
-                //    window.location = '//' + window.location.host + '/wp-admin/edit.php?post_type=shop_order';
-                    window.location = urlParts[0] + 'edit.php?post_type=shop_order';
+                if(resp && typeof resp.status != 'undefined' && resp.data != 'undefined') {
+                    if(resp.status == 1) {
+                        jQuery('#custom_loader').hide();
+                        alert('You will be redirected to Orders list.');
+
+                        var urlParts = window.location.toString().split('post.php');
+                        window.location = urlParts[0] + 'edit.php?post_type=shop_order';
+                    }
+                    else if(resp.data.reason != 'undefined') {
+                        jQuery('#custom_loader').hide();
+                        alert(resp.data.reason);
+                    }
                 }
                 else {
                     alert('Response error.');
