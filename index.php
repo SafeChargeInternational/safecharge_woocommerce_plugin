@@ -291,7 +291,7 @@ function sc_add_buttons()
             && $wc_sc->settings['transaction_type'] == 'Auth'
         ) {
             $buttons_html .=
-                ' <button type="button" onclick="settleAndCancelOrder(\''
+                ' <button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
                 . __( 'Are you sure, you want to Settle Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
                 . '\'settle\', ' . $_REQUEST['post'] .')" class="button generate-items">'
                 . __( 'Settle', 'sc' ) .'</button>';

@@ -117,7 +117,8 @@ class WC_SC extends WC_Payment_Gateway
 		add_action('woocommerce_api_sc_listener', array($this, 'process_sc_notification'));
         /* Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
         we check in the method is this order made via SC paygate */
-        add_action('woocommerce_create_refund', array($this, 'create_refund_in_wc' ));
+        add_action('woocommerce_create_refund', array($this, 'create_refund_in_wc'));
+        add_action( 'woocommerce_order_after_calculate_totals', array($this, 'sc_return_sc_settle_btn') );
 	}
 
     /**
@@ -1082,47 +1083,6 @@ class WC_SC extends WC_Payment_Gateway
             exit;
         }
         
-        /*
-        # Cashier sale, the invoice_id parameter has value
-        if(
-            isset($_REQUEST['transactionType'], $_REQUEST['invoice_id'])
-            && $_REQUEST['transactionType'] == 'Sale'
-            && $this->checkAdvancedCheckSum()
-        ) {
-            $this->create_log('', 'Cashier sale.');
-            
-            // Cashier
-            try {
-                $arr = explode("_", $_REQUEST['invoice_id']);
-
-                $order = new WC_Order($arr[0]);
-                $order_status = strtolower($order->get_status());
-                
-                $order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, $_REQUEST['transactionType']);
-
-                // old code
-//                if($order_status == 'pending' && $order_status == 'completed') {
-//                    // do nothing here
-//                }
-//                else {
-//                    $this->change_order_status($order, $arr[0], $req_status, $_REQUEST['transactionType']);
-//                }
-                
-                if($order_status != 'completed') {
-                    $this->change_order_status($order, $arr[0], $req_status, $_REQUEST['transactionType']);
-                }
-            }
-            catch (Exception $ex) {
-                $this->create_log($ex->getMessage(), 'Cashier DMN Exception: ');
-                echo 'DMN Exception.';
-                exit;
-            }
-            
-            echo 'DMN received.';
-            exit;
-        }
-         */
-        
         # Void, Settle
         if(
             isset($_REQUEST['clientUniqueId'], $_REQUEST['transactionType'])
@@ -1221,7 +1181,7 @@ class WC_SC extends WC_Payment_Gateway
                 $order->save();
             }
             elseif($req_status == 'ERROR') {
-                $msg = __('DMN message: Your try to Refund #' . $_REQUEST['clientUniqueId'] . 'fail. ', 'sc');
+                $msg = __('DMN message: Your try to Refund #' . $_REQUEST['clientUniqueId'] . ' fail. ', 'sc');
                 
                 if(@$_REQUEST['Reason']) {
                     $msg .= _('ERROR: "' . $_REQUEST['Reason'] . '".', 'sc');
@@ -1604,8 +1564,8 @@ class WC_SC extends WC_Payment_Gateway
             // the hooks calling this method, fired twice when change status
             // to Refunded, but we do not want to try more than one SC Refunds
             if(isset($_SESSION['sc_last_refund_id'])) {
-                $this->create_log($_SESSION['sc_last_refund_id'], 'we have session: ');
-                $this->create_log($refund_data['id'], 'refund id: ');
+            //    $this->create_log($_SESSION['sc_last_refund_id'], 'we have session: ');
+            //    $this->create_log($refund_data['id'], 'refund id: ');
                 
                 if(intval($_SESSION['sc_last_refund_id']) == intval($refund_data['id'])) {
                     unset($_SESSION['sc_last_refund_id']);
@@ -1616,7 +1576,7 @@ class WC_SC extends WC_Payment_Gateway
                 }
             }
             else {
-                $this->create_log($refund_data['id'], 'create session: ');
+            //    $this->create_log($refund_data['id'], 'create session: ');
                 $_SESSION['sc_last_refund_id'] = $refund_data['id'];
             }
             
@@ -1768,6 +1728,10 @@ class WC_SC extends WC_Payment_Gateway
         return;
     }
     
+    public function sc_return_sc_settle_btn() {
+        echo '<script type="text/javascript">returnSCSettleBtn();</script>';
+    }
+
     /**
      * Function sc_refund_order
      * Process Order Refund through Code - create refund in WC after
@@ -1887,9 +1851,10 @@ class WC_SC extends WC_Payment_Gateway
                 
                 // Refun Approved
                 if($transactionType == 'Credit') {
-                    if($res_args['totalAmount'] && $res_args['totalAmount'] == $order->get_total()) {
-                        $order->update_status('refunded');
-                    }
+//                    if($res_args['totalAmount'] && $res_args['totalAmount'] == $order->get_total()) {
+//                        $this->create_log('Plugin change status to Refunded.');
+//                        $order->update_status('refunded');
+//                    }
                     
                     $order->add_order_note(
                         __('DMN message: Your Refund #' . $res_args['resp_id'] .' was successful.', 'sc')

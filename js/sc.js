@@ -10,6 +10,7 @@ var tokAPMsFields = {
 };
 var selectedPM = '';
 var billing_country_first_val = '';
+var scSettleBtn = null;
 
  /**
   * Function validateScAPMsModal
@@ -484,6 +485,17 @@ function enableDisableSCCheckout(action) {
         });
 }
 
+/**
+ * Function returnSCSettleBtn
+ * Returns the SC Settle button
+ */
+function returnSCSettleBtn() {
+    if(scSettleBtn !== null) {
+        jQuery('.wc-order-bulk-actions p').append(scSettleBtn);
+        scSettleBtn = null;
+    }
+}
+
 jQuery(function() {
     // listener for the iFrane
     window.addEventListener('message', function(event) {
@@ -561,5 +573,10 @@ jQuery(function() {
     jQuery('#i_frame').on('load', function(){
         jQuery('#sc_pay_msg').hide();
     });
+    
+    // set the flag
+    if(jQuery('#sc_settle_btn').length == 1) {
+       scSettleBtn = jQuery('#sc_settle_btn');
+    }
 });
 // document ready function END
