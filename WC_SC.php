@@ -1176,23 +1176,22 @@ class WC_SC extends WC_Payment_Gateway
 
             // change to Refund if request is Approved and the Order status is not Refunded
             if($order_status !== 'refunded' && $req_status == 'APPROVED') {
-            //    $this->create_log('Change refund order status');
-                
                 $this->change_order_status($order, $order->get_id(), 'APPROVED', 'Credit', array(
                     'resp_id'       => @$_REQUEST['clientUniqueId'],
                     'totalAmount'   => @$_REQUEST['totalAmount']
                 ));
             }
-            elseif($req_status == 'ERROR') {
-                $msg = __('DMN message: Your try to Refund #' . $_REQUEST['clientUniqueId'] . ' fail. ', 'sc');
-                
-                if(@$_REQUEST['Reason']) {
-                    $msg .= _('ERROR: "' . $_REQUEST['Reason'] . '".', 'sc');
-                }
-
-                $order -> add_order_note($msg);
-                $order->save();
-            }
+            // the API response holds better information, including the reason.
+//            elseif($req_status == 'ERROR') {
+//                $msg = __('DMN message: Your try to Refund #' . $_REQUEST['clientUniqueId'] . ' fail. ', 'sc');
+//                
+//                if(@$_REQUEST['Reason']) {
+//                    $msg .= _('ERROR: "' . $_REQUEST['Reason'] . '".', 'sc');
+//                }
+//
+//                $order -> add_order_note($msg);
+//                $order->save();
+//            }
             elseif(
                 @$_REQUEST['transactionStatus'] == 'DECLINED'
                 || @$_REQUEST['transactionStatus'] == 'ERROR'
