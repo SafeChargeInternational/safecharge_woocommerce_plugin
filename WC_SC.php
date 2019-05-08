@@ -47,7 +47,6 @@ class WC_SC extends WC_Payment_Gateway
         $this->secret           = @$this->settings['secret'] ? $this->settings['secret'] : '';
 		$this->test             = @$this->settings['test'] ? $this->settings['test'] : 'yes';
 		$this->use_http         = @$this->settings['use_http'] ? $this->settings['use_http'] : 'yes';
-	//	$this->show_thanks_msg  = @$this->settings['show_thanks_msg'] ? $this->settings['show_thanks_msg'] : 'no';
         $this->save_logs        = @$this->settings['save_logs'] ? $this->settings['save_logs'] : 'yes';
         $this->hash_type        = @$this->settings['hash_type'] ? $this->settings['hash_type'] : 'sha256';
 		$this->payment_api      = @$this->settings['payment_api'] ? $this->settings['payment_api'] : 'cashier';
@@ -114,11 +113,11 @@ class WC_SC extends WC_Payment_Gateway
         
 		add_action('woocommerce_checkout_process', array($this, 'sc_checkout_process'));
 		add_action('woocommerce_receipt_'.$this->id, array($this, 'generate_sc_form'));
-		add_action('woocommerce_api_sc_listener', array($this, 'process_sc_notification'));
         /* Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
         we check in the method is this order made via SC paygate */
         add_action('woocommerce_create_refund', array($this, 'create_refund_in_wc'));
-        add_action( 'woocommerce_order_after_calculate_totals', array($this, 'sc_return_sc_settle_btn') );
+        // This crash Refund action
+    //    add_action('woocommerce_order_after_calculate_totals', array($this, 'sc_return_sc_settle_btn'));
 	}
 
     /**
@@ -227,12 +226,6 @@ class WC_SC extends WC_Payment_Gateway
                 'label' => __('Works only if you have installed and configured WPML plugin. Please, use it careful, this option can brake your "Thank you" page and DMN recieve page!', 'sc'),
                 'default' => 'no'
             ),
-//            'show_thanks_msg' => array(
-//                'title' => __('Show "Loading message"', 'sc'),
-//                'type' => 'checkbox',
-//                'label' => __('Show "Loading message" when redirect to secure Cashier. Does not work on the REST API.', 'sc'),
-//                'default' => 'no'
-//            ),
             'save_logs' => array(
                 'title' => __('Save logs', 'sc'),
                 'type' => 'checkbox',
@@ -337,223 +330,230 @@ class WC_SC extends WC_Payment_Gateway
      **/
     public function generate_sc_form($order_id)
     {
+        $this->create_log('generate_sc_form()');
+        
         // prevent execute this method twice
         if( ! isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
             $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
         }
         elseif($_SESSION['SC_CASHIER_FORM_RENDED'] === true) {
             $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
-            exit;
+            return;
         }
         
-		$TimeStamp = date('Ymdhis');
-        $order = new WC_Order($order_id);
-        $order_status = strtolower($order->get_status());
-        
-        // TODO do we use them ???
-    //    $cust_fields = $order->get_meta_data();
-    //    $cust_fields2 = get_post_meta($order_id, 'payment_method_sc', true);
-        
-        $order->add_order_note(__("User is redicted to ".SC_GATEWAY_TITLE." Payment page.", 'sc'));
-        $order->save();
-        
-        $this->set_environment();
-        $notify_url = $this->set_notify_url();
-        
-        // easy way to pass them to REST API
-        $params['items'] = array();
-        
-        $items = $order->get_items();
-		$i = 0;
-		
-        foreach ( $items as $item ) {
-            $i++;
-            
-			$params['item_name_'.$i]        = $item['name'];
-			$params['item_number_'.$i]      = $item['product_id'];
-            $params['item_quantity_'.$i]    = $item['qty'];
-            
-            // this is the real price
-            $item_qty   = intval($item['qty']);
-            $item_price = ($item['line_subtotal'] + $item['line_subtotal_tax']) / $item_qty;
-            
-//            echo '<pre>'.print_r('line_subtotal '.$item['line_subtotal'], true).'</pre>';
-//            echo '<pre>'.print_r('line_subtotal_tax '.$item['line_subtotal_tax'], true).'</pre>';
-            
-            $params['item_amount_'.$i] = number_format($item_price, 2, '.', '');
-            
-            // set product img url
-//            $prod_img_path = '';
-//            $prod_img_data = wp_get_attachment_image_src(get_post_thumbnail_id($item['product_id']));
-//            if(
-//                $prod_img_data
-//                && is_array($prod_img_data)
-//                && !empty($prod_img_data)
-//                && isset($prod_img_data[0])
-//                && $prod_img_data[0] != ''
-//            ) {
-//                $prod_img_path = str_replace($params['site_url'], '', $prod_img_data[0]);
-//            }
-        //    $params['item_image_'.$i] = $prod_img_path;
-            // set product img url END
-			
-            // Use this ONLY when the merchant is not using open amount and when there is an items table on their theme.
-            //$params['item_discount_'.$i]    = number_format(($item_price - $amount), 2, '.', '');
-            
-            $params['items'][] = array(
-                'name'      => $item['name'],
-                'price'     => $params['item_amount_'.$i],
-                'quantity'  => $item['qty'],
-            );
-		}
-        
-        $params['numberofitems'] = $i;
-        
-        $params['handling'] = number_format(
-            (SC_Versions_Resolver::get_shipping($order) + $this->get_order_data($order, 'order_shipping_tax')),
-            2, '.', ''
-        );
-        
-//        echo '<pre>'.print_r('handling '.SC_Versions_Resolver::get_shipping($order), true).'</pre>';
-//        echo '<pre>'.print_r('shipping_tax '.$this->get_order_data($order, 'order_shipping_tax'), true).'</pre>';
-//        die;
-        
-        $params['discount'] = number_format($order->get_discount_total(), 2, '.', '');
-        
-		if ($params['handling'] < 0) {
-			$params['discount'] += abs($params['handling']); 
-		}
-        
-        // we are not sure can woocommerce support more than one tax.
-        // if it can, may be sum them is not the correct aproch, this must be tested
-        $total_tax_prec = 0;
-        $taxes = WC_Tax::get_rates();
-        foreach($taxes as $data) {
-            $total_tax_prec += $data['rate'];
-        }
-        
-    //    $params['total_tax'] = number_format($total_tax_prec, 2, '.', '');
-		$params['merchant_id'] = $this->merchantId;
-		$params['merchant_site_id'] = $this->merchantSiteId;
-		$params['time_stamp'] = $TimeStamp;
-		$params['encoding'] ='utf8';
-		$params['version'] = '4.0.0';
+        try {
+            $TimeStamp = date('Ymdhis');
+            $order = new WC_Order($order_id);
+            $order_status = strtolower($order->get_status());
 
-    //    $payment_page = SC_Versions_Resolver::get_page_id($order, 'pay');
-    //    $payment_page = wc_get_page_permalink($order);
-        $payment_page = wc_get_cart_url();
-        
-		if ( get_option( 'woocommerce_force_ssl_checkout' ) == 'yes' ) {
-            $payment_page = str_replace( 'http:', 'https:', $payment_page );
-        }
-        
-        $return_url = $this->get_return_url();
-        if($this->cashier_in_iframe == 'yes') {
-            if(strpos($return_url, '?') !== false) {
-                $return_url .= '&use_iframe=1';
+            // TODO do we use them ???
+        //    $cust_fields = $order->get_meta_data();
+        //    $cust_fields2 = get_post_meta($order_id, 'payment_method_sc', true);
+
+            $order->add_order_note(__("User is redicted to ".SC_GATEWAY_TITLE." Payment page.", 'sc'));
+            $order->save();
+
+            $this->set_environment();
+            $notify_url = $this->set_notify_url();
+
+            // easy way to pass them to REST API
+            $params['items'] = array();
+
+            $items = $order->get_items();
+            $i = 0;
+
+            foreach ( $items as $item ) {
+                $i++;
+
+                $params['item_name_'.$i]        = $item['name'];
+                $params['item_number_'.$i]      = $item['product_id'];
+                $params['item_quantity_'.$i]    = $item['qty'];
+
+                // this is the real price
+                $item_qty   = intval($item['qty']);
+                $item_price = ($item['line_subtotal'] + $item['line_subtotal_tax']) / $item_qty;
+
+    //            echo '<pre>'.print_r('line_subtotal '.$item['line_subtotal'], true).'</pre>';
+    //            echo '<pre>'.print_r('line_subtotal_tax '.$item['line_subtotal_tax'], true).'</pre>';
+
+                $params['item_amount_'.$i] = number_format($item_price, 2, '.', '');
+
+                // set product img url
+    //            $prod_img_path = '';
+    //            $prod_img_data = wp_get_attachment_image_src(get_post_thumbnail_id($item['product_id']));
+    //            if(
+    //                $prod_img_data
+    //                && is_array($prod_img_data)
+    //                && !empty($prod_img_data)
+    //                && isset($prod_img_data[0])
+    //                && $prod_img_data[0] != ''
+    //            ) {
+    //                $prod_img_path = str_replace($params['site_url'], '', $prod_img_data[0]);
+    //            }
+            //    $params['item_image_'.$i] = $prod_img_path;
+                // set product img url END
+
+                // Use this ONLY when the merchant is not using open amount and when there is an items table on their theme.
+                //$params['item_discount_'.$i]    = number_format(($item_price - $amount), 2, '.', '');
+
+                $params['items'][] = array(
+                    'name'      => $item['name'],
+                    'price'     => $params['item_amount_'.$i],
+                    'quantity'  => $item['qty'],
+                );
             }
-            else {
-                $return_url .= '?use_iframe=1';
+
+            $params['numberofitems'] = $i;
+
+            $params['handling'] = number_format(
+                (SC_Versions_Resolver::get_shipping($order) + $this->get_order_data($order, 'order_shipping_tax')),
+                2, '.', ''
+            );
+
+    //        echo '<pre>'.print_r('handling '.SC_Versions_Resolver::get_shipping($order), true).'</pre>';
+    //        echo '<pre>'.print_r('shipping_tax '.$this->get_order_data($order, 'order_shipping_tax'), true).'</pre>';
+    //        die;
+
+            $params['discount'] = number_format($order->get_discount_total(), 2, '.', '');
+
+            if ($params['handling'] < 0) {
+                $params['discount'] += abs($params['handling']); 
             }
+
+            // we are not sure can woocommerce support more than one tax.
+            // if it can, may be sum them is not the correct aproch, this must be tested
+            $total_tax_prec = 0;
+            $taxes = WC_Tax::get_rates();
+            foreach($taxes as $data) {
+                $total_tax_prec += $data['rate'];
+            }
+
+        //    $params['total_tax'] = number_format($total_tax_prec, 2, '.', '');
+            $params['merchant_id'] = $this->merchantId;
+            $params['merchant_site_id'] = $this->merchantSiteId;
+            $params['time_stamp'] = $TimeStamp;
+            $params['encoding'] ='utf8';
+            $params['version'] = '4.0.0';
+
+        //    $payment_page = SC_Versions_Resolver::get_page_id($order, 'pay');
+        //    $payment_page = wc_get_page_permalink($order);
+            $payment_page = wc_get_cart_url();
+
+            if ( get_option( 'woocommerce_force_ssl_checkout' ) == 'yes' ) {
+                $payment_page = str_replace( 'http:', 'https:', $payment_page );
+            }
+
+            $return_url = $this->get_return_url();
+            if($this->cashier_in_iframe == 'yes') {
+                if(strpos($return_url, '?') !== false) {
+                    $return_url .= '&use_iframe=1';
+                }
+                else {
+                    $return_url .= '?use_iframe=1';
+                }
+            }
+
+            $params['success_url']          = $return_url;
+            $params['pending_url']          = $return_url;
+            $params['error_url']            = $return_url;
+            $params['back_url']             = $payment_page;
+            $params['notify_url']           = $notify_url;
+            $params['invoice_id']           = $order_id.'_'.$TimeStamp;
+            $params['merchant_unique_id']   = $order_id;
+
+            // get and pass billing data
+            $params['first_name'] =
+                urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_first_name')));
+            //    urlencode(preg_replace("/[[:punct:]]/", '', $this->get_order_data($order, 'billing_first_name')));
+            $params['last_name'] =
+                urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_last_name')));
+            $params['address1'] =
+                urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_address_1')));
+            $params['address2'] =
+                urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_address_2')));
+            $params['zip'] =
+                urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_zip')));
+            $params['city'] =
+                urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_city')));
+            $params['state'] =
+                urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_state')));
+            $params['country'] =
+                urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_country')));
+            $params['phone1'] =
+                urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_phone')));
+
+            $params['email']            = SC_Versions_Resolver::get_order_data($order, 'billing_email');
+            $params['user_token_id']    = SC_Versions_Resolver::get_order_data($order, 'billing_email');
+            // get and pass billing data END
+
+            // get and pass shipping data
+            $sh_f_name = urlencode(preg_replace(
+                "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_first_name')));
+
+            if(empty(trim($sh_f_name))) {
+                $sh_f_name = $params['first_name'];
+            }
+            $params['shippingFirstName'] = $sh_f_name;
+
+            $sh_l_name = urlencode(preg_replace(
+                "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_last_name')));
+
+            if(empty(trim($sh_l_name))) {
+                $sh_l_name = $params['last_name'];
+            }
+            $params['shippingLastName'] = $sh_l_name;
+
+            $sh_addr = urlencode(preg_replace(
+                "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_address_1')));
+            if(empty(trim($sh_addr))) {
+                $sh_addr = $params['address1'];
+            }
+            $params['shippingAddress'] = $sh_addr;
+
+            $sh_city = urlencode(preg_replace(
+                "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_city')));
+            if(empty(trim($sh_city))) {
+                $sh_city = $params['city'];
+            }
+            $params['shippingCity'] = $sh_city;
+
+            $sh_country = urlencode(preg_replace(
+                "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_country')));
+            if(empty(trim($sh_country))) {
+                $sh_city = $params['country'];
+            }
+            $params['shippingCountry'] = $sh_country;
+
+            $sh_zip = urlencode(preg_replace(
+                "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_postcode')));
+            if(empty(trim($sh_zip))) {
+                $sh_zip = $params['zip'];
+            }
+            $params['shippingZip'] = $sh_zip;
+            // get and pass shipping data END
+
+            $params['user_token'] = "auto";
+
+            $params['payment_method'] = '';
+            if(isset($_SESSION['sc_subpayment']) && $_SESSION['sc_subpayment'] != '') {
+                $params['payment_method'] = str_replace($this->id.'_', '', $_SESSION['sc_subpayment']);
+            }
+
+            $params['total_amount']     = SC_Versions_Resolver::get_order_data($order, 'order_total');
+
+    //        echo '<pre>'.print_r('order_tax '.SC_Versions_Resolver::get_order_data($order, 'order_tax'), true).'</pre>';
+    //        echo '<pre>'.print_r('total_amount '.$params['total_amount'], true).'</pre>';
+    //        
+    //        echo '<pre>'.print_r($params, true).'</pre>';
+            //die;
+
+            $params['currency']         = get_woocommerce_currency();
+            $params['merchantLocale']   = get_locale();
+            $params['webMasterId']      = $this->webMasterId;
         }
-        
-        $params['success_url']          = $return_url;
-		$params['pending_url']          = $return_url;
-		$params['error_url']            = $return_url;
-		$params['back_url']             = $payment_page;
-		$params['notify_url']           = $notify_url;
-		$params['invoice_id']           = $order_id.'_'.$TimeStamp;
-		$params['merchant_unique_id']   = $order_id;
-        
-        // get and pass billing data
-		$params['first_name'] =
-            urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_first_name')));
-        //    urlencode(preg_replace("/[[:punct:]]/", '', $this->get_order_data($order, 'billing_first_name')));
-		$params['last_name'] =
-            urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_last_name')));
-		$params['address1'] =
-            urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_address_1')));
-		$params['address2'] =
-            urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_address_2')));
-		$params['zip'] =
-            urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_zip')));
-		$params['city'] =
-            urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_city')));
-		$params['state'] =
-            urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_state')));
-		$params['country'] =
-            urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_country')));
-		$params['phone1'] =
-            urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_phone')));
-		
-        $params['email']            = SC_Versions_Resolver::get_order_data($order, 'billing_email');
-        $params['user_token_id']    = SC_Versions_Resolver::get_order_data($order, 'billing_email');
-        // get and pass billing data END
-        
-        // get and pass shipping data
-        $sh_f_name = urlencode(preg_replace(
-            "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_first_name')));
-        
-        if(empty(trim($sh_f_name))) {
-            $sh_f_name = $params['first_name'];
+        catch (Exception $ex) {
+            $this->create_log($ex->getMessage(), 'Exception while preparing order parameters: ');
         }
-        $params['shippingFirstName'] = $sh_f_name;
-        
-        $sh_l_name = urlencode(preg_replace(
-            "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_last_name')));
-        
-        if(empty(trim($sh_l_name))) {
-            $sh_l_name = $params['last_name'];
-        }
-        $params['shippingLastName'] = $sh_l_name;
-        
-        $sh_addr = urlencode(preg_replace(
-            "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_address_1')));
-        if(empty(trim($sh_addr))) {
-            $sh_addr = $params['address1'];
-        }
-        $params['shippingAddress'] = $sh_addr;
-        
-        $sh_city = urlencode(preg_replace(
-            "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_city')));
-        if(empty(trim($sh_city))) {
-            $sh_city = $params['city'];
-        }
-        $params['shippingCity'] = $sh_city;
-        
-        $sh_country = urlencode(preg_replace(
-            "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_country')));
-        if(empty(trim($sh_country))) {
-            $sh_city = $params['country'];
-        }
-        $params['shippingCountry'] = $sh_country;
-        
-        $sh_zip = urlencode(preg_replace(
-            "/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'shipping_postcode')));
-        if(empty(trim($sh_zip))) {
-            $sh_zip = $params['zip'];
-        }
-        $params['shippingZip'] = $sh_zip;
-        // get and pass shipping data END
-        
-        $params['user_token'] = "auto";
-        
-        $params['payment_method'] = '';
-        if(isset($_SESSION['sc_subpayment']) && $_SESSION['sc_subpayment'] != '') {
-            $params['payment_method'] = str_replace($this->id.'_', '', $_SESSION['sc_subpayment']);
-        }
-		
-        $params['total_amount']     = SC_Versions_Resolver::get_order_data($order, 'order_total');
-        
-//        echo '<pre>'.print_r('order_tax '.SC_Versions_Resolver::get_order_data($order, 'order_tax'), true).'</pre>';
-//        echo '<pre>'.print_r('total_amount '.$params['total_amount'], true).'</pre>';
-//        
-//        echo '<pre>'.print_r($params, true).'</pre>';
-        //die;
-        
-        $params['currency']         = get_woocommerce_currency();
-        $params['merchantLocale']   = get_locale();
-        $params['webMasterId']      = $this->webMasterId;
         
         # Cashier payment
         if($this->payment_api == 'cashier') {
@@ -616,6 +616,8 @@ class WC_SC extends WC_Payment_Gateway
         }
         # REST API payment
         elseif($this->payment_api == 'rest') {
+            $this->create_log('REST API payment');
+            
             $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
             
             // map here variables names different for Cashier and REST
@@ -661,6 +663,8 @@ class WC_SC extends WC_Payment_Gateway
                 ,$_REQUEST['order-pay']
                 ,$payment_method
             );
+            
+            $this->create_log('REST API payment was sent.');
             
             if(!$resp) {
                 if($order_status == 'pending') {
@@ -744,7 +748,7 @@ class WC_SC extends WC_Payment_Gateway
                             'totalShipping'     => '0.00',
                             'totalHandling'     => $params['handling'],
                             'totalDiscount'     => $params['discount'],
-                            'totalTax'          => $params['total_tax'],
+                            'totalTax'          => @$params['total_tax'] ? $params['total_tax'] : '0.00',
                         ),
                         'items'             => $params['items'],
                         'deviceDetails'     => array(), // get them in SC_REST_API Class
@@ -842,9 +846,9 @@ class WC_SC extends WC_Payment_Gateway
             }
             
             $order_status = strtolower($order->get_status());
-            if($order_status == 'pending') {
-                $order->set_status('completed');
-            }
+//            if($order_status == 'pending') {
+//                $order->set_status('completed');
+//            }
             
             if(isset($resp['transactionId']) && $resp['transactionId'] != '') {
                 $order->add_order_note(__('Payment succsess for Transaction Id ', 'sc') . $resp['transactionId']);
@@ -952,13 +956,6 @@ class WC_SC extends WC_Payment_Gateway
         if(isset($p3d_resp['transactionType']) && $p3d_resp['transactionType'] != '') {
             $order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, $p3d_resp['transactionType']);
         }
-        
-        $this->change_order_status(
-            $order,
-            $_SESSION['SC_P3D_Params']['clientUniqueId'],
-            @$p3d_resp['status'],
-            $this->transaction_type
-        );
         
         echo 
             '<script>'
@@ -1302,93 +1299,6 @@ class WC_SC extends WC_Payment_Gateway
         }
         
 		return true;
-	}
-
-    /**
-     * Check for valid callback
-     **/
-    public function process_sc_notification()
-    {
-        $this->create_log($_REQUEST, 'call process_sc_notification()');
-        
-		try {
-            // Cashier DMN
-            if(@$_REQUEST['invoice_id'] !== '') {
-                $arr = explode("_",$_REQUEST['invoice_id']);
-                $order_id  = $arr[0];
-                $order = new WC_Order($order_id);
-
-                if ($order){
-                    $verified = false;
-                    // hash validation
-                    if ($this->secret) {
-                        $hash = hash(
-                            $this->hash_type,
-                            $this->secret . $_REQUEST['ppp_status'] . $_REQUEST['PPP_TransactionID']
-                        );
-                        
-                        if ($hash == $_REQUEST['responsechecksum']) {
-                            $verified = true;
-                        }
-                    }
-                }
-
-                if ($verified) {
-                    $status = $this->get_request_status();
-                    $transactionType = @$_REQUEST['transactionType'];
-
-                    echo "Transaction Type: ".$transactionType;
-
-                    if (
-                        $transactionType == 'Void'
-                        || $transactionType == 'Chargeback'
-                        || $transactionType=='Credit'
-                    ){
-                        $status = 'CANCELED';
-                    }
-                    
-                    $this->change_order_status($order, $order_id, $status, $transactionType);
-                }
-                else {
-                    $this->msg['class'] = 'error';
-                    $this->msg['message'] = "Security Error. Checksum validation faild.";
-                    $order->update_status('failed');
-                    $order->add_order_note('Failed');
-                    $order->add_order_note($this->msg['message']);
-                }
-
-                add_action('the_content', array(&$this, 'showMessage'));
-            }
-            // REST API DMN
-            else {
-                $order_id  = $_REQUEST['clientUniqueId'];
-                $order = new WC_Order($order_id);
-                
-                $status = $this->get_request_status();
-                $transactionType = @$_REQUEST['transactionType'];
-
-                echo "Transaction Type: " . $transactionType;
-
-                if (
-                    $transactionType == 'Void'
-                    || $transactionType == 'Chargeback'
-                    || $transactionType == 'Credit'
-                ) {
-                    $status = 'CANCELED';
-                }
-                
-                $this->change_order_status($order, $order_id, $status, $transactionType);
-            }
-		}
-        catch(Exception $e){
-            $this->create_log($e, 'Error in process_sc_notification(): ');
-			$msg = "Error.";
-		}
-        
-        // clear session variables for the order
-        if(isset($_SESSION['SC_Variables'])) {
-            unset($_SESSION['SC_Variables']);
-        }
 	}
 
 	public function showMessage($content)

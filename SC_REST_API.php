@@ -212,7 +212,7 @@ class SC_REST_API
             curl_close ($ch);
             
             self::create_log($url, 'REST API URL: ');
-        //    self::create_log($resp, 'REST API response: ');
+            self::create_log($resp, 'REST API response: ');
         }
         catch(Exception $e) {
             self::create_log($e->getMessage(), 'Exception ERROR when call REST API: ');
@@ -220,6 +220,7 @@ class SC_REST_API
         }
         
         if($resp === false) {
+            self::create_log('REST API response is FALSE.');
             return false;
         }
 
@@ -340,7 +341,7 @@ class SC_REST_API
                     'totalShipping'     => '0.00',
                     'totalHandling'     => $data['handling'], // this is actually shipping
                     'totalDiscount'     => $data['discount'],
-                    'totalTax'          => $data['total_tax'],
+                    'totalTax'          => @$data['total_tax'] ? $data['total_tax'] : '0.00',
                 ),
                 'items'             => $data['items'],
                 'userDetails'       => array(
