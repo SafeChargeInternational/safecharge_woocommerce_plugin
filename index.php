@@ -77,7 +77,8 @@ function sc_enqueue($hook)
         
     # DMNs catch
     if(isset($_REQUEST['wc-api']) && $_REQUEST['wc-api'] == 'sc_listener') {
-        $wc_sc->process_dmns();
+        $wc_sc->process_
+            s();
     }
     
     # load external files
@@ -283,7 +284,7 @@ function sc_add_buttons()
                 . '\'void\', ' . $_REQUEST['post'] .')" class="button generate-items">'
                 . __( 'Void', 'sc' ) .'</button>';
         }
-        
+         
         // show SETTLE button ONLY if setting transaction_type IS Auth AND P3D resonse transaction_type IS Auth
         if(
             $order_status == 'pending'
