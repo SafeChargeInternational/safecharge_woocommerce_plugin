@@ -77,8 +77,7 @@ function sc_enqueue($hook)
         
     # DMNs catch
     if(isset($_REQUEST['wc-api']) && $_REQUEST['wc-api'] == 'sc_listener') {
-        $wc_sc->process_
-            s();
+        $wc_sc->process_dmns();
     }
     
     # load external files
@@ -252,9 +251,10 @@ function sc_add_buttons()
 
         $time = date('YmdHis', time());
         $order_tr_id = $order->get_meta(SC_GW_TRANS_ID_KEY);
+        $order_has_refund = $order->get_meta('_scHasRefund');
         $notify_url = $wc_sc->set_notify_url();
         $buttons_html = '';
-
+        
         // common data
         $_SESSION['SC_Variables'] = array(
             'merchantId'            => $wc_sc->settings['merchantId'],
@@ -277,14 +277,14 @@ function sc_add_buttons()
         );
         
         // Show VOID button only if the order is completed.
-        if($order_status == 'completed') {
+        if($order_status == 'completed' && $order_has_refund != 1) {
             $buttons_html .= 
                 ' <button type="button" onclick="settleAndCancelOrder(\''
                 . __( 'Are you sure, you want to Cancel Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
                 . '\'void\', ' . $_REQUEST['post'] .')" class="button generate-items">'
                 . __( 'Void', 'sc' ) .'</button>';
         }
-         
+        
         // show SETTLE button ONLY if setting transaction_type IS Auth AND P3D resonse transaction_type IS Auth
         if(
             $order_status == 'pending'

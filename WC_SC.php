@@ -1132,6 +1132,14 @@ class WC_SC extends WC_Payment_Gateway
             ) {
                 $order_id = @current(explode('_', $_REQUEST['invoice_id']));
                 $order = new WC_Order($order_id);
+                
+                if(!is_a($order, 'WC_Order')) {
+                    $this->create_log('', 'DMN meassage: there is no Order!');
+
+                    echo 'There is no Order';
+                    exit;
+                }
+                
                 $resp = $this->sc_refund_order($order_id);
                 
                 if(is_a($resp, 'WP_Error')) {
@@ -1167,15 +1175,13 @@ class WC_SC extends WC_Payment_Gateway
             $order_status = strtolower($order->get_status());
 
             // change to Refund if request is Approved and the Order status is not Refunded
-            if(
-                $order_status !== 'refunded'
-                && $req_status == 'SUCCESS'
-                && @$_REQUEST['transactionStatus'] == 'APPROVED'
-            ) {
-                $order -> add_order_note(__('DMN message: Your request - Refund #' .
-                    $_REQUEST['clientUniqueId'] . ', was successful.', 'sc'));
-
-                $order->save();
+            if($order_status !== 'refunded' && $req_status == 'APPROVED') {
+            //    $this->create_log('Change refund order status');
+                
+                $this->change_order_status($order, $order->get_id(), 'APPROVED', 'Credit', array(
+                    'resp_id'       => @$_REQUEST['clientUniqueId'],
+                    'totalAmount'   => @$_REQUEST['totalAmount']
+                ));
             }
             elseif($req_status == 'ERROR') {
                 $msg = __('DMN message: Your try to Refund #' . $_REQUEST['clientUniqueId'] . ' fail. ', 'sc');
@@ -1622,11 +1628,6 @@ class WC_SC extends WC_Payment_Gateway
         }
 
         if(@$json_arr['transactionStatus'] == 'APPROVED') {
-            $msg = 'Your request - Refund #' . $refund_data['id'] . ', was successful.';
-
-            $order->add_order_note(__($msg, 'sc'));
-            $order->save();
-            
             return;
         }
 
@@ -1769,6 +1770,9 @@ class WC_SC extends WC_Payment_Gateway
                     $order->add_order_note(
                         __('DMN message: Your Refund #' . $res_args['resp_id'] .' was successful.', 'sc')
                     );
+                    
+                    // set flag that order has some refunds
+                    $order->update_meta_data('_scHasRefund', 1);
                     $order->save();
                     break;
                 }
