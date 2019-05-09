@@ -112,7 +112,8 @@ class WC_SC extends WC_Payment_Gateway
     //    add_action('woocommerce_update_options_payment_gateways', array( $this, 'process_admin_options' ));
         
 		add_action('woocommerce_checkout_process', array($this, 'sc_checkout_process'));
-		add_action('woocommerce_receipt_'.$this->id, array($this, 'generate_sc_form'));
+        add_action('woocommerce_receipt_'.$this->id, array($this, 'generate_sc_form'));
+        
         /* Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
         we check in the method is this order made via SC paygate */
         add_action('woocommerce_create_refund', array($this, 'create_refund_in_wc'));
@@ -330,16 +331,19 @@ class WC_SC extends WC_Payment_Gateway
      **/
     public function generate_sc_form($order_id)
     {
-        $this->create_log('generate_sc_form()');
+        // prevent execute this method twice when use Cashier
+        if($this->payment_api == 'cashier') {
+            if( ! isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
+                $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
+            }
+            elseif($_SESSION['SC_CASHIER_FORM_RENDED'] === true) {
+                $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
+                $this->create_log('second call of generate_sc_form() when use Cashier, stop here!');
+                return;
+            }
+        }
         
-        // prevent execute this method twice
-        if( ! isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
-            $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
-        }
-        elseif($_SESSION['SC_CASHIER_FORM_RENDED'] === true) {
-            $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
-            return;
-        }
+        $this->create_log('generate_sc_form()');
         
         try {
             $TimeStamp = date('Ymdhis');
@@ -372,9 +376,6 @@ class WC_SC extends WC_Payment_Gateway
                 // this is the real price
                 $item_qty   = intval($item['qty']);
                 $item_price = ($item['line_subtotal'] + $item['line_subtotal_tax']) / $item_qty;
-
-    //            echo '<pre>'.print_r('line_subtotal '.$item['line_subtotal'], true).'</pre>';
-    //            echo '<pre>'.print_r('line_subtotal_tax '.$item['line_subtotal_tax'], true).'</pre>';
 
                 $params['item_amount_'.$i] = number_format($item_price, 2, '.', '');
 
@@ -410,10 +411,6 @@ class WC_SC extends WC_Payment_Gateway
                 2, '.', ''
             );
 
-    //        echo '<pre>'.print_r('handling '.SC_Versions_Resolver::get_shipping($order), true).'</pre>';
-    //        echo '<pre>'.print_r('shipping_tax '.$this->get_order_data($order, 'order_shipping_tax'), true).'</pre>';
-    //        die;
-
             $params['discount'] = number_format($order->get_discount_total(), 2, '.', '');
 
             if ($params['handling'] < 0) {
@@ -435,8 +432,6 @@ class WC_SC extends WC_Payment_Gateway
             $params['encoding'] ='utf8';
             $params['version'] = '4.0.0';
 
-        //    $payment_page = SC_Versions_Resolver::get_page_id($order, 'pay');
-        //    $payment_page = wc_get_page_permalink($order);
             $payment_page = wc_get_cart_url();
 
             if ( get_option( 'woocommerce_force_ssl_checkout' ) == 'yes' ) {
@@ -464,7 +459,6 @@ class WC_SC extends WC_Payment_Gateway
             // get and pass billing data
             $params['first_name'] =
                 urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_first_name')));
-            //    urlencode(preg_replace("/[[:punct:]]/", '', $this->get_order_data($order, 'billing_first_name')));
             $params['last_name'] =
                 urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_last_name')));
             $params['address1'] =
@@ -540,13 +534,6 @@ class WC_SC extends WC_Payment_Gateway
             }
 
             $params['total_amount']     = SC_Versions_Resolver::get_order_data($order, 'order_total');
-
-    //        echo '<pre>'.print_r('order_tax '.SC_Versions_Resolver::get_order_data($order, 'order_tax'), true).'</pre>';
-    //        echo '<pre>'.print_r('total_amount '.$params['total_amount'], true).'</pre>';
-    //        
-    //        echo '<pre>'.print_r($params, true).'</pre>';
-            //die;
-
             $params['currency']         = get_woocommerce_currency();
             $params['merchantLocale']   = get_locale();
             $params['webMasterId']      = $this->webMasterId;
@@ -557,8 +544,9 @@ class WC_SC extends WC_Payment_Gateway
         
         # Cashier payment
         if($this->payment_api == 'cashier') {
-            $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
+            $this->create_log('Cashier payment');
             
+            $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
             // this parameter is for the REST API
             unset($params['items']);
 
@@ -617,8 +605,6 @@ class WC_SC extends WC_Payment_Gateway
         # REST API payment
         elseif($this->payment_api == 'rest') {
             $this->create_log('REST API payment');
-            
-            $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
             
             // map here variables names different for Cashier and REST
             $params['merchantId']           = $this->merchantId;
@@ -795,12 +781,20 @@ class WC_SC extends WC_Payment_Gateway
                         && !empty($resp['acsUrl'])
                         && intval($resp['threeDFlow']) == 1
                     ) {
-                        
                         $this->create_log('', 'D3D case 1.');
                         
                         // step 1 - go to acsUrl
                         $html =
-                            '<form action="'. $resp['acsUrl'] .'" method="post" id="sc_payment_form">'
+                            '<table id="sc_pay_msg" style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
+                                .'<td style="padding: 0px; border: 0px; width: 100px;">'
+                                    . '<img src="'.$this->plugin_url.'icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
+                                . '</td>'
+                                .'<td style="text-align: left; border: 0px;">'
+                                    . '<span>'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'</span>'
+                                . '</td>'
+                            .'</tr></table'
+                            
+                            .'<form action="'. $resp['acsUrl'] .'" method="post" id="sc_payment_form">'
                                 .'<input type="hidden" name="PaReq" value="'. @$resp['paRequest'] .'">'
                                 .'<input type="hidden" name="TermUrl" value="'
                                 //    .$params['success_url'] .'?Status=waiting">'
@@ -846,9 +840,6 @@ class WC_SC extends WC_Payment_Gateway
             }
             
             $order_status = strtolower($order->get_status());
-//            if($order_status == 'pending') {
-//                $order->set_status('completed');
-//            }
             
             if(isset($resp['transactionId']) && $resp['transactionId'] != '') {
                 $order->add_order_note(__('Payment succsess for Transaction Id ', 'sc') . $resp['transactionId']);
@@ -868,14 +859,15 @@ class WC_SC extends WC_Payment_Gateway
                 '<script>'
                     .'window.location.href = "'
                         .$params['error_url'].'?Status=success";'
+                    //    .$params['success_url']
                 .'</script>';
             
             exit;
         }
-        # ERROR - not existing payment api or error with SC_CASHIER_FORM_RENDED
+        # ERROR - not existing payment api
         else {
             $this->create_log(
-                'Wrong paiment api ('. $this->payment_api .') or error with SC_CASHIER_FORM_RENDED session var.'
+                'Wrong paiment api ('. $this->payment_api .').'
                 , 'Payment form ERROR: '
             );
             
@@ -883,8 +875,7 @@ class WC_SC extends WC_Payment_Gateway
                 '<script>'
                     .'window.location.href = "'
                         .$params['error_url'].'?Status=fail&invoice_id='
-                    //    .$order_id.'&wc-api=WC_SC_Rest&reason=not existing payment API'
-                        .$order_id.'&wc-api=sc_listener&reason=not existing payment API'
+                        .$order_id.'&wc-api=sc_listener&reason=not-existing-payment-API'
                 .'</script>';
             exit;
         }
@@ -1060,6 +1051,7 @@ class WC_SC extends WC_Payment_Gateway
                 $order_status = strtolower($order->get_status());
                 
                 $order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, $_REQUEST['transactionType']);
+                $this->save_update_order_numbers($order);
                 
                 if($order_status != 'completed') {
                     $this->change_order_status($order, $arr[0], $req_status, $_REQUEST['transactionType']);
@@ -1091,6 +1083,11 @@ class WC_SC extends WC_Payment_Gateway
             
             try {
                 $order = new WC_Order($_REQUEST['clientUniqueId']);
+                
+                if($_REQUEST['transactionType'] == 'Settle') {
+                    $this->save_update_order_numbers($order);
+                }
+                
                 $this->change_order_status($order, $_REQUEST['clientUniqueId'], $req_status, $_REQUEST['transactionType']);
                 $order_id = @$_REQUEST['clientUniqueId'];
             }
@@ -1767,7 +1764,9 @@ class WC_SC extends WC_Payment_Gateway
 //                    }
                     
                     $order->add_order_note(
-                        __('DMN message: Your Refund #' . $res_args['resp_id'] .' was successful.', 'sc')
+                        __('DMN message: Your Refund #' . $res_args['resp_id']
+                            .' was successful. Refund Transaction ID is: ', 'sc')
+                            . @$_REQUEST['TransactionID'] . '.'
                     );
                     
                     // set flag that order has some refunds
@@ -1799,7 +1798,17 @@ class WC_SC extends WC_Payment_Gateway
                 $this->msg['class'] = 'woocommerce_message';
                 $order->payment_complete($order_id);
                 
-                $order->update_status($transactionType == 'Auth' ? 'pending' : 'completed');
+                if($transactionType == 'Auth') {
+                    $order->update_status('pending');
+                }
+                // do two steps
+                else {
+                    $order->update_status('processing');
+                    $order->save();
+                    
+                    $order->update_status('completed');
+                }
+            //    $order->update_status($transactionType == 'Auth' ? 'pending' : 'completed');
                 
                 if($transactionType != 'Auth') {
                     $order->add_order_note(SC_GATEWAY_TITLE . ' payment is successful<br/>Unique Id: '
@@ -1885,7 +1894,6 @@ class WC_SC extends WC_Payment_Gateway
         }
         
         $order->save();
-        $this->save_update_order_numbers($order);
     }
     
     private function set_environment()
