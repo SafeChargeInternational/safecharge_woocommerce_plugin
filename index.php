@@ -279,7 +279,7 @@ function sc_add_buttons()
         // Show VOID button
         if($order_has_refund != 1) {
             $buttons_html .= 
-                ' <button type="button" onclick="settleAndCancelOrder(\''
+                ' <button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
                 . __( 'Are you sure, you want to Cancel Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
             //    . '\'void\', ' . $_REQUEST['post'] .')" class="button generate-items">'
                 . '\'void\')" class="button generate-items">'

@@ -11,6 +11,7 @@ var tokAPMsFields = {
 var selectedPM = '';
 var billing_country_first_val = '';
 var scSettleBtn = null;
+var scVoidBtn = null;
 
  /**
   * Function validateScAPMsModal
@@ -490,7 +491,11 @@ function enableDisableSCCheckout(action) {
  * Function returnSCSettleBtn
  * Returns the SC Settle button
  */
-function returnSCSettleBtn() {
+function returnSCBtns() {
+    if(scVoidBtn !== null) {
+        jQuery('.wc-order-bulk-actions p').append(scVoidBtn);
+        scVoidBtn = null;
+    }
     if(scSettleBtn !== null) {
         jQuery('.wc-order-bulk-actions p').append(scSettleBtn);
         scSettleBtn = null;
@@ -575,9 +580,22 @@ jQuery(function() {
         jQuery('#sc_pay_msg').hide();
     });
     
-    // set the flag
+    // set the flags
     if(jQuery('#sc_settle_btn').length == 1) {
        scSettleBtn = jQuery('#sc_settle_btn');
+    }
+    
+    if(jQuery('#sc_void_btn').length == 1) {
+       scVoidBtn = jQuery('#sc_void_btn');
+    }
+    // set the flags END
+    
+    // hide Refund button if the status is refunded
+    if(
+        jQuery('#order_status').val() == 'wc-refunded'
+        || jQuery('#order_status').val() == 'wc-cancelled'
+    ) {
+        jQuery('.refund-items').hide();
     }
 });
 // document ready function END

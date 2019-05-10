@@ -118,8 +118,28 @@ class WC_SC extends WC_Payment_Gateway
         we check in the method is this order made via SC paygate */
         add_action('woocommerce_create_refund', array($this, 'create_refund_in_wc'));
         // This crash Refund action
-    //    add_action('woocommerce_order_after_calculate_totals', array($this, 'sc_return_sc_settle_btn'));
+        add_action('woocommerce_order_after_calculate_totals', array($this, 'sc_return_sc_settle_btn'));
+        
+        add_action('woocommerce_order_status_refunded', array($this, 'sc_custom_refunded_status'));
 	}
+    
+    public function sc_custom_refunded_status($order_id, $this_status_transition_from, $this_status_transition_to)
+    {
+        $order = new WC_Order($order_id);
+        $items = $order->get_items();
+        $is_order_restock = $order->get_meta('_scIsRestock');
+        
+        // do restock only once
+        if($is_order_restock != 1) {
+            wc_restock_refunded_items($order, $items);
+            $order->update_meta_data('_scIsRestock', 1);
+            $order->save();
+            
+            $this->create_log('Items were restocked.');
+        }
+        
+        return;
+    }
 
     /**
      * Function init_form_fields
@@ -1137,7 +1157,7 @@ class WC_SC extends WC_Payment_Gateway
             && !empty($req_status)
             && $this->checkAdvancedCheckSum()
         ) {
-            $this->create_log('', 'Refund.');
+            $this->create_log('Refund DMN.');
             
             // CPanel DMN, from it we do not recieve $_GET['action'] parameter
             if(
@@ -1145,6 +1165,8 @@ class WC_SC extends WC_Payment_Gateway
                 && $req_status == 'APPROVED'
                 && @$_REQUEST['transactionType'] == 'Credit'
             ) {
+                $this->create_log('CPanel Refund DMN.');
+                
                 $order_id = @current(explode('_', $_REQUEST['invoice_id']));
                 $order = new WC_Order($order_id);
                 
@@ -1182,19 +1204,24 @@ class WC_SC extends WC_Payment_Gateway
             $order = new WC_Order(@$_REQUEST['order_id']);
 
             if(!is_a($order, 'WC_Order')) {
-                $this->create_log('', 'DMN meassage: there is no Order!');
+                $this->create_log('DMN meassage: there is no Order!');
                 
                 echo 'There is no Order';
                 exit;
             }
-            $order_status = strtolower($order->get_status());
-
+        //    $order_status = strtolower($order->get_status());
+            
             // change to Refund if request is Approved and the Order status is not Refunded
-            if($order_status !== 'refunded' && $req_status == 'APPROVED') {
-                $this->change_order_status($order, $order->get_id(), 'APPROVED', 'Credit', array(
-                    'resp_id'       => @$_REQUEST['clientUniqueId'],
-                    'totalAmount'   => @$_REQUEST['totalAmount']
-                ));
+            if($req_status == 'APPROVED') {
+                $this->change_order_status(
+                    $order, $order->get_id(),
+                    'APPROVED',
+                    'Credit',
+                    array(
+                        'resp_id'       => @$_REQUEST['clientUniqueId'],
+                        'totalAmount'   => @$_REQUEST['totalAmount']
+                    )
+                );
             }
             // the API response holds better information, including the reason.
 //            elseif($req_status == 'ERROR') {
@@ -1228,7 +1255,7 @@ class WC_SC extends WC_Payment_Gateway
                 $order->save();
             }
             
-            echo 'DMN received.';
+            echo 'DMN received - Refund.';
             exit;
         }
         
@@ -1653,8 +1680,11 @@ class WC_SC extends WC_Payment_Gateway
         return;
     }
     
-    public function sc_return_sc_settle_btn() {
-        echo '<script type="text/javascript">returnSCSettleBtn();</script>';
+    public function sc_return_sc_settle_btn($args) {
+        // revert buttons on Recalculate
+        if(!isset($_REQUEST['refund_amount']) && isset($_REQUEST['items'])) {
+            echo '<script type="text/javascript">returnSCBtns();</script>';
+        }
     }
 
     /**
@@ -1776,11 +1806,6 @@ class WC_SC extends WC_Payment_Gateway
                 
                 // Refun Approved
                 if($transactionType == 'Credit') {
-//                    if($res_args['totalAmount'] && $res_args['totalAmount'] == $order->get_total()) {
-//                        $this->create_log('Plugin change status to Refunded.');
-//                        $order->update_status('refunded');
-//                    }
-                    
                     $order->add_order_note(
                         __('DMN message: Your Refund #' . $res_args['resp_id']
                             .' was successful. Refund Transaction ID is: ', 'sc')
