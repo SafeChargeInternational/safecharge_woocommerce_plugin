@@ -137,14 +137,14 @@ class WC_SC extends WC_Payment_Gateway
            'title' => array(
                 'title' => __('Title:', 'sc'),
                 'type'=> 'text',
-                'description' => __('This controls the title which the user sees during checkout.', 'sc'),
-                'default' => __(SC_GATEWAY_TITLE, 'sc')
+                'description' => __('This is the payment method which the user sees during checkout.', 'sc'),
+                'default' => __('Pay with Credit / Debit card', 'sc')
             ),
             'description' => array(
                 'title' => __('Description:', 'sc'),
                 'type' => 'textarea',
                 'description' => __('This controls the description which the user sees during checkout.', 'sc'),
-                'default' => __('Pay securely by Credit or Debit card or local payment option through '
+                'default' => __('Pay securely by Credit / Debit card or local payment option through '
                     .SC_GATEWAY_TITLE .' secured payment page.', 'sc')
             ),
             'merchantId' => array(
@@ -359,7 +359,8 @@ class WC_SC extends WC_Payment_Gateway
 
             $this->set_environment();
             $notify_url = $this->set_notify_url();
-
+            $test_sum = 0; // use it for the last check of the total
+            
             // easy way to pass them to REST API
             $params['items'] = array();
 
@@ -378,7 +379,7 @@ class WC_SC extends WC_Payment_Gateway
                 $item_price = ($item['line_subtotal'] + $item['line_subtotal_tax']) / $item_qty;
 
                 $params['item_amount_'.$i] = number_format($item_price, 2, '.', '');
-
+                
                 // set product img url
     //            $prod_img_path = '';
     //            $prod_img_data = wp_get_attachment_image_src(get_post_thumbnail_id($item['product_id']));
@@ -402,6 +403,8 @@ class WC_SC extends WC_Payment_Gateway
                     'price'     => $params['item_amount_'.$i],
                     'quantity'  => $item['qty'],
                 );
+                
+                $test_sum += ($item_qty * $params['item_amount_'.$i]);
             }
 
             $params['numberofitems'] = $i;
@@ -537,6 +540,13 @@ class WC_SC extends WC_Payment_Gateway
             $params['currency']         = get_woocommerce_currency();
             $params['merchantLocale']   = get_locale();
             $params['webMasterId']      = $this->webMasterId;
+            
+            // last check for correct calculations
+            $test_diff = $params['total_amount'] - $params['handling'] - $test_sum;
+            if($test_diff != 0) {
+                $params['handling'] += $test_diff;
+                $this->create_log($test_diff, 'Total diff, added to handling: ');
+            }
         }
         catch (Exception $ex) {
             $this->create_log($ex->getMessage(), 'Exception while preparing order parameters: ');
@@ -701,7 +711,9 @@ class WC_SC extends WC_Payment_Gateway
                 
                 echo 
                     '<script>'
-                        .'window.location.href = "'.$params['error_url'].'?Status=fail";'
+                        .'window.location.href = "'. $params['error_url'] 
+                        . (strpos($params['error_url'], '?') === false ? '?' : '&')
+                        . 'Status=fail";'
                     .'</script>';
                 exit;
             }
@@ -832,7 +844,10 @@ class WC_SC extends WC_Payment_Gateway
                         '<script>'
                             .'var newTab = window.open("'.$resp['redirectURL'].'", "_blank");'
                             .'newTab.focus();'
-                            .'window.location.href = "'.$params['success_url'].'?Status=waiting";'
+                            .'window.location.href = "'
+                                . $params['success_url']
+                                . (strpos($params['success_url'], '?') === false ? '?' : '&')
+                                . 'Status=waiting";'
                         .'</script>';
                     
                     exit;
@@ -858,8 +873,9 @@ class WC_SC extends WC_Payment_Gateway
             echo 
                 '<script>'
                     .'window.location.href = "'
-                        .$params['error_url'].'?Status=success";'
-                    //    .$params['success_url']
+                        . $params['error_url']
+                        . (strpos($params['error_url'], '?') === false ? '?' : '&')
+                        . 'Status=success";'
                 .'</script>';
             
             exit;
@@ -874,8 +890,10 @@ class WC_SC extends WC_Payment_Gateway
             echo 
                 '<script>'
                     .'window.location.href = "'
-                        .$params['error_url'].'?Status=fail&invoice_id='
-                        .$order_id.'&wc-api=sc_listener&reason=not-existing-payment-API'
+                        . $params['error_url']
+                        . (strpos($params['error_url'], '?') === false ? '?' : '&')
+                        . 'Status=fail&invoice_id='
+                        . $order_id.'&wc-api=sc_listener&reason=not-existing-payment-API'
                 .'</script>';
             exit;
         }
@@ -1750,7 +1768,7 @@ class WC_SC extends WC_Payment_Gateway
             case 'APPROVED':
                 if($transactionType == 'Void') {
                     $order->add_order_note(__('DMN message: Your Void request was success, Order #'
-                        . @$_REQUEST['clientUniqueId'] . ' was canceld.', 'sc'));
+                        . @$_REQUEST['clientUniqueId'] . ' was canceld. Plsese check your stock!', 'sc'));
 
                     $order->update_status('cancelled');
                     break;

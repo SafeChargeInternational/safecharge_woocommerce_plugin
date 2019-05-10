@@ -375,7 +375,8 @@ function print_apms_options(html) {
 }
  
 // when the admin select to Settle or Void the Order
-function settleAndCancelOrder(question, action, orderId) {
+//function settleAndCancelOrder(question, action, orderId) {
+function settleAndCancelOrder(question, action) {
     if(confirm(question)) {
         jQuery('#custom_loader').show();
         

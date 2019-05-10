@@ -276,12 +276,13 @@ function sc_add_buttons()
             ),
         );
         
-        // Show VOID button only if the order is completed.
-        if($order_status == 'completed' && $order_has_refund != 1) {
+        // Show VOID button
+        if($order_has_refund != 1) {
             $buttons_html .= 
                 ' <button type="button" onclick="settleAndCancelOrder(\''
                 . __( 'Are you sure, you want to Cancel Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
-                . '\'void\', ' . $_REQUEST['post'] .')" class="button generate-items">'
+            //    . '\'void\', ' . $_REQUEST['post'] .')" class="button generate-items">'
+                . '\'void\')" class="button generate-items">'
                 . __( 'Void', 'sc' ) .'</button>';
         }
         
