@@ -119,28 +119,9 @@ class WC_SC extends WC_Payment_Gateway
         add_action('woocommerce_create_refund', array($this, 'create_refund_in_wc'));
         // This crash Refund action
         add_action('woocommerce_order_after_calculate_totals', array($this, 'sc_return_sc_settle_btn'));
-        
-        add_action('woocommerce_order_status_refunded', array($this, 'sc_custom_refunded_status'));
+        add_action('woocommerce_order_status_refunded', array($this, 'sc_restock_on_refunded_status'));
 	}
     
-    public function sc_custom_refunded_status($order_id, $this_status_transition_from, $this_status_transition_to)
-    {
-        $order = new WC_Order($order_id);
-        $items = $order->get_items();
-        $is_order_restock = $order->get_meta('_scIsRestock');
-        
-        // do restock only once
-        if($is_order_restock != 1) {
-            wc_restock_refunded_items($order, $items);
-            $order->update_meta_data('_scIsRestock', 1);
-            $order->save();
-            
-            $this->create_log('Items were restocked.');
-        }
-        
-        return;
-    }
-
     /**
      * Function init_form_fields
      * Set all fields for admin settings page.
@@ -339,7 +320,7 @@ class WC_SC extends WC_Payment_Gateway
         // echo here some html if needed
     }
 
-	 /**
+	/**
       * Function generate_sc_form
       * 
       * The function generates form form the order fields and prepare to send
@@ -1688,6 +1669,29 @@ class WC_SC extends WC_Payment_Gateway
     }
 
     /**
+     * 
+     * @param int $order_id
+     * @return void
+     */
+    public function sc_restock_on_refunded_status($order_id)
+    {
+        $order = new WC_Order($order_id);
+        $items = $order->get_items();
+        $is_order_restock = $order->get_meta('_scIsRestock');
+        
+        // do restock only once
+        if($is_order_restock != 1) {
+            wc_restock_refunded_items($order, $items);
+            $order->update_meta_data('_scIsRestock', 1);
+            $order->save();
+            
+            $this->create_log('Items were restocked.');
+        }
+        
+        return;
+    }
+    
+    /**
      * Function sc_refund_order
      * Process Order Refund through Code - create refund in WC after
      * refund in CPanel.
@@ -1844,7 +1848,7 @@ class WC_SC extends WC_Payment_Gateway
                 if($transactionType == 'Auth') {
                     $order->update_status('pending');
                 }
-                // do two steps
+                // Settle - do two steps
                 else {
                     $order->update_status('processing');
                     $order->save();
