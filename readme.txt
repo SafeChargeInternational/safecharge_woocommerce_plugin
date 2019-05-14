@@ -7,7 +7,7 @@ Wordpress requirements:
 WooCommerce requirements: 
 	- minimum v 3.0
 	- tested up to v3.5.4
-Stable tag: 1.8.2
+Stable tag: 1.9.1
 
 == Description ==
 
@@ -42,9 +42,12 @@ Please, contact out Tech-Support team (tech-support@safecharge.com) in case of q
 
 == Changelog ==
 
+= 1.9.1 - 2019-05-13 =
+* New - Hide Refund and Void buttons when they no need to be visible. Better Order Notes. Some code fixes.
+
 = 1.9 - 2019-03-26 =
 * New - Better logic for add and remove SC hooks for the checkout. Hide SC buttons when edit order if, it not made via SC. Removed option to show or hide the loading message on Checkout page.
-* Add - Will be added functionality to create Full Refund, when merchant change order status to Refunded.
+* Add - Added functionality to create Full Refund, when merchant change order status to Refunded.
 
 = 1.8.2 - 2018-12-19 =
 * New - Added option in the settings, to use Cashier in iFrame.

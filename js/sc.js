@@ -594,6 +594,9 @@ jQuery(function() {
     if(
         jQuery('#order_status').val() == 'wc-refunded'
         || jQuery('#order_status').val() == 'wc-cancelled'
+        || jQuery('#order_status').val() == 'wc-pending'
+        || jQuery('#order_status').val() == 'wc-on-hold'
+        || jQuery('#order_status').val() == 'wc-failed'
     ) {
         jQuery('.refund-items').hide();
     }
