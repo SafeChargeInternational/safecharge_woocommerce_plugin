@@ -794,7 +794,7 @@ class WC_SC extends WC_Payment_Gateway
                         && !empty($resp['acsUrl'])
                         && intval($resp['threeDFlow']) == 1
                     ) {
-                        $this->create_log('', 'D3D case 1.');
+                        $this->create_log('D3D case 1');
                         
                         // step 1 - go to acsUrl
                         $html =
@@ -805,18 +805,19 @@ class WC_SC extends WC_Payment_Gateway
                                 .'<td style="text-align: left; border: 0px;">'
                                     . '<span>'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'</span>'
                                 . '</td>'
-                            .'</tr></table'
+                            .'</tr></table>'
                             
                             .'<form action="'. $resp['acsUrl'] .'" method="post" id="sc_payment_form">'
                                 .'<input type="hidden" name="PaReq" value="'. @$resp['paRequest'] .'">'
                                 .'<input type="hidden" name="TermUrl" value="'
-                                //    .$params['success_url'] .'?Status=waiting">'
-                                    .$params['pending_url'] .'?wc-api=sc_listener&action=p3d">'
+                                    . $params['pending_url']
+                                    . (strpos($params['pending_url'], '?') != false ? '&' : '?')
+                                    . 'wc-api=sc_listener&action=p3d">'
                                 .'<noscript>'
-                                    .'<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'
-                                        .__('Pay via '. SC_GATEWAY_TITLE, 'sc').'" /><a class="button cancel" href="'
-                                        .$order->get_cancel_order_url().'">'
-                                        .__('Cancel order &amp; restore cart', 'sc').'</a>'
+                                    . '<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'
+                                        . __('Pay via '. SC_GATEWAY_TITLE, 'sc').'" />'
+                                    . '<a class="button cancel" href="' .$order->get_cancel_order_url().'">'
+                                        . __('Cancel order &amp; restore cart', 'sc').'</a>'
                                 .'</noscript>'
 
                                 .'<script type="text/javascript">'
@@ -827,6 +828,7 @@ class WC_SC extends WC_Payment_Gateway
                             .'</form>';
                         
                         echo $html;
+                        exit;
                         
                         // step 2 - wait for the DMN
                     }
@@ -841,6 +843,8 @@ class WC_SC extends WC_Payment_Gateway
                 
                 // in case we have redirectURL
                 if(isset($resp['redirectURL']) && !empty($resp['redirectURL'])) {
+                    $this->create_log($resp['redirectURL'], 'we have redirectURL: ');
+                    
                     echo 
                         '<script>'
                             .'var newTab = window.open("'.$resp['redirectURL'].'", "_blank");'
@@ -1243,7 +1247,7 @@ class WC_SC extends WC_Payment_Gateway
         # D3D and P3D payment
         // the idea here is to get $_REQUEST['paResponse'] and pass it to P3D
         elseif(@$_REQUEST['action'] == 'p3d') {
-            $this->create_log('', 'p3d.');
+            $this->create_log('p3d.');
             
             // the DMN from case 1 - issuer/bank
             if(
@@ -1355,7 +1359,10 @@ class WC_SC extends WC_Payment_Gateway
     
     public function set_notify_url()
     {
-        $url = get_site_url() . '?wc-api=sc_listener';
+        $url_part = get_site_url();
+            
+        $url = $url_part
+            . (strpos($url_part, '?') != false ? '&' : '?') . 'wc-api=sc_listener';
         
         // force Notification URL protocol to http
         if(isset($this->use_http) && $this->use_http == 'yes' && strpos($url, 'https://') !== false) {
