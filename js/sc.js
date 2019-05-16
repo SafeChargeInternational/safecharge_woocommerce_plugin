@@ -114,7 +114,7 @@ function scValidateAPMFields() {
         }
         // or just submit the form
         else {
-        //    jQuery('form.woocommerce-checkout').submit();
+            jQuery('form.woocommerce-checkout').submit();
         }
     }
     else {
