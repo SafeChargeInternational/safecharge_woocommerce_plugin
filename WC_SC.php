@@ -351,76 +351,26 @@ class WC_SC extends WC_Payment_Gateway
             $order = new WC_Order($order_id);
             $order_status = strtolower($order->get_status());
 
-            // TODO do we use them ???
-        //    $cust_fields = $order->get_meta_data();
-        //    $cust_fields2 = get_post_meta($order_id, 'payment_method_sc', true);
-
             $order->add_order_note(__("User is redicted to ".SC_GATEWAY_TITLE." Payment page.", 'sc'));
             $order->save();
 
             $this->set_environment();
             $notify_url = $this->set_notify_url();
-            $test_sum = 0; // use it for the last check of the total
             
-            // easy way to pass them to REST API
-            $params['items'] = array();
-
             $items = $order->get_items();
-            $i = 0;
-
-            foreach ( $items as $item ) {
-                $i++;
-
-                $params['item_name_'.$i]        = $item['name'];
-                $params['item_number_'.$i]      = $item['product_id'];
-                $params['item_quantity_'.$i]    = $item['qty'];
-
-                // this is the real price
-                $item_qty   = intval($item['qty']);
-                $item_price = ($item['line_subtotal'] + $item['line_subtotal_tax']) / $item_qty;
-
-                $params['item_amount_'.$i] = number_format($item_price, 2, '.', '');
-                
-                // set product img url
-    //            $prod_img_path = '';
-    //            $prod_img_data = wp_get_attachment_image_src(get_post_thumbnail_id($item['product_id']));
-    //            if(
-    //                $prod_img_data
-    //                && is_array($prod_img_data)
-    //                && !empty($prod_img_data)
-    //                && isset($prod_img_data[0])
-    //                && $prod_img_data[0] != ''
-    //            ) {
-    //                $prod_img_path = str_replace($params['site_url'], '', $prod_img_data[0]);
-    //            }
-            //    $params['item_image_'.$i] = $prod_img_path;
-                // set product img url END
-
-                // Use this ONLY when the merchant is not using open amount and when there is an items table on their theme.
-                //$params['item_discount_'.$i]    = number_format(($item_price - $amount), 2, '.', '');
-
-                $params['items'][] = array(
-                    'name'      => $item['name'],
-                    'price'     => $params['item_amount_'.$i],
-                    'quantity'  => $item['qty'],
-                );
-                
-                $test_sum += ($item_qty * $params['item_amount_'.$i]);
-            }
-
-            $params['numberofitems'] = $i;
+            $params['numberofitems'] = count($items);
 
             $params['handling'] = number_format(
                 (SC_Versions_Resolver::get_shipping($order) + $this->get_order_data($order, 'order_shipping_tax')),
                 2, '.', ''
             );
-
+            
             $params['discount'] = number_format($order->get_discount_total(), 2, '.', '');
 
             if ($params['handling'] < 0) {
                 $params['discount'] += abs($params['handling']); 
             }
-
+            
             // we are not sure can woocommerce support more than one tax.
             // if it can, may be sum them is not the correct aproch, this must be tested
             $total_tax_prec = 0;
@@ -429,7 +379,6 @@ class WC_SC extends WC_Payment_Gateway
                 $total_tax_prec += $data['rate'];
             }
 
-        //    $params['total_tax'] = number_format($total_tax_prec, 2, '.', '');
             $params['merchant_id'] = $this->merchantId;
             $params['merchant_site_id'] = $this->merchantSiteId;
             $params['time_stamp'] = $TimeStamp;
@@ -541,13 +490,6 @@ class WC_SC extends WC_Payment_Gateway
             $params['currency']         = get_woocommerce_currency();
             $params['merchantLocale']   = get_locale();
             $params['webMasterId']      = $this->webMasterId;
-            
-            // last check for correct calculations
-            $test_diff = $params['total_amount'] - $params['handling'] - $test_sum;
-            if($test_diff != 0) {
-                $params['handling'] += $test_diff;
-                $this->create_log($test_diff, 'Total diff, added to handling: ');
-            }
         }
         catch (Exception $ex) {
             $this->create_log($ex->getMessage(), 'Exception while preparing order parameters: ');
@@ -558,8 +500,36 @@ class WC_SC extends WC_Payment_Gateway
             $this->create_log('Cashier payment');
             
             $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
-            // this parameter is for the REST API
-            unset($params['items']);
+            
+            $i = $test_sum = 0; // use it for the last check of the total
+            
+            # Items calculations
+            foreach ( $items as $item ) {
+                $i++;
+                
+                $params['item_name_'.$i]        = $item['name'];
+                $params['item_number_'.$i]      = $item['product_id'];
+                $params['item_quantity_'.$i]    = $item['qty'];
+
+                // this is the real price
+                $item_qty   = intval($item['qty']);
+            //    $item_price = ($item['line_subtotal'] + $item['line_subtotal_tax']) / $item_qty;
+                $item_price = $item['line_total'] / $item_qty;
+                
+                $params['item_amount_'.$i] = number_format($item_price, 2, '.', '');
+                
+                $test_sum += ($item_qty * $params['item_amount_'.$i]);
+            }
+            
+            // last check for correct calculations
+            $test_sum -= $params['discount'];
+            
+            $test_diff = $params['total_amount'] - $params['handling'] - $test_sum;
+            if($test_diff != 0) {
+                $params['handling'] += $test_diff;
+                $this->create_log($test_diff, 'Total diff, added to handling: ');
+            }
+            # Items calculations END
 
             // be sure there are no array elements in $params !!!
             $params['checksum'] = hash($this->hash_type, stripslashes($this->secret . implode('', $params)));
@@ -617,12 +587,24 @@ class WC_SC extends WC_Payment_Gateway
         elseif($this->payment_api == 'rest') {
             $this->create_log('REST API payment');
             
+            // for the REST we do not care about details
+            $params['handling'] = '0.00';
+            $params['discount'] = '0.00';
+            
+            $params['items'][0] = array(
+                'name'      => $order_id,
+                'price'     => $params['total_amount'],
+                'quantity'  => 1,
+            );
+            
             // map here variables names different for Cashier and REST
             $params['merchantId']           = $this->merchantId;
             $params['merchantSiteId']       = $this->merchantSiteId;
             $params['notify_url']           = $notify_url . 'sc_listener';
             
-            $params['site_url']             = get_site_url(); // TODO this parameter does not present in REST docs !!!
+            // TODO this parameter does not present in REST docs !!!
+        //    $params['site_url']             = get_site_url();
+            
             $params['client_request_id']    = $TimeStamp .'_'. uniqid();
             
             $params['urlDetails'] = array(
@@ -631,6 +613,17 @@ class WC_SC extends WC_Payment_Gateway
                 'pendingUrl'        => $this->get_return_url(),
                 'notificationUrl'   => $notify_url,
             );
+            
+            // set the payment method type
+            $payment_method = 'apm';
+            if(in_array(
+                @$_SESSION['SC_Variables']['APM_data']['payment_method'],
+                array('cc_card', 'dc_card')
+            )) {
+                $payment_method = 'd3d';
+                
+                $params['urlDetails']['notificationUrl'] .= '&is-apm=0';
+            }
                 
             $params['checksum'] = hash($this->settings['hash_type'], stripslashes(
                 $_SESSION['SC_Variables']['merchantId']
@@ -643,12 +636,6 @@ class WC_SC extends WC_Payment_Gateway
             ));
             
             require_once 'SC_REST_API.php';
-            
-            // set the payment method type
-            $payment_method = 'apm';
-            if(@$_SESSION['SC_Variables']['APM_data']['payment_method'] == 'cc_card') {
-                $payment_method = 'd3d';
-            }
             
             $this->create_log($params, 'params sent to REST: ');
             $this->create_log($_SESSION['SC_Variables'], 'SC_Variables: ');
@@ -845,14 +832,29 @@ class WC_SC extends WC_Payment_Gateway
                 if(isset($resp['redirectURL']) && !empty($resp['redirectURL'])) {
                     $this->create_log($resp['redirectURL'], 'we have redirectURL: ');
                     
+                    if(@$resp['gwErrorCode'] == -1 || @$resp['gwErrorReason']) {
+                        $order->add_order_note(
+                            __('Payment with redirect URL error: ' . @$resp['gwErrorReason'] . '.', 'sc'));
+                        $order->save();
+                        
+                        echo 
+                            '<script>'
+                                .'window.location.href = "' . $params['error_url']
+                                    . (strpos($params['error_url'], '?') === false ? '?' : '&')
+                                    . 'Status=fail'
+                            .'</script>';
+                        exit;
+                    }
+                    
                     echo 
                         '<script>'
-                            .'var newTab = window.open("'.$resp['redirectURL'].'", "_blank");'
-                            .'newTab.focus();'
-                            .'window.location.href = "'
-                                . $params['success_url']
-                                . (strpos($params['success_url'], '?') === false ? '?' : '&')
-                                . 'Status=waiting";'
+                        //    .'var newTab = window.open("'.$resp['redirectURL'].'", "_blank");'
+                        //    .'newTab.focus();'
+                            .'window.location.href = "' . $resp['redirectURL'] . '";'
+                            
+                        //        . $params['success_url']
+                        //        . (strpos($params['success_url'], '?') === false ? '?' : '&')
+                        //        . 'Status=waiting";'
                         .'</script>';
                     
                     exit;
@@ -2014,6 +2016,10 @@ class WC_SC extends WC_Payment_Gateway
 
         if(!$saved_tr_id || empty($saved_tr_id) || $saved_tr_id !== $gw_transaction_id) {
             $order->update_meta_data(SC_GW_TRANS_ID_KEY, $gw_transaction_id);
+        }
+        
+        if(isset($_REQUEST['is-apm']) && intval($_REQUEST['is-apm']) == 0) {
+            $order->update_meta_data('isAPM', 0);
         }
 
         $order->save();

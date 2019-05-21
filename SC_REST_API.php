@@ -402,8 +402,14 @@ class SC_REST_API
                         return false;
                     }
 
-                    $params['paymentMethod']    = $sc_variables['APM_data']['payment_method'];
-                    $params['sessionToken']     = $session_token;
+                    $params['paymentMethod'] = $sc_variables['APM_data']['payment_method'];
+                    
+                    // append payment method credentionals
+                    if(isset($sc_variables['APM_data']['apm_fields'])) {
+                        $params['userAccountDetails'] = $sc_variables['APM_data']['apm_fields'];
+                    }
+                    
+                    $params['sessionToken'] = $session_token;
 
                     $endpoint_url = $sc_variables['test'] == 'no' ? SC_LIVE_PAYMENT_URL : SC_TEST_PAYMENT_URL;
                     break;
