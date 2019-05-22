@@ -1650,7 +1650,7 @@ class WC_SC extends WC_Payment_Gateway
         }
 
         if(@$json_arr['transactionStatus'] == 'DECLINED') {
-            $msg = 'The refun was declined. ' .$error_note;
+            $msg = 'The refund was declined. ' .$error_note;
 
             $order->add_order_note(__($msg, 'sc'));
             $order->save();

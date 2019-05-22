@@ -238,11 +238,8 @@ function sc_add_buttons()
     }
     
     // to show SC buttons we must be sure the order is paid via SC Paygate
-    if(
-        !$order->get_meta(SC_AUTH_CODE_KEY)
-        && !$order->get_meta(SC_GW_TRANS_ID_KEY)
-    ) {
-        exit;
+    if(!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_GW_TRANS_ID_KEY)) {
+        return;
     }
     
     if($order_status == 'completed'|| $order_status == 'pending') {
@@ -277,7 +274,7 @@ function sc_add_buttons()
         );
         
         // Show VOID button
-        if($order_has_refund != 1) {
+        if($order_has_refund != 1 && $order->get_meta('isAPM') == "0") {
             $buttons_html .= 
                 ' <button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
                 . __( 'Are you sure, you want to Cancel Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '

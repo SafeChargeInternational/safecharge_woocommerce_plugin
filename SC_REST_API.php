@@ -212,7 +212,7 @@ class SC_REST_API
             curl_close ($ch);
             
             self::create_log($url, 'REST API URL: ');
-            self::create_log($resp, 'REST API response: ');
+        //    self::create_log($resp, 'REST API response: ');
         }
         catch(Exception $e) {
             self::create_log($e->getMessage(), 'Exception ERROR when call REST API: ');
