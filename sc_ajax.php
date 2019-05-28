@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Work with Ajax when change country from the select menu manually.
+ * Work with Ajax.
  * 
  * 2018
  * 
