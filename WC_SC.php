@@ -2018,14 +2018,8 @@ class WC_SC extends WC_Payment_Gateway
             $order->update_meta_data(SC_GW_TRANS_ID_KEY, $gw_transaction_id);
         }
         
-        if(
-            (isset($_REQUEST['is-apm']) && intval($_REQUEST['is-apm']) == 0)
-            || (isset($_REQUEST['payment_method']) && in_array($_REQUEST['payment_method'], array('cc_card', 'dc_card')))
-        ) {
-            $order->update_meta_data('isAPM', 0);
-        }
-        else {
-            $order->update_meta_data('isAPM', 1);
+        if(isset($_REQUEST['payment_method']) && $_REQUEST['payment_method']) {
+            $order->update_meta_data('_paymentMethod', $_REQUEST['payment_method']);
         }
 
         $order->save();

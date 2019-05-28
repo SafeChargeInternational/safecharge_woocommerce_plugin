@@ -230,6 +230,7 @@ function sc_add_buttons()
     try {
         $order = new WC_Order($_REQUEST['post']);
         $order_status = strtolower($order->get_status());
+        $order_payment_method = $order->get_meta('_paymentMethod');
     }
     catch (Exception $ex) {
         echo '<script type="text/javascript">console.error("'
@@ -239,6 +240,11 @@ function sc_add_buttons()
     
     // to show SC buttons we must be sure the order is paid via SC Paygate
     if(!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_GW_TRANS_ID_KEY)) {
+        // hide Refund Button
+        if($order_payment_method == 'apmgw_Neteller') {
+            echo '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
+        }
+        
         return;
     }
     
@@ -274,7 +280,7 @@ function sc_add_buttons()
         );
         
         // Show VOID button
-        if($order_has_refund != '1' && $order->get_meta('isAPM') == "0") {
+        if($order_has_refund != '1' && in_array($order_payment_method, array('cc_card', 'dc_card'))) {
             $buttons_html .= 
                 ' <button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
                 . __( 'Are you sure, you want to Cancel Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
