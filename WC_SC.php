@@ -622,7 +622,7 @@ class WC_SC extends WC_Payment_Gateway
             )) {
                 $payment_method = 'd3d';
                 
-                $params['urlDetails']['notificationUrl'] .= '&is-apm=0';
+            //    $params['urlDetails']['notificationUrl'] .= '&is-apm=0';
             }
                 
             $params['checksum'] = hash($this->settings['hash_type'], stripslashes(
@@ -2018,8 +2018,14 @@ class WC_SC extends WC_Payment_Gateway
             $order->update_meta_data(SC_GW_TRANS_ID_KEY, $gw_transaction_id);
         }
         
-        if(isset($_REQUEST['is-apm']) && intval($_REQUEST['is-apm']) == 0) {
+        if(
+            (isset($_REQUEST['is-apm']) && intval($_REQUEST['is-apm']) == 0)
+            || (isset($_REQUEST['payment_method']) && in_array($_REQUEST['payment_method'], array('cc_card', 'dc_card')))
+        ) {
             $order->update_meta_data('isAPM', 0);
+        }
+        else {
+            $order->update_meta_data('isAPM', 1);
         }
 
         $order->save();
