@@ -43,6 +43,9 @@ Please, contact out Tech-Support team (tech-support@safecharge.com) in case of q
 
 == Changelog ==
 
+= 2.0 - 2019-05-28 =
+* New - Integrate SafeCharge WebSDK.
+
 = 1.9.1 - 2019-05-13 =
 * New - Hide Refund and Void buttons when they no need to be visible. Better Order Notes. Some code fixes.
 

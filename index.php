@@ -3,7 +3,7 @@
 Plugin Name: SafeCharge WooCommerce PlugIn
 Plugin URI: http://www.safecharge.com
 Description: SafeCharge gateway for woocommerce
-Version: 1.9.1
+Version: 2.0
 Author: SafeCharge
 Author URI: http://safecharge.com
 */
