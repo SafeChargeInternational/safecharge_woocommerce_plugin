@@ -360,10 +360,8 @@ class WC_SC extends WC_Payment_Gateway
             $items = $order->get_items();
             $params['numberofitems'] = count($items);
 
-            $params['handling'] = number_format(
-                (SC_Versions_Resolver::get_shipping($order) + $this->get_order_data($order, 'order_shipping_tax')),
-                2, '.', ''
-            );
+            $params['handling'] = SC_Versions_Resolver::get_shipping($order)
+                + $this->get_order_data($order, 'order_shipping_tax');
             
             $params['discount'] = number_format($order->get_discount_total(), 2, '.', '');
 
@@ -507,7 +505,7 @@ class WC_SC extends WC_Payment_Gateway
             foreach ( $items as $item ) {
                 $i++;
                 
-                $params['item_name_'.$i]        = $item['name'];
+                $params['item_name_'.$i]        = urlencode($item['name']);
                 $params['item_number_'.$i]      = $item['product_id'];
                 $params['item_quantity_'.$i]    = $item['qty'];
 
@@ -529,6 +527,8 @@ class WC_SC extends WC_Payment_Gateway
                 $params['handling'] += $test_diff;
                 $this->create_log($test_diff, 'Total diff, added to handling: ');
             }
+            
+            $params['handling'] = number_format($params['handling'], 2, '.', '');
             # Items calculations END
 
             // be sure there are no array elements in $params !!!
@@ -621,8 +621,6 @@ class WC_SC extends WC_Payment_Gateway
                 array('cc_card', 'dc_card')
             )) {
                 $payment_method = 'd3d';
-                
-            //    $params['urlDetails']['notificationUrl'] .= '&is-apm=0';
             }
                 
             $params['checksum'] = hash($this->settings['hash_type'], stripslashes(
@@ -1796,14 +1794,14 @@ class WC_SC extends WC_Payment_Gateway
         
         switch($status) {
             case 'CANCELED':
-                $message = 'Payment status changed to:' . $status
-                    .'. PPP_TransactionID = '. @$request['PPP_TransactionID']
-                    .", Status = " .$status. ', GW_TransactionID = '
-                    .@$request['TransactionID'];
+                $message = 'Your request was Canceld.'
+                    . ' PPP_TransactionID = '. @$request['PPP_TransactionID']
+                    . ", Status = " .$status. ', GW_TransactionID = '
+                    . @$request['TransactionID'];
 
                 $this->msg['message'] = $message;
                 $this->msg['class'] = 'woocommerce_message';
-                $order->update_status('failed');
+            //    $order->update_status('failed');
                 $order->add_order_note('Failed');
                 $order->add_order_note($this->msg['message']);
             break;

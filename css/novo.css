@@ -50,6 +50,11 @@ div.payment_method_sc {
     position: relative;
 }
 
+.SfcField iframe {
+    min-height: 20px !important;
+    color: inherit !important;
+}
+
 .apm_field .question_mark {
     top: 26px;
     position: absolute;
@@ -63,7 +68,7 @@ div.payment_method_sc {
     color: #14B5F1;
 }
 
-.apm_field input, .apm_field input:focus {
+.apm_field input, .SfcField iframe:focus {
     border: 0 !important;
     outline: 0 !important;
     background-color: inherit !important;
@@ -77,20 +82,20 @@ div.payment_method_sc {
 }
 
 /* Chrome, Firefox, Opera, Safari 10.1+ */
-.apm_field input::placeholder {
+.apm_field input::placeholder, .SfcField iframe::placeholder {
     color: #9B9B9B !important;
     opacity: 1; /* Firefox */
     font-size: 15px;
 }
 
 /* Internet Explorer 10-11 */
-.apm_field input:-ms-input-placeholder {
+.apm_field input:-ms-input-placeholder, .SfcField iframe input:-ms-input-placeholder {
     color: #9B9B9B !important;
     font-size: 15px;
 }
 
 /* Microsoft Edge */
-.apm_field input::-ms-input-placeholder {
+.apm_field input::-ms-input-placeholder, .SfcField iframe input::-ms-input-placeholder {
     color: #9B9B9B !important;
     font-size: 15px;
 }

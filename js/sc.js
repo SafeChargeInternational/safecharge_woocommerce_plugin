@@ -1,3 +1,5 @@
+'use strict';
+
 var isAjaxCalled = false;
 var manualChangedCountry = false;
 var tokAPMs = ['cc_card', 'paydotcom'];
@@ -12,6 +14,10 @@ var selectedPM = '';
 var billing_country_first_val = '';
 var scSettleBtn = null;
 var scVoidBtn = null;
+
+// for the fields
+var sfc = null;
+var sfcFirstField = null;
 
  /**
   * Function validateScAPMsModal
@@ -40,7 +46,17 @@ function scValidateAPMFields() {
                 var apmField = self.find('.apm_field input');
                 selectedPM = radioBtn.val();
                 
-                if (
+                // SafeCharge fields
+                if(selectedPM == 'cc_card' || selectedPM == 'dc_card') {
+                    // all fields must have class sfc-complete
+                    if(jQuery('#sc_' + selectedPM).find('.SfcField').length
+                        != jQuery('#sc_' + selectedPM).find('.sfc-complete').length
+                    ) {
+                        formValid = false;
+                    }
+                }
+                // other fields
+                else if (
                     typeof apmField.attr('pattern') != 'undefined'
                     && apmField.attr('pattern') !== false
                     && apmField.attr('pattern') != ''
@@ -67,50 +83,19 @@ function scValidateAPMFields() {
     
     if(formValid) {
         // check if method needed tokenization
-        if(tokAPMs.indexOf(selectedPM) > -1) {
-            var payload = {
-                merchantSiteId: '',
-                // we set environment only if its test
-                sessionToken:   '',
-                billingAddress: {
-                    city:       jQuery('#billing_city').val(),
-                    country:    jQuery("#billing_country").val(),
-                    zip:        jQuery("#billing_postcode").val(),
-                    email:      jQuery("#billing_email").val(),
-                    firstName:  jQuery("#billing_first_name").val(),
-                    lastName:   jQuery("#billing_last_name").val(),
-                }, 
-                cardData: {
-                    cardNumber:         jQuery('#' + selectedPM + '_' + tokAPMsFields.cardNumber).val(),
-                    cardHolderName:     jQuery('#' + selectedPM + '_' + tokAPMsFields.cardHolderName).val(),
-                    expirationMonth:    jQuery('#' + selectedPM + '_' + tokAPMsFields.expirationMonth).val(),
-                    expirationYear:     jQuery('#' + selectedPM + '_' + tokAPMsFields.expirationYear).val(),
-                    CVV:                null
+        if(selectedPM == 'cc_card' || selectedPM == 'dc_card') {
+            sfc.getToken(sfcFirstField).then(function(result) {
+                // Stop progress animation!
+                if (result.status === 'SUCCESS') {
+                    console.log(result)
+                    jQuery('#' + selectedPM + '_ccTempToken').val(result.ccTempToken);
+                    jQuery('form.woocommerce-checkout').submit();
                 }
-            };
-            
-            // call rest api to get first 3 parameters of payload
-            jQuery.ajax({
-                type: "POST",
-                url: myAjax.ajaxurl,
-                data: { needST: 1 },
-                dataType: 'json'
-            })
-                .done(function(resp){
-                    if(resp.status == 1 && typeof resp.data != 'undefined') {
-                        payload.merchantSiteId = resp.data.merchantId;
-                        payload.sessionToken = resp.data.sessionToken;
-                        
-                        if(resp.data.test == 'yes') {
-                            payload.environment = 'test';
-                        }
-                        
-                        // get tokenization card number
-                        if(typeof Safecharge != 'undefined') {
-                            Safecharge.card.createToken(payload, safechargeResultHandler);
-                        }
-                    }
-                });
+                else {
+                    jQuery('#custom_loader').hide();
+                    alert('Unexpected error. Please try again later!');
+                }
+            });
         }
         // or just submit the form
         else {
@@ -120,48 +105,14 @@ function scValidateAPMFields() {
     else {
         jQuery('form.woocommerce-checkout').prepend(
             '<ul class="woocommerce-error" role="alert">'
-                +'<li><strong>Please, choose payment method, and fill required fields!</strong></li>'
+                +'<li><strong>Please, choose payment method, and fill all fields!</strong></li>'
             +'</ul>'
         );
 
+        jQuery('#custom_loader').hide();
         window.location.hash = '#main';
     }
  }
- 
-/**
-  * Function safechargeResultHandler
-  * This function is just a handler for createToken method.
-  * It just replaces the card number with a token.
-  * 
-  * @param {object} resp
-  */
-function safechargeResultHandler(resp) {
-    if(resp.status == 'ERROR') {
-        jQuery('#custom_loader').hide();
-        
-        var msg = 'Error when try to proceed the payment. Please, check you fields!';
-        if(typeof resp.reason != 'undefined' && resp.reason != '') {
-            msg = resp.reason;
-        }
-                 
-        jQuery('form.woocommerce-checkout').prepend(
-            '<ul class="woocommerce-error" role="alert">'
-                +'<li><strong>'+msg+'</strong></li>'
-            +'</ul>'
-        );
-
-        window.location.hash = '#main';
-    //    window.location = window.location.hash;
-    }
-    else if(resp.status == 'SUCCESS') {
-        jQuery('#' + selectedPM + '_' + tokAPMsFields.cardNumber).val(resp.ccTempToken);
-        jQuery('#custom_loader').hide();
-        
-        jQuery('form.woocommerce-checkout')
-            .append('<input type="hidden" name="lst", value="'+resp.sessionToken+'" />')
-            .submit();
-    }
-}
  
  /**
   * Function showErrorLikeInfo
@@ -234,94 +185,78 @@ function getAPMs() {
                             newImg = '<img src="'+ pMethods[i]['logoURL'].replace('/svg/', '/svg/solid-white/')
                                 +'" alt="'+ pmMsg +'" />';
                         }
-
-                        // for cc_card CVV field is mandtory, if miss, add it:
-                        if(pMethods[i].paymentMethod == 'cc_card') {
-                            var addCVVField = true;
-
-                            for(var f in pMethods[i].fields) {
-                                if(pMethods[i].fields[f].name.toLowerCase() == 'cvv') {
-                                    addCVVField = false;
-                                    break;
-                                }
-                            }
-
-                            if(addCVVField) {
-                                pMethods[i].fields.push({
-                                    name: 'CVV'
-                                    ,regex: '^[0-9]{3,4}$'
-                                    ,type: 'text'
-                                    ,validationmessage: [{
-                                        message: 'CVV must be 3 or 4 digits!'
-                                        ,language: 'en'
-                                    }]
-                                    ,caption: [{
-                                        message: 'CVV Number'
-                                        ,language: 'en'
-                                    }]
-                                });
-                            }
-                        }
-
+                        
                         html +=
                             '<li class="apm_container">'
                                 +'<div class="apm_title">'
                                     +newImg
                                     +'<input id="sc_payment_method_'+ pMethods[i].paymentMethod +'" type="radio" class="input-radio sc_payment_method_field" name="payment_method_sc" value="'+ pMethods[i].paymentMethod +'" />'
                                     +'<span class=""></span>'
-                                +'</div>'
+                                +'</div>';
 
-                                +'<div class="apm_fields">';
-
-                        // create fields for the APM
-                        if(pMethods[i].fields.length > 0) {
-                            for(var j in pMethods[i].fields) {
-                                var pattern = '';
-                                try {
-                                    pattern = pMethods[i].fields[j].regex;
-                                    if(pattern === undefined) {
-                                        pattern = '';
+                        if(pMethods[i].paymentMethod == 'cc_card' || pMethods[i].paymentMethod == 'dc_card') {
+                            html +=
+                                '<div class="apm_fields" id="sc_'+ pMethods[i].paymentMethod +'">'
+                                    +'<div id="sc_card_number" class="apm_field"></div>'
+                                    +'<div id="sc_card_expiry" class="apm_field"></div>'
+                                    +'<div id="sc_card_cvc" class="apm_field"></div>'
+                                    +'<input type="hidden" id="'+ pMethods[i].paymentMethod
+                                        +'_ccTempToken" name="'+ pMethods[i].paymentMethod +'[ccTempToken]" />';
+                        }
+                        else {
+                            html+=
+                                '<div class="apm_fields">';
+                        
+                            // create fields for the APM
+                            if(pMethods[i].fields.length > 0) {
+                                for(var j in pMethods[i].fields) {
+                                    var pattern = '';
+                                    try {
+                                        pattern = pMethods[i].fields[j].regex;
+                                        if(pattern === undefined) {
+                                            pattern = '';
+                                        }
                                     }
-                                }
-                                catch(e) {}
+                                    catch(e) {}
 
-                                var placeholder = '';
-                                try {
-                                    if(typeof pMethods[i].fields[j].caption[0] == 'undefined') {
-                                        placeholder = pMethods[i].fields[j].name;
-                                        placeholder = placeholder.replace(/_/g, ' ');
+                                    var placeholder = '';
+                                    try {
+                                        if(typeof pMethods[i].fields[j].caption[0] == 'undefined') {
+                                            placeholder = pMethods[i].fields[j].name;
+                                            placeholder = placeholder.replace(/_/g, ' ');
+                                        }
+                                        else {
+                                            placeholder = pMethods[i].fields[j].caption[0].message;
+                                        }
                                     }
-                                    else {
-                                        placeholder = pMethods[i].fields[j].caption[0].message;
+                                    catch(e) {
+                                        placeholder = '';
                                     }
-                                }
-                                catch(e) {
-                                    placeholder = '';
-                                }
 
-                                var fieldErrorMsg = '';
-                                try {
-                                    fieldErrorMsg = pMethods[i].fields[j].validationmessage[0].message;
-                                    if(fieldErrorMsg === undefined) {
-                                        fieldErrorMsg = '';
+                                    var fieldErrorMsg = '';
+                                    try {
+                                        fieldErrorMsg = pMethods[i].fields[j].validationmessage[0].message;
+                                        if(fieldErrorMsg === undefined) {
+                                            fieldErrorMsg = '';
+                                        }
                                     }
-                                }
-                                catch(e) {}
+                                    catch(e) {}
 
-                                html +=
-                                        '<div class="apm_field">'
-                                            +'<input id="'+ pMethods[i].paymentMethod +'_'+ pMethods[i].fields[j].name +'" name="'+ pMethods[i].paymentMethod +'['+ pMethods[i].fields[j].name +']" type="'+ pMethods[i].fields[j].type +'" pattern="'+ pattern + '" placeholder="'+ placeholder +'" autocomplete="new-password" />';
-
-                                if(pattern != '') {
                                     html +=
-                                            '<span class="question_mark" onclick="showErrorLikeInfo(\'sc_'+ pMethods[i].fields[j].name +'\')"><span class="tooltip-icon"></span></span>'
-                                            +'<div class="apm_error" id="error_sc_'+ pMethods[i].fields[j].name +'">'
-                                                +'<label>'+fieldErrorMsg+'</label>'
-                                            +'</div>';
-                                }
+                                            '<div class="apm_field">'
+                                                +'<input id="'+ pMethods[i].paymentMethod +'_'+ pMethods[i].fields[j].name +'" name="'+ pMethods[i].paymentMethod +'['+ pMethods[i].fields[j].name +']" type="'+ pMethods[i].fields[j].type +'" pattern="'+ pattern + '" placeholder="'+ placeholder +'" autocomplete="new-password" />';
 
-                                html +=
-                                        '</div>';
+                                    if(pattern != '') {
+                                        html +=
+                                                '<span class="question_mark" onclick="showErrorLikeInfo(\'sc_'+ pMethods[i].fields[j].name +'\')"><span class="tooltip-icon"></span></span>'
+                                                +'<div class="apm_error" id="error_sc_'+ pMethods[i].fields[j].name +'">'
+                                                    +'<label>'+fieldErrorMsg+'</label>'
+                                                +'</div>';
+                                    }
+
+                                    html +=
+                                            '</div>';
+                                }
                             }
                         }
 
@@ -329,14 +264,14 @@ function getAPMs() {
                                 '</div>'
                             +'</li>';
                     }
-
-                    print_apms_options(html)
+                    
+                //    print_apms_options(html, resp.testEnv, resp.merchantSiteId, resp.langCode, resp.sessionToken);
 
                     // WP js trigger - wait until checkout is updated, but because it not always fired
                     // print the APMs one more time befor it
                     jQuery( document.body ).on( 'updated_checkout', function(){
-                        console.log('updated_checkout')
-                        print_apms_options(html)
+                        console.log('updated_checkout');
+                        print_apms_options(html, resp.testEnv, resp.merchantSiteId, resp.langCode, resp.sessionToken);
                     });
                 }
                 // show some error
@@ -355,8 +290,12 @@ function getAPMs() {
 
 /**
  * @param {string} html - html code for the options
+ * @param {string} testEnv - yes or no
+ * @param {string} merchantSiteId
+ * @param {string} langCode
+ * @param {string} sessionToken
  */
-function print_apms_options(html) {
+function print_apms_options(html, testEnv, merchantSiteId, langCode, sessionToken) {
     // apend APMs holder
     if(jQuery('form.woocommerce-checkout').find('#sc_apms_list').length == 0) {
         jQuery('div.payment_method_sc').append('<ul id="sc_apms_list"></div>');
@@ -367,14 +306,70 @@ function print_apms_options(html) {
     }
 
     // insert the html
-    jQuery('#sc_apms_list').append(html);
+    jQuery('#sc_apms_list')
+        .append(html)
+        .promise()
+        .done(function(){
+            createSCFields(testEnv, merchantSiteId, langCode, sessionToken);
+        });
 
     // change submit button type and behavior
     jQuery('form.woocommerce-checkout button[type=submit]')
         .attr('type', 'button')
         .attr('onclick', 'scValidateAPMFields()');
 }
- 
+
+/**
+ * Function createSCFields
+ * Call SafeCharge method and pass the parameters
+ * 
+ * @param {string} testEnv - yes or no
+ * @param {string} merchantSiteId
+ * @param {string} langCode
+ */
+function createSCFields(testEnv, merchantSiteId, langCode, sessionToken) {
+    var scData = {
+        merchantSiteId: merchantSiteId
+        ,sessionToken: sessionToken
+    };
+    
+    if(testEnv == 'yes') {
+        scData.env = 'test';
+    }
+    
+    console.log(scData)
+    
+    sfc = SafeCharge(scData);
+    
+    // prepare fields
+    var fields = sfc.fields({
+        locale: langCode
+    });
+    
+    // set some classes
+    var elementClasses = {
+        focus: 'focus',
+        empty: 'empty',
+        invalid: 'invalid',
+    };
+    
+    // describe fields
+    var cardNumber = sfcFirstField = fields.create('ccNumber', {
+        classes: elementClasses
+    });
+    cardNumber.attach('#sc_card_number');
+
+    var cardExpiry = fields.create('ccExpiration', {
+        classes: elementClasses
+    });
+    cardExpiry.attach('#sc_card_expiry');
+
+    var cardCvc = fields.create('ccCvc', {
+        classes: elementClasses
+    });
+    cardCvc.attach('#sc_card_cvc'); 
+}
+
 // when the admin select to Settle or Void the Order
 //function settleAndCancelOrder(question, action, orderId) {
 function settleAndCancelOrder(question, action) {
@@ -600,5 +595,8 @@ jQuery(function() {
     ) {
         jQuery('.refund-items').hide();
     }
+    
+    // load SC Fields
+    
 });
 // document ready function END

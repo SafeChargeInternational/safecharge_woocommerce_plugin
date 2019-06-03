@@ -295,20 +295,26 @@ class SC_REST_API
             );
         }
         catch(Exception $e) {
-            if($is_ajax) {
-                echo json_encode(array('status' => 0, 'data' => print_r($e->getMessage())));
-                exit;
-            }
-
-            return json_encode(array('status' => 0, 'data' => print_r($e->getMessage())));
+             self::return_response(
+                array('status' => 0, 'data' => print_r($e->getMessage())),
+                $is_ajax
+            );
         }
         
-        if($is_ajax) {
-            echo json_encode(array('status' => 1, 'data' => $resp_arr));
-            exit;
-        }
-
-        return json_encode(array('status' => 1, 'data' => $resp_arr));
+        // get new session token for the SafeCharge Fields
+        $session_token_data = self::get_session_token($data);
+        
+        self::return_response(
+            array(
+                'status' => 1,
+                'testEnv' => $data['test'],
+                'merchantSiteId' => $data['merchantSiteId'],
+                'langCode' => $data['languageCode'],
+                'sessionToken' => $session_token_data['sessionToken'],
+                'data' => $resp_arr,
+            ),
+            $is_ajax
+        );
         # get merchant payment methods END
     }
     

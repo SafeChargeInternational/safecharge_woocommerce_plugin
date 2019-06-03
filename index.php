@@ -101,8 +101,11 @@ function sc_enqueue($hook)
     wp_enqueue_style( 'novo_style' );
     
     // the Tokenization script
-    wp_register_script("sc_token_js", 'https://cdn.safecharge.com/js/v1/safecharge.js', array('jquery') );
-    wp_enqueue_script( 'sc_token_js' );
+//    wp_register_script("sc_token_js", 'https://cdn.safecharge.com/js/v1/safecharge.js', array('jquery') );
+//    wp_enqueue_script( 'sc_token_js' );
+    
+    wp_register_script("sc_websdk", 'https://ppp-test.safecharge.com/safecharge_resources/v1/safecharge.js', array('jquery') );
+    wp_enqueue_script( 'sc_websdk' );
     # load external files END
 }
 
@@ -227,24 +230,27 @@ function sc_check_checkout_apm()
 
 function sc_add_buttons()
 {
+    $html = '';
+    
     try {
         $order = new WC_Order($_REQUEST['post']);
         $order_status = strtolower($order->get_status());
         $order_payment_method = $order->get_meta('_paymentMethod');
+        
+    //    if($order_payment_method == 'apmgw_Neteller') {
+        if(!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))) {
+            $html .= '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
+        }
     }
     catch (Exception $ex) {
-        echo '<script type="text/javascript">console.error("'
-            . $ex->getMessage() . '")</script>';
+        echo '<script type="text/javascript">console.error("' . $ex->getMessage() . '")</script>';
         exit;
     }
     
     // to show SC buttons we must be sure the order is paid via SC Paygate
     if(!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_GW_TRANS_ID_KEY)) {
         // hide Refund Button
-        if($order_payment_method == 'apmgw_Neteller') {
-            echo '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
-        }
-        
+        echo $html;
         return;
     }
     
@@ -256,7 +262,6 @@ function sc_add_buttons()
         $order_tr_id = $order->get_meta(SC_GW_TRANS_ID_KEY);
         $order_has_refund = $order->get_meta('_scHasRefund');
         $notify_url = $wc_sc->set_notify_url();
-        $buttons_html = '';
         
         // common data
         $_SESSION['SC_Variables'] = array(
@@ -281,7 +286,7 @@ function sc_add_buttons()
         
         // Show VOID button
         if($order_has_refund != '1' && in_array($order_payment_method, array('cc_card', 'dc_card'))) {
-            $buttons_html .= 
+            $html .= 
                 ' <button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
                 . __( 'Are you sure, you want to Cancel Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
                 . '\'void\')" class="button generate-items">'
@@ -294,7 +299,7 @@ function sc_add_buttons()
             && $order->get_meta(SC_GW_P3D_RESP_TR_TYPE) == 'Auth'
             && $wc_sc->settings['transaction_type'] == 'Auth'
         ) {
-            $buttons_html .=
+            $html .=
                 ' <button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
                 . __( 'Are you sure, you want to Settle Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
                 . '\'settle\', ' . $_REQUEST['post'] .')" class="button generate-items">'
@@ -319,7 +324,7 @@ function sc_add_buttons()
         $_SESSION['SC_Variables']['checksum'] = $checksum;
 
         // add loading screen
-        echo $buttons_html . '<div id="custom_loader" class="blockUI blockOverlay"></div>';
+        echo $html . '<div id="custom_loader" class="blockUI blockOverlay"></div>';
     }
 }
 
