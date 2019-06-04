@@ -636,7 +636,7 @@ class WC_SC extends WC_Payment_Gateway
             require_once 'SC_REST_API.php';
             
             $this->create_log($params, 'params sent to REST: ');
-        //    $this->create_log($_SESSION['SC_Variables'], 'SC_Variables: ');
+            $this->create_log($_SESSION['SC_Variables'], 'SC_Variables: ');
             
             // ALWAYS CHECK USED PARAMS IN process_payment
             $resp = SC_REST_API::process_payment(
@@ -928,7 +928,7 @@ class WC_SC extends WC_Payment_Gateway
             $_SESSION['SC_P3D_Params']['transactionType'] = $this->transaction_type;
             $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl'] = $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl']['notificationUrl'];
 
-            $this->create_log('', 'pay_with_d3d_p3d call to the REST API.');
+            $this->create_log('pay_with_d3d_p3d call to the REST API.');
 
             require_once 'SC_REST_API.php';
 

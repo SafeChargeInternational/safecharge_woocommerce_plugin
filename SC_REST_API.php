@@ -423,33 +423,35 @@ class SC_REST_API
                 case 'd3d':
                     // in D3D use the session token from card tokenization
                     if(!isset($sc_variables['lst']) || empty($sc_variables['lst']) || !$sc_variables['lst']) {
+                        self::create_log(@$sc_variables['lst'], 'Missing Last Session Token: ');
                         return false;
                     }
 
-                    $params['sessionToken']     = $sc_variables['lst'];
-                    $params['isDynamic3D']      = 1;
-                    $params['cardData']         = array(
-                        'ccTempToken'       => $sc_variables['APM_data']['apm_fields']['ccCardNumber'],
-                        'CVV'               => $sc_variables['APM_data']['apm_fields']['CVV'],
-                        'cardHolderName'    => $sc_variables['APM_data']['apm_fields']['ccNameOnCard'],
-                    );
-
+                    $params['sessionToken'] = $sc_variables['lst'];
+                    $params['isDynamic3D']  = 1;
+                    
+                    if(isset($sc_variables['APM_data']['apm_fields']['ccTempToken'])) {
+                        $params['cardData']['ccTempToken'] = $sc_variables['APM_data']['apm_fields']['ccTempToken'];
+                    }
+                    elseif(isset($sc_variables['APM_data']['apm_fields']['ccCardNumber'])) {
+                        $params['cardData']['ccTempToken'] = $sc_variables['APM_data']['apm_fields']['ccCardNumber'];
+                    }
+                    
+                    if(isset($sc_variables['APM_data']['apm_fields']['CVV'])) {
+                        $params['cardData']['CVV'] = $sc_variables['APM_data']['apm_fields']['CVV'];
+                    }
+                    if(isset($sc_variables['APM_data']['apm_fields']['ccNameOnCard'])) {
+                        $params['cardData']['cardHolderName'] = $sc_variables['APM_data']['apm_fields']['ccNameOnCard'];
+                    }
+                    
                     $endpoint_url = $sc_variables['test'] == 'no' ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
                     break;
 
                 // if we can't set $endpoint_url stop here
                 default:
+                    self::create_log($payment_method, 'Not supported payment method: ');
                     return false;
             }
-
-//            self::create_log($params, 'Call REST API when Process Payment: ');
-//            self::create_log(
-//                $sc_variables['merchantId'] . $sc_variables['merchantSiteId']
-//                    .$data['client_request_id'] . ((string) $data['total_amount'])
-//                    .$data['currency']. $data['time_stamp']
-//                ,'Call REST API when Process Payment checksum string without the secret: '
-//            );
-//            self::create_log($data['checksum'], 'Checksum sent to REST: ');
 
             $resp = self::call_rest_api(
                 $endpoint_url,

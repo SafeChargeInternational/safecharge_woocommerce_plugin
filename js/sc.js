@@ -89,7 +89,10 @@ function scValidateAPMFields() {
                 if (result.status === 'SUCCESS') {
                     console.log(result)
                     jQuery('#' + selectedPM + '_ccTempToken').val(result.ccTempToken);
-                    jQuery('form.woocommerce-checkout').submit();
+                    
+                    jQuery('form.woocommerce-checkout')
+                        .append('<input type="hidden" name="lst", value="'+result.sessionToken+'" />')
+                        .submit();
                 }
                 else {
                     jQuery('#custom_loader').hide();
