@@ -1146,48 +1146,6 @@ class WC_SC extends WC_Payment_Gateway
         ) {
             $this->create_log('Refund DMN.');
             
-            // CPanel DMN, from it we do not recieve $_GET['action'] parameter
-            if(
-                @$_REQUEST['action'] != 'refund'
-                && $req_status == 'APPROVED'
-                && @$_REQUEST['transactionType'] == 'Credit'
-            ) {
-                $this->create_log('CPanel Refund DMN.');
-                
-                $order_id = @current(explode('_', $_REQUEST['invoice_id']));
-                $order = new WC_Order($order_id);
-                
-                if(!is_a($order, 'WC_Order')) {
-                    $this->create_log('', 'DMN meassage: there is no Order!');
-
-                    echo 'There is no Order';
-                    exit;
-                }
-                
-                $resp = $this->sc_refund_order($order_id);
-                
-                if(is_a($resp, 'WP_Error')) {
-                    $this->create_log($resp->errors['error'][0], 'Order was not refunded: ');
-                    
-                    $order->add_order_note(
-                        __('DMN message: Your Refund request for Order #'
-                            . $order_id . ', faild with ERROR: ' . $resp->errors['error'][0], 'sc')
-                    );
-                    $order->save();
-                }
-                elseif(is_a($resp, 'WC_Order_Refund')) {
-                    $this->create_log('', 'Refunded amount success.');
-
-                    $this->change_order_status($order, $order_id, 'APPROVED', 'Credit', array(
-                        'resp_id'       => $resp->get_id(),
-                        'totalAmount'   => @$_REQUEST['totalAmount']
-                    ));
-                }
-
-                echo 'DMN received.';
-                exit;
-            }
-
             $order = new WC_Order(@$_REQUEST['order_id']);
 
             if(!is_a($order, 'WC_Order')) {
@@ -1196,7 +1154,6 @@ class WC_SC extends WC_Payment_Gateway
                 echo 'There is no Order';
                 exit;
             }
-        //    $order_status = strtolower($order->get_status());
             
             // change to Refund if request is Approved and the Order status is not Refunded
             if($req_status == 'APPROVED') {
@@ -1210,17 +1167,6 @@ class WC_SC extends WC_Payment_Gateway
                     )
                 );
             }
-            // the API response holds better information, including the reason.
-//            elseif($req_status == 'ERROR') {
-//                $msg = __('DMN message: Your try to Refund #' . $_REQUEST['clientUniqueId'] . ' fail. ', 'sc');
-//                
-//                if(@$_REQUEST['Reason']) {
-//                    $msg .= _('ERROR: "' . $_REQUEST['Reason'] . '".', 'sc');
-//                }
-//
-//                $order -> add_order_note($msg);
-//                $order->save();
-//            }
             elseif(
                 @$_REQUEST['transactionStatus'] == 'DECLINED'
                 || @$_REQUEST['transactionStatus'] == 'ERROR'
@@ -1698,78 +1644,6 @@ class WC_SC extends WC_Payment_Gateway
         }
         
         return;
-    }
-    
-    /**
-     * Function sc_refund_order
-     * Process Order Refund through Code - create refund in WC after
-     * refund in CPanel.
-     * 
-     * @param int $order_id
-     * @param string $refund_reason
-     * 
-     * @return WC_Order_Refund|WP_Error
-     */
-    private function sc_refund_order($order_id, $refund_reason = '')
-    {
-        $this->create_log('', 'call sc_refund_order ');
-        
-        if(!$this->checkAdvancedCheckSum()) {
-            return new WP_Error( 'error', __( 'The checkAdvancedCheckSum did not mutch!', 'sc' ) );
-        }
-        
-        $order  = wc_get_order( $order_id );
-        
-        // If it's something else such as a WC_Order_Refund, we don't want that.
-        if( ! is_a( $order, 'WC_Order') ) {
-            return new WP_Error( 'error', __( 'Provided ID is not a WC Order', 'sc' ) );
-        }
-        
-        if( $order->get_status() == 'refunded' ) {
-            return new WP_Error( 'error', __( 'Order has been already refunded', 'sc' ) );
-        }
-        
-        // Refund Amount
-        $refund_amount = 0;
-        $req_refund_amount = @$_REQUEST['totalAmount'];
-        // Prepare items which we are refunding
-        $items = array();
-        // Get Items
-        $order_items   = $order->get_items();
-        
-        if ( $order_items ) {
-            foreach( $order_items as $item_id => $item ) {
-                $tax_data = wc_get_order_item_meta($item_id, '_line_tax_data');
-                $refund_tax = 0;
-                
-                if(is_array($tax_data) && isset($tax_data['total']) && !empty($tax_data['total'])) {
-                    $refund_tax = wc_format_decimal($tax_data['total'] );
-                }
-                
-                $refund_amount += wc_format_decimal( $refund_amount )
-                    + wc_get_order_item_meta($item_id, '_line_total');
-                
-                $items[ $item_id ] = array( 
-                    'qty' => wc_get_order_item_meta($item_id, '_qty'), 
-                    'refund_total' => wc_format_decimal( wc_get_order_item_meta($item_id, '_line_total') ), 
-                    'refund_tax' =>  $refund_tax
-                );
-            }
-        }
-        
-        if($req_refund_amount && $req_refund_amount != $refund_amount) {
-            $refund_amount = $req_refund_amount;
-        }
-        
-        $refund = wc_create_refund( array(
-            'amount'         => $refund_amount,
-            'reason'         => $refund_reason,
-            'order_id'       => $order_id,
-        //    'line_items'     => $items,
-            'refund_payment' => false,
-        ));
-        
-        return $refund;
     }
     
     /**
