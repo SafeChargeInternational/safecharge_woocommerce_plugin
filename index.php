@@ -26,8 +26,6 @@ function woocommerce_sc_init()
         return;
     }
     
-//    var_dump(get_option( 'permalink_structure' ));
-    
     require_once 'WC_SC.php';
     require_once ABSPATH . 'wp-admin/includes/plugin.php';
     
@@ -41,7 +39,7 @@ function woocommerce_sc_init()
     // eliminates the problem with different permalinks
     add_action('template_redirect', 'sc_iframe_redirect');
     
-// add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
+    // add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
     add_action( 'woocommerce_order_item_add_action_buttons', 'sc_add_buttons');
     
     // those actions are valid only when the plugin is enabled
