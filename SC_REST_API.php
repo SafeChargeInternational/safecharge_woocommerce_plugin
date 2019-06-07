@@ -74,10 +74,10 @@ class SC_REST_API
                 $settings['hash_type'],
                 $checksum . $settings['secret']
             );
-            
+
             $other_params = array(
                 'urlDetails'    => array('notificationUrl' => $notify_url),
-                'webMasterId'   => $refund['webMasterId'], // webMasterId is not part of the checksum
+                'webMasterId'   => $refund['webMasterId'],
             );
         }
         catch(Exception $e) {
@@ -131,11 +131,13 @@ class SC_REST_API
         }
         catch (Exception $e) {
             self::create_log($e->getMessage(), $action . ' order Exception ERROR when call REST API: ');
-            self::return_response(
-                array('status' => 0, 'data' => $e->getMessage()),
-                is_ajax
-            );
-            exit;
+            
+            if($is_ajax) {
+                echo json_encode(array('status' => 0, 'data' => $e->getMessage()));
+                exit;
+            }
+            
+            return false;
         }
         
         self::create_log($resp, 'SC_REST_API void_and_settle_order() full response: ');
@@ -149,11 +151,12 @@ class SC_REST_API
             $status = 0;
         }
         
-        self::return_response(
-            array('status' => $status, 'data' => $resp),
-            $is_ajax
-        );
-        exit;
+        if($is_ajax) {
+            echo json_encode(array('status' => $status, 'data' => $resp));
+            exit;
+        }
+
+        return $resp;
     }
 
     /**
@@ -220,7 +223,6 @@ class SC_REST_API
         }
         
         if($resp === false) {
-            self::create_log('REST API response is FALSE.');
             return false;
         }
 
@@ -269,7 +271,6 @@ class SC_REST_API
         $session_token = $session_token_data['sessionToken'];
         
         try {
-            # get merchant payment methods
             $checksum_params = array(
                 'merchantId'        => $data['merchantId'],
                 'merchantSiteId'    => $data['merchantSiteId'],
@@ -296,20 +297,25 @@ class SC_REST_API
         }
         catch(Exception $e) {
             if($is_ajax) {
-                echo json_encode(array('status' => 0, 'data' => print_r($e->getMessage())));
+                echo json_encode(array('status' => 0, 'data' => print_r($e->getMessage()), true));
                 exit;
             }
-
-            return json_encode(array('status' => 0, 'data' => print_r($e->getMessage())));
+            
+            return false;
         }
         
         if($is_ajax) {
-            echo json_encode(array('status' => 1, 'data' => $resp_arr));
+            echo json_encode(array(
+                'status' => 1,
+                'testEnv' => $data['test'],
+                'merchantSiteId' => $data['merchantSiteId'],
+                'langCode' => $data['languageCode'],
+                'data' => $resp_arr,
+            ));
             exit;
         }
 
-        return json_encode(array('status' => 1, 'data' => $resp_arr));
-        # get merchant payment methods END
+        return $resp_arr;
     }
     
     /**
@@ -386,7 +392,7 @@ class SC_REST_API
                 'timeStamp'         => $data['time_stamp'],
                 'checksum'          => $data['checksum'],
                 'WebMasterID'       => @$data['WebMasterID'],
-                'deviceDetails'     => self::get_device_details()
+                'deviceDetails'     => self::get_device_details(),
             );
 
             // set parameters specific for the payment method
@@ -417,33 +423,35 @@ class SC_REST_API
                 case 'd3d':
                     // in D3D use the session token from card tokenization
                     if(!isset($sc_variables['lst']) || empty($sc_variables['lst']) || !$sc_variables['lst']) {
+                        self::create_log(@$sc_variables['lst'], 'Missing Last Session Token: ');
                         return false;
                     }
 
-                    $params['sessionToken']     = $sc_variables['lst'];
-                    $params['isDynamic3D']      = 1;
-                    $params['cardData']         = array(
-                        'ccTempToken'       => $sc_variables['APM_data']['apm_fields']['ccCardNumber'],
-                        'CVV'               => $sc_variables['APM_data']['apm_fields']['CVV'],
-                        'cardHolderName'    => $sc_variables['APM_data']['apm_fields']['ccNameOnCard'],
-                    );
+                    $params['sessionToken'] = $sc_variables['lst'];
+                    $params['isDynamic3D'] = 1;
+                    
+                    if(isset($sc_variables['APM_data']['apm_fields']['ccTempToken'])) {
+                        $params['cardData']['ccTempToken'] = $sc_variables['APM_data']['apm_fields']['ccTempToken'];
+                    }
+                    elseif(isset($sc_variables['APM_data']['apm_fields']['ccCardNumber'])) {
+                        $params['cardData']['ccTempToken'] = $sc_variables['APM_data']['apm_fields']['ccCardNumber'];
+                    }
+                    
+                    if(isset($sc_variables['APM_data']['apm_fields']['CVV'])) {
+                        $params['cardData']['CVV'] = $sc_variables['APM_data']['apm_fields']['CVV'];
+                    }
+                    if(isset($sc_variables['APM_data']['apm_fields']['ccNameOnCard'])) {
+                        $params['cardData']['cardHolderName'] = $sc_variables['APM_data']['apm_fields']['ccNameOnCard'];
+                    }
 
                     $endpoint_url = $sc_variables['test'] == 'no' ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
                     break;
 
                 // if we can't set $endpoint_url stop here
                 default:
+                    self::create_log($payment_method, 'Not supported payment method: ');
                     return false;
             }
-
-//            self::create_log($params, 'Call REST API when Process Payment: ');
-//            self::create_log(
-//                $sc_variables['merchantId'] . $sc_variables['merchantSiteId']
-//                    .$data['client_request_id'] . ((string) $data['total_amount'])
-//                    .$data['currency']. $data['time_stamp']
-//                ,'Call REST API when Process Payment checksum string without the secret: '
-//            );
-//            self::create_log($data['checksum'], 'Checksum sent to REST: ');
 
             $resp = self::call_rest_api(
                 $endpoint_url,
