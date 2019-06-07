@@ -380,7 +380,7 @@ class WC_SC extends WC_Payment_Gateway
             $params['merchant_id'] = $this->merchantId;
             $params['merchant_site_id'] = $this->merchantSiteId;
             $params['time_stamp'] = $TimeStamp;
-            $params['encoding'] ='utf8';
+            $params['encoding'] ='utf-8';
             $params['version'] = '4.0.0';
 
             $payment_page = wc_get_cart_url();
