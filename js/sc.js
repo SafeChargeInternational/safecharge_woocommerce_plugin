@@ -600,5 +600,7 @@ jQuery(function() {
     ) {
         jQuery('.refund-items').hide();
     }
+    
+    jQuery('#refund_amount').prop('readonly', false);
 });
 // document ready function END
