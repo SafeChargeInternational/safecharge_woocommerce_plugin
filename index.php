@@ -239,7 +239,7 @@ function sc_add_buttons()
     // to show SC buttons we must be sure the order is paid via SC Paygate
     if(!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_GW_TRANS_ID_KEY)) {
         // hide Refund Button
-        if($order_payment_method == 'apmgw_Neteller') {
+        if($order_payment_method == 'apmgw_Neteller' || $order_payment_method == 'apmgw_MoneyBookers') {
             echo '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
         }
         

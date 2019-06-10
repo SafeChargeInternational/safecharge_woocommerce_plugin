@@ -44,7 +44,7 @@ Please, contact out Tech-Support team (tech-support@safecharge.com) in case of q
 == Changelog ==
 
 = 1.9.2 - 2019-06-07 =
-* New - Added option for the merchant to create local Refund - without sending request to the CPanel, in case her created the refund first in CPanel. Removed the DMN listener for CPanel Refund.
+* New - Added option for the merchant to create local Refund - without sending request to the CPanel, in case her created the refund first in CPanel. Removed the DMN listener for CPanel Refund. Enabled Refund Amount field for WC 3.6+.
 
 = 1.9.1 - 2019-05-13 =
 * New - Hide Refund and Void buttons when they no need to be visible. Better Order Notes. Some code fixes.
