@@ -58,7 +58,7 @@ class WC_SC extends WC_Payment_Gateway
         $this->cashier_in_iframe    =
             @$this->settings['cashier_in_iframe'] ? $this->settings['cashier_in_iframe'] : 'no';
         
-        $this->supports         = array('products', 'refunds'); // to enable auto refund support
+        $this->supports[] = 'refunds'; // to enable auto refund support
         
         $this->init_form_fields();
         
@@ -1431,7 +1431,11 @@ class WC_SC extends WC_Payment_Gateway
 	 * @return boolean
      */
     public function process_refund( $order_id, $amount = null, $reason = '' ) {
-        return false;
+        if($_POST['api_refund'] == 'true') {
+			return true;
+		}
+		
+		return false;
 	}
     
     /**
@@ -1443,10 +1447,8 @@ class WC_SC extends WC_Payment_Gateway
      */
     public function create_refund_in_wc($refund)
     {
-        if(isset($_REQUEST['wc-api']) || !$refund) {
-            $this->create_log($_REQUEST, 'Refund request params: ');
-            $this->create_log($refund, 'Refund object: ');
-            return;
+        if(@$_POST['api_refund'] == 'false' || !$refund) {
+			return false;
         }
         
         // get order refunds
