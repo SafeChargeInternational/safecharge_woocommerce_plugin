@@ -3,10 +3,10 @@
 Tags: credit card, safecharge, woocommerce
 Wordpress requirements: 
 	- minimum v4.7
-	- tested up to v5.0.3
+	- tested up to v5.2.1
 WooCommerce requirements: 
 	- minimum v 3.0
-	- tested up to v3.5.4
+	- tested up to v3.6.4
 Stable tag: 1.9.1
 
 == Description ==
@@ -45,6 +45,9 @@ Please, contact out Tech-Support team (tech-support@safecharge.com) in case of q
 
 = 2.0 - 2019-05-28 =
 * New - Integrate SafeCharge WebSDK.
+
+= 1.9.2 - 2019-06-07 =
+* New - Added option for the merchant to create local Refund - without sending request to the CPanel, in case her created the refund first in CPanel. Removed the DMN listener for CPanel Refund. Enabled Refund Amount field for WC 3.6+.
 
 = 1.9.1 - 2019-05-13 =
 * New - Hide Refund and Void buttons when they no need to be visible. Better Order Notes. Some code fixes.

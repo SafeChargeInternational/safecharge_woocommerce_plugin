@@ -74,10 +74,10 @@ class SC_REST_API
                 $settings['hash_type'],
                 $checksum . $settings['secret']
             );
-            
+
             $other_params = array(
                 'urlDetails'    => array('notificationUrl' => $notify_url),
-                'webMasterId'   => $refund['webMasterId'], // webMasterId is not part of the checksum
+                'webMasterId'   => $refund['webMasterId'],
             );
         }
         catch(Exception $e) {
@@ -131,11 +131,13 @@ class SC_REST_API
         }
         catch (Exception $e) {
             self::create_log($e->getMessage(), $action . ' order Exception ERROR when call REST API: ');
-            self::return_response(
-                array('status' => 0, 'data' => $e->getMessage()),
-                is_ajax
-            );
-            exit;
+            
+            if($is_ajax) {
+                echo json_encode(array('status' => 0, 'data' => $e->getMessage()));
+                exit;
+            }
+            
+            return false;
         }
         
         self::create_log($resp, 'SC_REST_API void_and_settle_order() full response: ');
@@ -149,11 +151,12 @@ class SC_REST_API
             $status = 0;
         }
         
-        self::return_response(
-            array('status' => $status, 'data' => $resp),
-            $is_ajax
-        );
-        exit;
+        if($is_ajax) {
+            echo json_encode(array('status' => $status, 'data' => $resp));
+            exit;
+        }
+
+        return $resp;
     }
 
     /**
@@ -220,7 +223,6 @@ class SC_REST_API
         }
         
         if($resp === false) {
-            self::create_log('REST API response is FALSE.');
             return false;
         }
 
@@ -269,7 +271,6 @@ class SC_REST_API
         $session_token = $session_token_data['sessionToken'];
         
         try {
-            # get merchant payment methods
             $checksum_params = array(
                 'merchantId'        => $data['merchantId'],
                 'merchantSiteId'    => $data['merchantSiteId'],
@@ -295,27 +296,27 @@ class SC_REST_API
             );
         }
         catch(Exception $e) {
-             self::return_response(
-                array('status' => 0, 'data' => print_r($e->getMessage())),
-                $is_ajax
-            );
+            if($is_ajax) {
+                echo json_encode(array('status' => 0, 'data' => print_r($e->getMessage()), true));
+                exit;
+            }
+            
+            return false;
         }
         
-        // get new session token for the SafeCharge Fields
-        $session_token_data = self::get_session_token($data);
-        
-        self::return_response(
-            array(
+        if($is_ajax) {
+            echo json_encode(array(
                 'status' => 1,
                 'testEnv' => $data['test'],
                 'merchantSiteId' => $data['merchantSiteId'],
                 'langCode' => $data['languageCode'],
                 'sessionToken' => $session_token_data['sessionToken'],
                 'data' => $resp_arr,
-            ),
-            $is_ajax
-        );
-        # get merchant payment methods END
+            ));
+            exit;
+        }
+
+        return $resp_arr;
     }
     
     /**

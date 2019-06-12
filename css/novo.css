@@ -162,4 +162,4 @@ form.woocommerce-checkout #payment.woocommerce-checkout-payment {
 }
 
 /* hide "Refund via SafeCharge" button */
-.do-api-refund { display: none !important; }
+/*.do-api-refund { display: none !important; }*/
