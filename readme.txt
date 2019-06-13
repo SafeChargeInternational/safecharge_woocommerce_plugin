@@ -1,4 +1,4 @@
-=== Safecharge WooCommerce Payment Gateway ===
+=== SafeCharge Payments ===
 
 Tags: credit card, safecharge, woocommerce
 Wordpress requirements: 
