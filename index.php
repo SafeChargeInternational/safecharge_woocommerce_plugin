@@ -80,22 +80,26 @@ function sc_enqueue($hook)
     
     # load external files
     $plugin_dir = basename(dirname(__FILE__));
+    $url_path = get_site_url() . '/wp-content/plugins/' . $plugin_dir;
    
     // main JS
-    wp_register_script("sc_js_script", WP_PLUGIN_URL . '/' . $plugin_dir . '/js/sc.js', array('jquery') );
+//    wp_register_script("sc_js_script", WP_PLUGIN_URL . '/' . $plugin_dir . '/js/sc.js', array('jquery') );
+    wp_register_script("sc_js_script", $url_path . '/js/sc.js', array('jquery') );
     
     wp_localize_script(
         'sc_js_script',
         'myAjax',
         array(
-            'ajaxurl' => WP_PLUGIN_URL . '/' . $plugin_dir .'/sc_ajax.php',
+        //    'ajaxurl' => WP_PLUGIN_URL . '/' . $plugin_dir .'/sc_ajax.php',
+            'ajaxurl' => $url_path .'/sc_ajax.php',
         )
     );  
     wp_enqueue_script( 'sc_js_script' );
     // main JS END
     
     // novo style
-    wp_register_style ('novo_style', WP_PLUGIN_URL. '/'. $plugin_dir. '/css/novo.css', '' , '', 'all' );
+//    wp_register_style ('novo_style', WP_PLUGIN_URL. '/'. $plugin_dir. '/css/novo.css', '' , '', 'all' );
+    wp_register_style ('novo_style', $url_path . '/css/novo.css', '' , '', 'all' );
     wp_enqueue_style( 'novo_style' );
     
     // the Tokenization script
@@ -229,6 +233,11 @@ function sc_add_buttons()
         $order = new WC_Order($_REQUEST['post']);
         $order_status = strtolower($order->get_status());
         $order_payment_method = $order->get_meta('_paymentMethod');
+        
+        // hide Refund Button
+        if($order_payment_method == 'apmgw_Neteller' || $order_payment_method == 'apmgw_MoneyBookers') {
+            echo '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
+        }
     }
     catch (Exception $ex) {
         echo '<script type="text/javascript">console.error("'
@@ -238,11 +247,6 @@ function sc_add_buttons()
     
     // to show SC buttons we must be sure the order is paid via SC Paygate
     if(!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_GW_TRANS_ID_KEY)) {
-        // hide Refund Button
-        if($order_payment_method == 'apmgw_Neteller' || $order_payment_method == 'apmgw_MoneyBookers') {
-            echo '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
-        }
-        
         return;
     }
     
