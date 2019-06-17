@@ -235,7 +235,7 @@ function sc_add_buttons()
         $order_payment_method = $order->get_meta('_paymentMethod');
         
         // hide Refund Button
-        if($order_payment_method == 'apmgw_Neteller' || $order_payment_method == 'apmgw_MoneyBookers') {
+        if(!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))) {
             echo '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
         }
     }
