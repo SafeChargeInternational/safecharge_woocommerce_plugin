@@ -125,6 +125,7 @@ function scValidateAPMFields() {
         );
 
         window.location.hash = '#main';
+        jQuery('#custom_loader').hide();
     }
  }
  
