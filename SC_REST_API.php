@@ -391,7 +391,7 @@ class SC_REST_API
                 'urlDetails'        => $data['urlDetails'],
                 'timeStamp'         => $data['time_stamp'],
                 'checksum'          => $data['checksum'],
-                'WebMasterID'       => @$data['WebMasterID'],
+                'WebMasterID'       => @$data['webMasterId'],
                 'deviceDetails'     => self::get_device_details(),
             );
 
@@ -502,11 +502,11 @@ class SC_REST_API
                 'timeStamp'         => current(explode('_', $data['cri1'])),
             );
 
-            self::create_log(
-                $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,
-                'Call REST API for Session Token with URL: '
-            );
-            self::create_log('', 'Call REST API for Session Token. ');
+//            self::create_log(
+//                $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,
+//                'Call REST API for Session Token with URL: '
+//            );
+            self::create_log('Call REST API for Session Token. ');
 
             $resp_arr = self::call_rest_api(
                 $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,
