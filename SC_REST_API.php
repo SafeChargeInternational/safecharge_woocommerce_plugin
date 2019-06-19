@@ -682,10 +682,15 @@ class SC_REST_API
         $d = '';
         
         if(is_array($data)) {
-            if(isset($data['cardData']) && is_array($data['cardData']))
-            
-            foreach($data['cardData'] as $k => $v) {
-                $data['cardData'][$k] = md5($v);
+            if(isset($data['cardData']) && is_array($data['cardData'])) {
+                foreach($data['cardData'] as $k => $v) {
+                    $data['cardData'][$k] = md5($v);
+                }
+            }
+            if(isset($data['userAccountDetails']) && is_array($data['userAccountDetails'])) {
+                foreach($data['userAccountDetails'] as $k => $v) {
+                    $data['userAccountDetails'][$k] = md5($v);
+                }
             }
 
             $d = print_r($data, true);
