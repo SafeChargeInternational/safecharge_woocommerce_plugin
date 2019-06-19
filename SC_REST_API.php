@@ -346,7 +346,7 @@ class SC_REST_API
                 'amountDetails'     => array(
                     'totalShipping'     => '0.00',
                     'totalHandling'     => $data['handling'], // this is actually shipping
-                    'totalDiscount'     => $data['discount'],
+                    'totalDiscount'     => @$data['discount'] ? $data['discount'] : '0.00',
                     'totalTax'          => @$data['total_tax'] ? $data['total_tax'] : '0.00',
                 ),
                 'items'             => $data['items'],

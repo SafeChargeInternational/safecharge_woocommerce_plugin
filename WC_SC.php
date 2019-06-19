@@ -848,13 +848,7 @@ class WC_SC extends WC_Payment_Gateway
                     
                     echo 
                         '<script>'
-                        //    .'var newTab = window.open("'.$resp['redirectURL'].'", "_blank");'
-                        //    .'newTab.focus();'
                             .'window.location.href = "' . $resp['redirectURL'] . '";'
-                            
-                        //        . $params['success_url']
-                        //        . (strpos($params['success_url'], '?') === false ? '?' : '&')
-                        //        . 'Status=waiting";'
                         .'</script>';
                     
                     exit;
