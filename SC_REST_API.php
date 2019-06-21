@@ -692,6 +692,9 @@ class SC_REST_API
                     $data['userAccountDetails'][$k] = md5($v);
                 }
             }
+            if(isset($data['paResponse']) && !empty($data['paResponse'])) {
+                $data['paResponse'] = 'a long string';
+            }
 
             $d = print_r($data, true);
         }
