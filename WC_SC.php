@@ -1134,7 +1134,8 @@ class WC_SC extends WC_Payment_Gateway
         // see https://www.safecharge.com/docs/API/?json#refundTransaction -> Output Parameters
         // when we refund form CPanel we get transactionType = Credit and Status = 'APPROVED'
         if(
-            (@$_REQUEST['action'] == 'refund' || @$_REQUEST['transactionType'] == 'Credit')
+            (@$_REQUEST['action'] == 'refund'
+                || in_array(@$_REQUEST['transactionType'], array('Credit', 'Refund')))
             && !empty($req_status)
             && $this->checkAdvancedCheckSum()
         ) {
