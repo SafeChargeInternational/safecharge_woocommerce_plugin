@@ -136,17 +136,16 @@ class WC_SC extends WC_Payment_Gateway
                 'default' => 'no'
             ),
            'title' => array(
-                'title' => __('Title:', 'sc'),
+                'title' => __('Default title:', 'sc'),
                 'type'=> 'text',
                 'description' => __('This is the payment method which the user sees during checkout.', 'sc'),
-                'default' => __('Pay with Credit / Debit card', 'sc')
+                'default' => __('Secure Payment with SafeCharge', 'sc')
             ),
             'description' => array(
                 'title' => __('Description:', 'sc'),
                 'type' => 'textarea',
                 'description' => __('This controls the description which the user sees during checkout.', 'sc'),
-                'default' => __('Pay securely by Credit / Debit card or local payment option through '
-                    .SC_GATEWAY_TITLE .' secured payment page.', 'sc')
+                'default' => __('Place order to get to our secured payment page to select your payment option', 'sc')
             ),
             'merchantId' => array(
                 'title' => __('Merchant ID', 'sc'),
@@ -173,21 +172,21 @@ class WC_SC extends WC_Payment_Gateway
                 )
             ),
             'payment_api' => array(
-                'title' => __('Payment API', 'sc'),
+                'title' => __('Payment solution', 'sc'),
                 'type' => 'select',
                 'description' => __('Select '. SC_GATEWAY_TITLE .' payment API', 'sc'),
                 'options' => array(
-                    'cashier' => 'Cashier',
-                    'rest' => 'REST API',
+                    'cashier' => 'Hosted payment page',
+                    'rest' => 'SafeCharge API',
                 )
             ),
             'transaction_type' => array(
-                'title' => __('Transaction Type', 'sc'),
+                'title' => __('Payment action', 'sc'),
                 'type' => 'select',
                 'description' => __('Select preferred Transaction Type.<br/>Just in case goto WooCommerce > Settings > Products > Inventory and remove any value that is present in the Hold Stock (minutes) field.', 'sc'),
                 'options' => array(
-                    'Auth' => 'Auth and Settle',
-                    'Sale' => 'Sale',
+                    'Auth' => 'Authorize',
+                    'Sale' => 'Authorize & Capture',
                 )
             ),
             'notify_url' => array(
