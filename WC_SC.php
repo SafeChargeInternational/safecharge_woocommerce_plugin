@@ -714,6 +714,7 @@ class WC_SC extends WC_Payment_Gateway
                 if(isset($_SESSION['SC_P3D_Params'])) {
                     unset($_SESSION['SC_P3D_Params']);
                 }
+                
                 // prepare the new session data
                 if($payment_method == 'd3d') {
                     $params_p3d = array(

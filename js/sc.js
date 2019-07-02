@@ -268,7 +268,7 @@ function getAPMs() {
                             +'</li>';
                     }
                     
-                //    print_apms_options(html, resp.testEnv, resp.merchantSiteId, resp.langCode, resp.sessionToken);
+                    print_apms_options(html, resp.testEnv, resp.merchantSiteId, resp.langCode, resp.sessionToken);
 
                     // WP js trigger - wait until checkout is updated, but because it not always fired
                     // print the APMs one more time befor it
@@ -472,13 +472,13 @@ function enableDisableSCCheckout(action) {
     })
         .done(function(resp) {
             // go to DMN page to change order status
-            if(resp && typeof resp.status != 'undefined' && resp.status == 1) {
+            if(typeof resp != 'undefined' && typeof resp.status != 'undefined' && resp.status == 1) {
                 if(jQuery('#sc_apms_list').length == 0) {
                     getAPMs();
                 }
             }
             else {
-                alert('Error with the Response.');
+                alert('Error try to get a response.');
             }
             
             jQuery('#custom_loader_2').parent('div').hide();

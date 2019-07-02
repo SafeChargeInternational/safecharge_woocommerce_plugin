@@ -99,7 +99,7 @@ function sc_enqueue($hook)
     wp_enqueue_style( 'novo_style' );
     
     // the Tokenization script
-    wp_register_script("sc_websdk", 'https://cdn-int.safecharge.com/safecharge_resources/v1/websdk/safecharge.js', array('jquery') );
+    wp_register_script("sc_websdk", 'https://dev-mobile.safecharge.com/cdn/WebSdk/dist/safecharge.js', array('jquery') );
     wp_enqueue_script( 'sc_websdk' );
     # load external files END
 }
