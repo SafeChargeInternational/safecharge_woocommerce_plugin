@@ -347,7 +347,7 @@ class SC_REST_API
                 'amountDetails'     => array(
                     'totalShipping'     => '0.00',
                     'totalHandling'     => $data['handling'], // this is actually shipping
-                    'totalDiscount'     => $data['discount'],
+                    'totalDiscount'     => @$data['discount'],
                     'totalTax'          => @$data['total_tax'] ? $data['total_tax'] : '0.00',
                 ),
                 'items'             => $data['items'],
@@ -392,8 +392,8 @@ class SC_REST_API
                 'urlDetails'        => $data['urlDetails'],
                 'timeStamp'         => $data['time_stamp'],
                 'checksum'          => $data['checksum'],
-                'WebMasterID'       => @$data['WebMasterID'],
-                'deviceDetails'     => self::get_device_details()
+                'webMasterId'       => @$data['webMasterId'],
+                'deviceDetails'     => self::get_device_details(),
             );
 
             // set parameters specific for the payment method
@@ -429,7 +429,7 @@ class SC_REST_API
                     }
 
                     $params['sessionToken'] = $sc_variables['lst'];
-                    $params['isDynamic3D']  = 1;
+                    $params['isDynamic3D'] = 1;
                     
                     if(isset($sc_variables['APM_data']['apm_fields']['ccTempToken'])) {
                         $params['cardData']['ccTempToken'] = $sc_variables['APM_data']['apm_fields']['ccTempToken'];
@@ -507,7 +507,7 @@ class SC_REST_API
                 $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,
                 'Call REST API for Session Token with URL: '
             );
-            self::create_log('', 'Call REST API for Session Token. ');
+            self::create_log('Call REST API for Session Token. ');
 
             $resp_arr = self::call_rest_api(
                 $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,
@@ -683,15 +683,18 @@ class SC_REST_API
         $d = '';
         
         if(is_array($data)) {
-            foreach($data as $k => $dd) {
-                if(is_array($dd)) {
-                    if(isset($dd['cardData'], $dd['cardData']['CVV'])) {
-                        $data[$k]['cardData']['CVV'] = md5($dd['cardData']['CVV']);
-                    }
-                    if(isset($dd['cardData'], $dd['cardData']['cardHolderName'])) {
-                        $data[$k]['cardData']['cardHolderName'] = md5($dd['cardData']['cardHolderName']);
-                    }
+            if(isset($data['cardData']) && is_array($data['cardData'])) {
+                foreach($data['cardData'] as $k => $v) {
+                    $data['cardData'][$k] = md5($v);
                 }
+            }
+            if(isset($data['userAccountDetails']) && is_array($data['userAccountDetails'])) {
+                foreach($data['userAccountDetails'] as $k => $v) {
+                    $data['userAccountDetails'][$k] = md5($v);
+                }
+            }
+            if(isset($data['paResponse']) && !empty($data['paResponse'])) {
+                $data['paResponse'] = 'a long string';
             }
 
             $d = print_r($data, true);

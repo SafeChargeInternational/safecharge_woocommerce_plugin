@@ -1,13 +1,13 @@
-=== Safecharge WooCommerce Payment Gateway ===
+=== SafeCharge Payments ===
 
 Tags: credit card, safecharge, woocommerce
 Wordpress requirements: 
 	- minimum v4.7
-	- tested up to v5.2.1
+	- tested up to v5.0.3
 WooCommerce requirements: 
 	- minimum v 3.0
-	- tested up to v3.6.4
-Stable tag: 1.9.1
+	- tested up to v3.5.4
+Stable tag: 1.9.2
 
 == Description ==
 

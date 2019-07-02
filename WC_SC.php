@@ -136,17 +136,16 @@ class WC_SC extends WC_Payment_Gateway
                 'default' => 'no'
             ),
            'title' => array(
-                'title' => __('Title:', 'sc'),
+                'title' => __('Default title:', 'sc'),
                 'type'=> 'text',
                 'description' => __('This is the payment method which the user sees during checkout.', 'sc'),
-                'default' => __('Pay with Credit / Debit card', 'sc')
+                'default' => __('Secure Payment with SafeCharge', 'sc')
             ),
             'description' => array(
                 'title' => __('Description:', 'sc'),
                 'type' => 'textarea',
                 'description' => __('This controls the description which the user sees during checkout.', 'sc'),
-                'default' => __('Pay securely by Credit / Debit card or local payment option through '
-                    .SC_GATEWAY_TITLE .' secured payment page.', 'sc')
+                'default' => __('Place order to get to our secured payment page to select your payment option', 'sc')
             ),
             'merchantId' => array(
                 'title' => __('Merchant ID', 'sc'),
@@ -173,21 +172,21 @@ class WC_SC extends WC_Payment_Gateway
                 )
             ),
             'payment_api' => array(
-                'title' => __('Payment API', 'sc'),
+                'title' => __('Payment solution', 'sc'),
                 'type' => 'select',
                 'description' => __('Select '. SC_GATEWAY_TITLE .' payment API', 'sc'),
                 'options' => array(
-                    'cashier' => 'Cashier',
-                    'rest' => 'REST API',
+                    'cashier' => 'Hosted payment page',
+                    'rest' => 'SafeCharge API',
                 )
             ),
             'transaction_type' => array(
-                'title' => __('Transaction Type', 'sc'),
+                'title' => __('Payment action', 'sc'),
                 'type' => 'select',
                 'description' => __('Select preferred Transaction Type.<br/>Just in case goto WooCommerce > Settings > Products > Inventory and remove any value that is present in the Hold Stock (minutes) field.', 'sc'),
                 'options' => array(
-                    'Auth' => 'Auth and Settle',
-                    'Sale' => 'Sale',
+                    'Auth' => 'Authorize',
+                    'Sale' => 'Authorize & Capture',
                 )
             ),
             'notify_url' => array(
@@ -360,8 +359,10 @@ class WC_SC extends WC_Payment_Gateway
             $items = $order->get_items();
             $params['numberofitems'] = count($items);
 
-            $params['handling'] = SC_Versions_Resolver::get_shipping($order)
-                + $this->get_order_data($order, 'order_shipping_tax');
+            $params['handling'] = number_format(
+                (SC_Versions_Resolver::get_shipping($order) + $this->get_order_data($order, 'order_shipping_tax')),
+                2, '.', ''
+            );
             
             $params['discount'] = number_format($order->get_discount_total(), 2, '.', '');
 
@@ -527,8 +528,6 @@ class WC_SC extends WC_Payment_Gateway
                 $params['handling'] += $test_diff;
                 $this->create_log($test_diff, 'Total diff, added to handling: ');
             }
-            
-            $params['handling'] = number_format($params['handling'], 2, '.', '');
             # Items calculations END
 
             // be sure there are no array elements in $params !!!
@@ -846,13 +845,7 @@ class WC_SC extends WC_Payment_Gateway
                     
                     echo 
                         '<script>'
-                        //    .'var newTab = window.open("'.$resp['redirectURL'].'", "_blank");'
-                        //    .'newTab.focus();'
                             .'window.location.href = "' . $resp['redirectURL'] . '";'
-                            
-                        //        . $params['success_url']
-                        //        . (strpos($params['success_url'], '?') === false ? '?' : '&')
-                        //        . 'Status=waiting";'
                         .'</script>';
                     
                     exit;
@@ -1138,7 +1131,8 @@ class WC_SC extends WC_Payment_Gateway
         // see https://www.safecharge.com/docs/API/?json#refundTransaction -> Output Parameters
         // when we refund form CPanel we get transactionType = Credit and Status = 'APPROVED'
         if(
-            (@$_REQUEST['action'] == 'refund' || @$_REQUEST['transactionType'] == 'Credit')
+            (@$_REQUEST['action'] == 'refund'
+                || in_array(@$_REQUEST['transactionType'], array('Credit', 'Refund')))
             && !empty($req_status)
             && $this->checkAdvancedCheckSum()
         ) {
@@ -1670,14 +1664,13 @@ class WC_SC extends WC_Payment_Gateway
         
         switch($status) {
             case 'CANCELED':
-                $message = 'Your request was Canceld.'
-                    . ' PPP_TransactionID = '. @$request['PPP_TransactionID']
-                    . ", Status = " .$status. ', GW_TransactionID = '
-                    . @$request['TransactionID'];
+                $message = 'Payment status changed to:' . $status
+                    .'. PPP_TransactionID = '. @$request['PPP_TransactionID']
+                    .", Status = " .$status. ', GW_TransactionID = '
+                    .@$request['TransactionID'];
 
                 $this->msg['message'] = $message;
                 $this->msg['class'] = 'woocommerce_message';
-            //    $order->update_status('failed');
                 $order->add_order_note('Failed');
                 $order->add_order_note($this->msg['message']);
             break;

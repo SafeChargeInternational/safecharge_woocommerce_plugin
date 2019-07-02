@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: SafeCharge WooCommerce PlugIn
+Plugin Name: SafeCharge Payments
 Plugin URI: http://www.safecharge.com
 Description: SafeCharge gateway for woocommerce
 Version: 2.0
@@ -99,9 +99,6 @@ function sc_enqueue($hook)
     wp_enqueue_style( 'novo_style' );
     
     // the Tokenization script
-//    wp_register_script("sc_token_js", 'https://cdn.safecharge.com/js/v1/safecharge.js', array('jquery') );
-//    wp_enqueue_script( 'sc_token_js' );
-    
     wp_register_script("sc_websdk", 'https://cdn-int.safecharge.com/safecharge_resources/v1/websdk/safecharge.js', array('jquery') );
     wp_enqueue_script( 'sc_websdk' );
     # load external files END
@@ -232,6 +229,11 @@ function sc_add_buttons()
         $order = new WC_Order($_REQUEST['post']);
         $order_status = strtolower($order->get_status());
         $order_payment_method = $order->get_meta('_paymentMethod');
+        
+        // hide Refund Button
+        if(!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))) {
+            echo '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
+        }
     }
     catch (Exception $ex) {
         echo '<script type="text/javascript">console.error("'
@@ -241,11 +243,6 @@ function sc_add_buttons()
     
     // to show SC buttons we must be sure the order is paid via SC Paygate
     if(!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_GW_TRANS_ID_KEY)) {
-        // hide Refund Button
-        if($order_payment_method == 'apmgw_Neteller' || $order_payment_method == 'apmgw_MoneyBookers') {
-            echo '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
-        }
-        
         return;
     }
     
