@@ -192,9 +192,9 @@ class WC_SC extends WC_Payment_Gateway
             'notify_url' => array(
                 'title' => __('Notify URL', 'sc'),
                 'type' => 'text',
-                'default' => $this->set_notify_url(),
-                'readonly' => true,
-                'custom_attributes' => array('readonly' => 'readonly'),
+                'default' => '',
+                'description' => $this->set_notify_url(),
+                'type' => 'hidden'
             ),
             'test' => array(
                 'title' => __('Test mode', 'sc'),
@@ -1305,6 +1305,11 @@ class WC_SC extends WC_Payment_Gateway
             
         $url = $url_part
             . (strpos($url_part, '?') != false ? '&' : '?') . 'wc-api=sc_listener';
+        
+        // some servers needs / before ?
+        if(strpos($url, '?') !== false && strpos($url, '/?') === false) {
+			$url = str_replace('?', '/?', $url);
+		}
         
         // force Notification URL protocol to http
         if(isset($this->use_http) && $this->use_http == 'yes' && strpos($url, 'https://') !== false) {
