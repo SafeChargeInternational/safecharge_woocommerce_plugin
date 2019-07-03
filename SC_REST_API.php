@@ -30,8 +30,8 @@ class SC_REST_API
         
         $time = date('YmdHis', time());
         
-    //    self::create_log($refund, 'Refund data: ');
-    //    self::create_log($settings, 'Refund Settings data: ');
+    //    SC_LOGGER::create_log($refund, 'Refund data: ');
+    //    SC_LOGGER::create_log($settings, 'Refund Settings data: ');
         
         try {
             $refund_url = SC_TEST_REFUND_URL;
@@ -87,9 +87,9 @@ class SC_REST_API
             );
         }
         
-        self::create_log($refund_url, 'URL: ');
-        self::create_log($ref_parameters, 'refund_parameters: ');
-        self::create_log($other_params, 'other_params: ');
+        SC_LOGGER::create_log($refund_url, 'URL: ');
+        SC_LOGGER::create_log($ref_parameters, 'refund_parameters: ');
+        SC_LOGGER::create_log($other_params, 'other_params: ');
         
         $json_arr = self::call_rest_api(
             $refund_url,
@@ -98,7 +98,7 @@ class SC_REST_API
             $other_params
         );
         
-        self::create_log($json_arr, 'Refund Response: ');
+        SC_LOGGER::create_log($json_arr, 'Refund Response: ');
         return $json_arr;
     }
     
@@ -114,7 +114,7 @@ class SC_REST_API
      */
     public static function void_and_settle_order($data, $action, $is_ajax = false)
     {
-        self::create_log('', 'void_and_settle_order() - ' . $action . ': ');
+        SC_LOGGER::create_log('', 'void_and_settle_order() - ' . $action . ': ');
         $resp = false;
         $status = 1;
         
@@ -130,7 +130,7 @@ class SC_REST_API
             $resp = self::call_rest_api($url, $data, $data['checksum']);
         }
         catch (Exception $e) {
-            self::create_log($e->getMessage(), $action . ' order Exception ERROR when call REST API: ');
+            SC_LOGGER::create_log($e->getMessage(), $action . ' order Exception ERROR when call REST API: ');
             
             if($is_ajax) {
                 echo json_encode(array('status' => 0, 'data' => $e->getMessage()));
@@ -140,7 +140,7 @@ class SC_REST_API
             return false;
         }
         
-        self::create_log($resp, 'SC_REST_API void_and_settle_order() full response: ');
+        SC_LOGGER::create_log($resp, 'SC_REST_API void_and_settle_order() full response: ');
         
         if(
             !$resp || !is_array($resp)
@@ -189,10 +189,10 @@ class SC_REST_API
             $params['deviceDetails'] = self::get_device_details();
         }
         
-        self::create_log($params, 'SC_REST_API, parameters for the REST API call: ');
+        SC_LOGGER::create_log($params, 'SC_REST_API, parameters for the REST API call: ');
         
         $json_post = json_encode($params);
-    //    self::create_log($json_post, 'params as json: ');
+    //    SC_LOGGER::create_log($json_post, 'params as json: ');
         
         try {
             $header =  array(
@@ -214,11 +214,11 @@ class SC_REST_API
             $resp = curl_exec($ch);
             curl_close ($ch);
             
-            self::create_log($url, 'REST API URL: ');
-        //    self::create_log($resp, 'REST API response: ');
+            SC_LOGGER::create_log($url, 'REST API URL: ');
+        //    SC_LOGGER::create_log($resp, 'REST API response: ');
         }
         catch(Exception $e) {
-            self::create_log($e->getMessage(), 'Exception ERROR when call REST API: ');
+            SC_LOGGER::create_log($e->getMessage(), 'Exception ERROR when call REST API: ');
             return false;
         }
         
@@ -252,7 +252,7 @@ class SC_REST_API
             || empty($session_token_data['sessionToken'])
             || !is_string($session_token_data['sessionToken'])
         ) {
-            self::create_log($session_token_data, 'Session Token is FALSE.');
+            SC_LOGGER::create_log($session_token_data, 'Session Token is FALSE.');
             
             $resp = array(
                 'status' => 0,
@@ -286,7 +286,7 @@ class SC_REST_API
                 'type'              => '', // optional
             );
             
-            self::create_log('', 'Call REST API to get REST APMs: ');
+            SC_LOGGER::create_log('', 'Call REST API to get REST APMs: ');
 
             $resp_arr = self::call_rest_api(
                 $data['test'] == 'yes' ? SC_TEST_REST_PAYMENT_METHODS_URL : SC_LIVE_REST_PAYMENT_METHODS_URL,
@@ -403,7 +403,7 @@ class SC_REST_API
                     $session_token_data = self::get_session_token($sc_variables);
                     $session_token = @$session_token_data['sessionToken'];
                     
-                    self::create_log($session_token_data, 'session_token_data: ');
+                    SC_LOGGER::create_log($session_token_data, 'session_token_data: ');
                     
                     if(!$session_token) {
                         return false;
@@ -424,7 +424,7 @@ class SC_REST_API
                 case 'd3d':
                     // in D3D use the session token from card tokenization
                     if(!isset($sc_variables['lst']) || empty($sc_variables['lst']) || !$sc_variables['lst']) {
-                        self::create_log(@$sc_variables['lst'], 'Missing Last Session Token: ');
+                        SC_LOGGER::create_log(@$sc_variables['lst'], 'Missing Last Session Token: ');
                         return false;
                     }
 
@@ -450,7 +450,7 @@ class SC_REST_API
 
                 // if we can't set $endpoint_url stop here
                 default:
-                    self::create_log($payment_method, 'Not supported payment method: ');
+                    SC_LOGGER::create_log($payment_method, 'Not supported payment method: ');
                     return false;
             }
 
@@ -460,15 +460,15 @@ class SC_REST_API
                 $data['checksum']
             );
             
-            self::create_log($resp, 'REST API Response when Process Payment: ');
+            SC_LOGGER::create_log($resp, 'REST API Response when Process Payment: ');
         }
         catch(Exception $e) {
-            self::create_log($e->getMessage(), 'Process Payment Exception ERROR: ');
+            SC_LOGGER::create_log($e->getMessage(), 'Process Payment Exception ERROR: ');
             return false;
         }
         
         if(!$resp || !is_array($resp)) {
-            self::create_log($resp, 'Process Payment response: ');
+            SC_LOGGER::create_log($resp, 'Process Payment response: ');
             return false;
         }
         
@@ -488,7 +488,7 @@ class SC_REST_API
     public static function get_session_token($data, $is_ajax = false)
     {
         if(!isset($data['merchantId'], $data['merchantSiteId'])) {
-            self::create_log($data, 'Missing mandatory session variables: ');
+            SC_LOGGER::create_log($data, 'Missing mandatory session variables: ');
             return false;
         }
         
@@ -503,11 +503,11 @@ class SC_REST_API
                 'timeStamp'         => current(explode('_', $data['cri1'])),
             );
 
-            self::create_log(
+            SC_LOGGER::create_log(
                 $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,
                 'Call REST API for Session Token with URL: '
             );
-            self::create_log('Call REST API for Session Token. ');
+            SC_LOGGER::create_log('Call REST API for Session Token. ');
 
             $resp_arr = self::call_rest_api(
                 $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,
@@ -516,7 +516,7 @@ class SC_REST_API
             );
         }
         catch(Exception $e) {
-            self::create_log($e->getMessage(), 'Getting SessionToken Exception ERROR: ');
+            SC_LOGGER::create_log($e->getMessage(), 'Getting SessionToken Exception ERROR: ');
             
             if($is_ajax) {
                 echo json_encode(array('status' => 0, 'msg' => $e->getMessage()));
@@ -532,7 +532,7 @@ class SC_REST_API
             || !isset($resp_arr['status'])
             || $resp_arr['status'] != 'SUCCESS'
         ) {
-            self::create_log($resp_arr, 'getting getSessionToken error: ');
+            SC_LOGGER::create_log($resp_arr, 'getting getSessionToken error: ');
             
             if($is_ajax) {
                 echo json_encode(array('status' => 0));
@@ -650,7 +650,7 @@ class SC_REST_API
     private static function return_response($data, $is_ajax = false)
     {
         if(!is_array($data)) {
-            self::create_log($data, 'The data passed to return_response() is not array: ');
+            SC_LOGGER::create_log($data, 'The data passed to return_response() is not array: ');
             return false;
         }
         
