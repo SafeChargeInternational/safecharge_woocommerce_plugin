@@ -46,6 +46,9 @@ Please, contact out Tech-Support team (tech-support@safecharge.com) in case of q
 = 2.0 - 2019-05-28 =
 * New - Integrate SafeCharge WebSDK.
 
+= 1.9.3 - 2019-07-03 =
+* New - The parameter user_token_id will be filled only for registered users. Added "/" before the "?" in the Notify URL, if there is non. The Notify URL field in the settings is hidden. It will be visible as text now.
+
 = 1.9.2 - 2019-06-07 =
 * New - Added option for the merchant to create local Refund - without sending request to the CPanel, in case her created the refund first in CPanel. Removed the DMN listener for CPanel Refund. Enabled Refund Amount field for WC 3.6+.
 

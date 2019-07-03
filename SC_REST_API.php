@@ -347,7 +347,7 @@ class SC_REST_API
                 'amountDetails'     => array(
                     'totalShipping'     => '0.00',
                     'totalHandling'     => $data['handling'], // this is actually shipping
-                    'totalDiscount'     => @$data['discount'],
+                    'totalDiscount'     => @$data['discount'] ? $data['discount'] : '0.00',
                     'totalTax'          => @$data['total_tax'] ? $data['total_tax'] : '0.00',
                 ),
                 'items'             => $data['items'],
@@ -444,7 +444,7 @@ class SC_REST_API
                     if(isset($sc_variables['APM_data']['apm_fields']['ccNameOnCard'])) {
                         $params['cardData']['cardHolderName'] = $sc_variables['APM_data']['apm_fields']['ccNameOnCard'];
                     }
-                    
+
                     $endpoint_url = $sc_variables['test'] == 'no' ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
                     break;
 
