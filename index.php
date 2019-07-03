@@ -27,6 +27,7 @@ function woocommerce_sc_init()
     }
     
     require_once 'WC_SC.php';
+    require_once 'SC_LOGGER.php';
     require_once ABSPATH . 'wp-admin/includes/plugin.php';
     
     global $wc_sc;
@@ -139,9 +140,8 @@ function sc_show_final_text()
             $order->save();
         }
         catch (Exception $ex) {
-            create_log($ex->getMessage(), 'Cashier handle exception error: ');
+            SC_LOGGER::create_log($ex->getMessage(), 'Cashier handle exception error: ');
         }
-        
     }
     // REST API tahnk you page handler
     else{
@@ -362,69 +362,7 @@ function sc_wpml_thank_you_page( $order_received_url, $order )
     $lang_code = get_post_meta( $order->id, 'wpml_language', true );
     $order_received_url = apply_filters( 'wpml_permalink', $order_received_url , $lang_code );
     
-    create_log($order_received_url, 'sc_wpml_thank_you_page: ');
+    SC_LOGGER::create_log($order_received_url, 'sc_wpml_thank_you_page: ');
  
     return $order_received_url;
-}
-
-/**
-* Function create_log
-* Create logs. You MUST have defined SC_LOG_FILE_PATH const,
-* holding the full path to the log file.
-* 
-* @param mixed $data
-* @param string $title - title of the printed log
-*/
-function create_log($data, $title = '')
-{
-   if(
-       !isset($_SESSION['SC_Variables']['save_logs'])
-       || $_SESSION['SC_Variables']['save_logs'] == 'no'
-       || $_SESSION['SC_Variables']['save_logs'] === null
-   ) {
-       return;
-   }
-
-   $d = '';
-
-   if(is_array($data)) {
-        foreach($data as $k => $dd) {
-            if(is_array($dd)) {
-                if(isset($dd['cardData'], $dd['cardData']['CVV'])) {
-                    $data[$k]['cardData']['CVV'] = md5($dd['cardData']['CVV']);
-                }
-                if(isset($dd['cardData'], $dd['cardData']['cardHolderName'])) {
-                    $data[$k]['cardData']['cardHolderName'] = md5($dd['cardData']['cardHolderName']);
-                }
-            }
-        }
-
-        $d = print_r($data, true);
-    }
-    elseif(is_object($data)) {
-        $d = print_r($data, true);
-    }
-   elseif(is_bool($data)) {
-       $d = $data ? 'true' : 'false';
-   }
-   else {
-       $d = $data;
-   }
-
-   if(!empty($title)) {
-       $d = $title . "\r\n" . $d;
-   }
-
-   if(defined('SC_LOG_FILE_PATH')) {
-       try {
-           file_put_contents(SC_LOG_FILE_PATH, date('H:i:s') . ': ' . $d . "\r\n"."\r\n", FILE_APPEND);
-       }
-       catch (Exception $exc) {
-           echo
-               '<script>'
-                   .'error.log("Log file was not created, by reason: '.$exc.'");'
-                   .'console.log("Log file was not created, by reason: '.$data.'");'
-               .'</script>';
-       }
-   }
 }

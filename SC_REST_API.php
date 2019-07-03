@@ -696,6 +696,9 @@ class SC_REST_API
             if(isset($data['paResponse']) && !empty($data['paResponse'])) {
                 $data['paResponse'] = 'a long string';
             }
+            if(isset($data['paRequest']) && !empty($data['paRequest'])) {
+                $data['paResponse'] = 'a long string';
+            }
 
             $d = print_r($data, true);
         }
