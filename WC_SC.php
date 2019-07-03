@@ -429,7 +429,8 @@ class WC_SC extends WC_Payment_Gateway
                 urlencode(preg_replace("/[[:punct:]]/", '', SC_Versions_Resolver::get_order_data($order, 'billing_phone')));
 
             $params['email']            = SC_Versions_Resolver::get_order_data($order, 'billing_email');
-            $params['user_token_id']    = SC_Versions_Resolver::get_order_data($order, 'billing_email');
+            $params['user_token_id']    = is_user_logged_in() ? $params['email'] : '';
+            
             // get and pass billing data END
 
             // get and pass shipping data
