@@ -970,7 +970,7 @@ class WC_SC extends WC_Payment_Gateway
         
         echo 
             '<script>'
-                .'window.location.href = "'. $this->get_return_url() .'?Status=wait";'
+                .'window.location.href = "'. $this->get_return_url() .'";'
             .'</script>';
         exit;
     }
