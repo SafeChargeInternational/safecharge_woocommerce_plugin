@@ -24,7 +24,8 @@ class WC_SC extends WC_Payment_Gateway
     {
         require_once 'SC_Versions_Resolver.php';
         
-        $this->webMasterId .= WOOCOMMERCE_VERSION;
+        $_SESSION['SC_Variables']['webMasterId'] = $this->webMasterId .= WOOCOMMERCE_VERSION;
+        
         $plugin_dir = basename(dirname(__FILE__));
         $this->plugin_path = plugin_dir_path( __FILE__ ) . $plugin_dir . DIRECTORY_SEPARATOR;
         $this->plugin_url = get_site_url() . DIRECTORY_SEPARATOR . 'wp-content'
