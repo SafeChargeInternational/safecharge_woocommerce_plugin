@@ -286,7 +286,7 @@ function sc_add_buttons()
             $buttons_html .= 
                 ' <button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
                 . __( 'Are you sure, you want to Cancel Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
-                . '\'void\')" class="button generate-items">'
+                . '\'void\', \''. WOOCOMMERCE_VERSION .'\')" class="button generate-items">'
                 . __( 'Void', 'sc' ) .'</button>';
         }
         
@@ -299,7 +299,8 @@ function sc_add_buttons()
             $buttons_html .=
                 ' <button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
                 . __( 'Are you sure, you want to Settle Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
-                . '\'settle\', ' . $_REQUEST['post'] .')" class="button generate-items">'
+            //    . '\'settle\', ' . $_REQUEST['post'] .')" class="button generate-items">'
+                . '\'settle\', \'' . WOOCOMMERCE_VERSION .'\')" class="button generate-items">'
                 . __( 'Settle', 'sc' ) .'</button>';
         }
         

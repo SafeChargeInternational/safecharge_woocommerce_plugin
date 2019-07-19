@@ -53,6 +53,15 @@ if(
     
     require_once 'SC_REST_API.php';
     
+    // if there is no webMasterId in the session get it from the post
+    if(
+        !@$_SESSION['SC_Variables']['webMasterId']
+        && isset($_POST['woVersion'])
+        && $_POST['woVersion']
+    ) {
+        $_SESSION['SC_Variables']['webMasterId'] = 'WoCommerce ' . $_POST['woVersion'];
+    }
+    
     // when merchant cancel the order via Void button
     if(isset($_POST['cancelOrder']) && $_POST['cancelOrder'] == 1) {
         SC_REST_API::void_and_settle_order($_SESSION['SC_Variables'], 'void', true);

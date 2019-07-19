@@ -376,9 +376,15 @@ function print_apms_options(html) {
         .attr('onclick', 'scValidateAPMFields()');
 }
  
-// when the admin select to Settle or Void the Order
-//function settleAndCancelOrder(question, action, orderId) {
-function settleAndCancelOrder(question, action) {
+/**
+ * Function settleAndCancelOrder
+ * When the admin select to Settle or Void the Order
+ * 
+ * @param {string} question - confirm question
+ * @param {string} action - what to do
+ * @param {string} woVersion - WoCommerce version
+ */
+function settleAndCancelOrder(question, action, woVersion) {
     if(confirm(question)) {
         jQuery('#custom_loader').show();
         
@@ -389,6 +395,10 @@ function settleAndCancelOrder(question, action) {
         }
         else if(action == 'void') {
             data.cancelOrder = 1;
+        }
+        
+        if(typeof woVersion != 'undefined') {
+            data.woVersion = woVersion;
         }
         
         jQuery.ajax({
