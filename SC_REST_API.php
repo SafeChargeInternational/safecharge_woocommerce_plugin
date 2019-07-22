@@ -320,6 +320,58 @@ class SC_REST_API
     }
     
     /**
+     * Function get_user_upos
+     * Get users UPOs
+     * 
+     * @param array $params - array with parameters
+     * @param array $data - other parameters not used for the UPOs call
+     * @param bool $is_ajax
+     */
+    public static function get_user_upos($params, $data, $is_ajax = false)
+    {
+        try {
+            $params['merchantSecretKey'] = $data['secret'];
+            
+            if(isset($data['checksum'])) {
+                $checksum = $data['checksum'];
+            }
+            else {
+                $checksum = hash(
+                    $data['hash_type'],
+                    $params['merchantId'] . $params['merchantSiteId'] . $params['userTokenId']
+                        . $params['clientRequestId'] . $params['timeStamp'] . $data['secret']
+                );
+            }
+            
+            $upos = self::call_rest_api(
+                $data['test'] == 'yes' ? SC_TEST_USER_UPOS_URL : SC_LIVE_USER_UPOS_URL,
+                $params,
+                $checksum
+            );
+        }
+        catch (Exception $ex) {
+            SC_LOGGER::create_log($ex->getMessage(), 'get_user_upos() Exception: ');
+            
+            if($is_ajax) {
+                echo json_encode(array('status' => 0, 'data' => print_r($ex->getMessage()), true));
+                exit;
+            }
+            
+            return false;
+        }
+        
+        if($is_ajax) {
+            echo json_encode(array(
+                'status' => 1,
+                'data' => $upos,
+            ));
+            exit;
+        }
+        
+        return $upos;
+    }
+    
+    /**
      * Function process_payment
      * Here are the different payment methods
      * 

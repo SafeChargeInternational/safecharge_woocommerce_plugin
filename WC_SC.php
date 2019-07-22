@@ -24,7 +24,7 @@ class WC_SC extends WC_Payment_Gateway
     {
         require_once 'SC_Versions_Resolver.php';
         
-        $this->webMasterId .= WOOCOMMERCE_VERSION;
+        $_SESSION['SC_Variables']['webMasterId'] = $this->webMasterId .= WOOCOMMERCE_VERSION;
         $plugin_dir = basename(dirname(__FILE__));
         $this->plugin_path = plugin_dir_path( __FILE__ ) . $plugin_dir . DIRECTORY_SEPARATOR;
         $this->plugin_url = get_site_url() . DIRECTORY_SEPARATOR . 'wp-content'
@@ -968,7 +968,7 @@ class WC_SC extends WC_Payment_Gateway
         
         echo 
             '<script>'
-                .'window.location.href = "'. $this->get_return_url() .'?Status=wait";'
+                .'window.location.href = "'. $this->get_return_url() .'";'
             .'</script>';
         exit;
     }
@@ -1678,6 +1678,7 @@ class WC_SC extends WC_Payment_Gateway
 
                 $this->msg['message'] = $message;
                 $this->msg['class'] = 'woocommerce_message';
+                $order->update_status('failed');
                 $order->add_order_note('Failed');
                 $order->add_order_note($this->msg['message']);
             break;
@@ -1930,76 +1931,6 @@ class WC_SC extends WC_Payment_Gateway
         return '';
     }
     
-    /**
-     * Function create_log
-     * Create logs. You MUST have defined SC_LOG_FILE_PATH const,
-     * holding the full path to the log file.
-     * 
-     * @param mixed $data
-     * @param string $title - title of the printed log
-     */
-    private function create_log($data, $title = '')
-    {
-        if(
-            !isset($this->save_logs)
-            || $this->save_logs == 'no'
-            || $this->save_logs === null
-        ) {
-            return;
-        }
-        
-        $d = '';
-        
-        if(is_array($data)) {
-            if(isset($data['cardData']) && is_array($data['cardData'])) {
-                foreach($data['cardData'] as $k => $v) {
-                    $data['cardData'][$k] = md5($v);
-                }
-            }
-            if(isset($data['userAccountDetails']) && is_array($data['userAccountDetails'])) {
-                foreach($data['userAccountDetails'] as $k => $v) {
-                    $data['userAccountDetails'][$k] = md5($v);
-                }
-            }
-            if(isset($data['paResponse']) && !empty($data['paResponse'])) {
-                $data['paResponse'] = 'a long string';
-            }
-            if(isset($data['paRequest']) && !empty($data['paRequest'])) {
-                $data['paResponse'] = 'a long string';
-            }
-            if(isset($data['PaRes']) && !empty($data['PaRes'])) {
-                $data['PaRes'] = 'a long string';
-            }
-
-            $d = print_r($data, true);
-        }
-        elseif(is_object($data)) {
-            $d = print_r($data, true);
-        }
-        elseif(is_bool($data)) {
-            $d = $data ? 'true' : 'false';
-        }
-        else {
-            $d = $data;
-        }
-        
-        if(!empty($title)) {
-            $d = $title . "\r\n" . $d;
-        }
-        
-        if(defined('SC_LOG_FILE_PATH')) {
-            try {
-                file_put_contents(SC_LOG_FILE_PATH, date('H:i:s') . ': ' . $d . "\r\n"."\r\n", FILE_APPEND);
-            }
-            catch (Exception $exc) {
-                echo
-                    '<script>'
-                        .'error.log("Log file was not created, by reason: '.$exc.'");'
-                        .'console.log("Log file was not created, by reason: '.$data.'");'
-                    .'</script>';
-            }
-        }
-    }
 }
 
 ?>

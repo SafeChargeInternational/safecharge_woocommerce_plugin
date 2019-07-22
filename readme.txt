@@ -7,7 +7,7 @@ Wordpress requirements:
 WooCommerce requirements: 
 	- minimum v 3.0
 	- tested up to v3.5.4
-Stable tag: 1.9.2
+Stable tag: 1.9.3
 
 == Description ==
 
@@ -43,8 +43,11 @@ Please, contact out Tech-Support team (tech-support@safecharge.com) in case of q
 
 == Changelog ==
 
+= 2.1 - 2019-07-22 =
+* New - Added logger class.
+
 = 2.0 - 2019-05-28 =
-* New - Integrate SafeCharge WebSDK.
+* New - Integrate SafeCharge Fields.
 
 = 1.9.3 - 2019-07-03 =
 * New - The parameter user_token_id will be filled only for registered users. Added "/" before the "?" in the Notify URL, if there is non. The Notify URL field in the settings is hidden. It will be visible as text now.
