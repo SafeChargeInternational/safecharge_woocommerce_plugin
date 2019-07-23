@@ -1,23 +1,17 @@
 'use strict';
 
-var isAjaxCalled = false;
-var manualChangedCountry = false;
-var tokAPMs = ['cc_card', 'paydotcom'];
-var tokAPMsFields = {
-    cardNumber: 'ccCardNumber'
-    ,expirationMonth: 'ccExpMonth'
-    ,expirationYear: 'ccExpYear'
-    ,cardHolderName: 'ccNameOnCard'
-    ,CVV: ''
-};
-var selectedPM = '';
-var billing_country_first_val = '';
-var scSettleBtn = null;
-var scVoidBtn = null;
-
+var isAjaxCalled                = false;
+var manualChangedCountry        = false;
+var tokAPMs                     = ['cc_card', 'paydotcom'];
+var selectedPM                  = '';
+var billing_country_first_val   = '';
+var scSettleBtn                 = null;
+var scVoidBtn                   = null;
 // for the fields
-var sfc = null;
-var sfcFirstField = null;
+var sfc                         = null;
+var scFields                    = null;
+var sfcFirstField               = null;
+var scData                      = {};
 
  /**
   * Function validateScAPMsModal
@@ -166,8 +160,38 @@ function getAPMs() {
                     && typeof resp.data['paymentMethods'] != 'undefined'
                     && resp.data['paymentMethods'].length > 0
                 ) {
+                    try {
+                        scData.merchantSiteId = resp.merchantSiteId;
+                        scData.sessionToken = resp.sessionToken;
+
+                        if(resp.testEnv == 'yes') {
+                            scData.env = 'test';
+                        }
+
+                        sfc = SafeCharge(scData);
+
+                        // prepare fields
+                        scFields = sfc.fields({
+                            locale: resp.langCode
+                        });
+                    }
+                    catch (exception) {
+                        alert('Mandatory data is missing, please try again later!');
+                        console.log(exception);
+                        return;
+                    }
+
                     var html = '';
+                    var upos = resp.data['upos'];
                     var pMethods = resp.data['paymentMethods'];
+                    
+                    if(upos.length > 0) {
+                        for(var j in upos) {
+                            
+                        }
+                    }
+                    
+                    html = '';
                     
                     for(var i in pMethods) {
                         var pmMsg = '';
@@ -272,7 +296,7 @@ function getAPMs() {
 
                     // WP js trigger - wait until checkout is updated, but because it not always fired
                     // print the APMs one more time befor it
-                    jQuery( document.body ).on( 'updated_checkout', function(){
+                    jQuery( document.body ).on( 'updated_checkout', function() {
                         console.log('updated_checkout');
                         print_apms_options(html, resp.testEnv, resp.merchantSiteId, resp.langCode, resp.sessionToken);
                     });
@@ -331,23 +355,23 @@ function print_apms_options(html, testEnv, merchantSiteId, langCode, sessionToke
  * @param {string} langCode
  */
 function createSCFields(testEnv, merchantSiteId, langCode, sessionToken) {
-    var scData = {
-        merchantSiteId: merchantSiteId
-        ,sessionToken: sessionToken
-    };
-    
-    if(testEnv == 'yes') {
-        scData.env = 'test';
-    }
-    
-    console.log(scData)
-    
-    sfc = SafeCharge(scData);
-    
-    // prepare fields
-    var fields = sfc.fields({
-        locale: langCode
-    });
+//    var scData = {
+//        merchantSiteId: merchantSiteId
+//        ,sessionToken: sessionToken
+//    };
+//    
+//    if(testEnv == 'yes') {
+//        scData.env = 'test';
+//    }
+//    
+//    console.log(scData)
+//    
+//    sfc = SafeCharge(scData);
+//    
+//    // prepare fields
+//    var fields = sfc.fields({
+//        locale: langCode
+//    });
     
     // set some classes
     var elementClasses = {
@@ -357,17 +381,17 @@ function createSCFields(testEnv, merchantSiteId, langCode, sessionToken) {
     };
     
     // describe fields
-    var cardNumber = sfcFirstField = fields.create('ccNumber', {
+    var cardNumber = sfcFirstField = scFields.create('ccNumber', {
         classes: elementClasses
     });
     cardNumber.attach('#sc_card_number');
 
-    var cardExpiry = fields.create('ccExpiration', {
+    var cardExpiry = scFields.create('ccExpiration', {
         classes: elementClasses
     });
     cardExpiry.attach('#sc_card_expiry');
 
-    var cardCvc = fields.create('ccCvc', {
+    var cardCvc = scFields.create('ccCvc', {
         classes: elementClasses
     });
     cardCvc.attach('#sc_card_cvc'); 

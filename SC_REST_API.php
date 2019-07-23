@@ -330,7 +330,9 @@ class SC_REST_API
     public static function get_user_upos($params, $data, $is_ajax = false)
     {
         try {
-            $params['merchantSecretKey'] = $data['secret'];
+            if(isset($data['secret'])) {
+                $params['merchantSecretKey'] = $data['secret'];
+            }
             
             if(isset($data['checksum'])) {
                 $checksum = $data['checksum'];

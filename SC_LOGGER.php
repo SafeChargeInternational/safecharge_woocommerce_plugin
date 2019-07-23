@@ -17,59 +17,60 @@ class SC_LOGGER
     public static function create_log($data, $title = '')
     {
         if(
-            !isset($_SESSION['SC_Variables']['save_logs'])
-            || $_SESSION['SC_Variables']['save_logs'] == 'no'
-            || $_SESSION['SC_Variables']['save_logs'] === null
+            @$_REQUEST['create_logs'] == 'yes' || @$_REQUEST['create_logs'] == 1
+            || @$_SESSION['create_logs'] == 'yes' || @$_SESSION['create_logs'] == 1
         ) {
-            return;
-        }
-        
-        $d = '';
-        
-        if(is_array($data)) {
-            if(isset($data['cardData']) && is_array($data['cardData'])) {
-                foreach($data['cardData'] as $k => $v) {
-                    $data['cardData'][$k] = md5($v);
+            // same for all plugins
+            $d = $data;
+
+            if(is_array($data)) {
+                if(isset($data['cardData']) && is_array($data['cardData'])) {
+                    foreach($data['cardData'] as $k => $v) {
+                        $data['cardData'][$k] = 'some data';
+                    }
                 }
-            }
-            if(isset($data['userAccountDetails']) && is_array($data['userAccountDetails'])) {
-                foreach($data['userAccountDetails'] as $k => $v) {
-                    $data['userAccountDetails'][$k] = md5($v);
+                if(isset($data['userAccountDetails']) && is_array($data['userAccountDetails'])) {
+                    foreach($data['userAccountDetails'] as $k => $v) {
+                        $data['userAccountDetails'][$k] = 'some data';
+                    }
                 }
+                if(isset($data['userPaymentOption']) && is_array($data['userPaymentOption'])) {
+                    foreach($data['userPaymentOption'] as $k => $v) {
+                        $data['userPaymentOption'][$k] = 'some data';
+                    }
+                }
+                if(isset($data['paResponse']) && !empty($data['paResponse'])) {
+                    $data['paResponse'] = 'a long string';
+                }
+                if(isset($data['paReq']) && !empty($data['paReq'])) {
+                    $data['paReq'] = 'a long string';
+                }
+                
+                $d = print_r($data, true);
             }
-            if(isset($data['paResponse']) && !empty($data['paResponse'])) {
-                $data['paResponse'] = 'a long string';
+            elseif(is_object($data)) {
+                $d = print_r($data, true);
             }
-            if(isset($data['paRequest']) && !empty($data['paRequest'])) {
-                $data['paResponse'] = 'a long string';
+            elseif(is_bool($data)) {
+                $d = $data ? 'true' : 'false';
             }
 
-            $d = print_r($data, true);
-        }
-        elseif(is_object($data)) {
-            $d = print_r($data, true);
-        }
-        elseif(is_bool($data)) {
-            $d = $data ? 'true' : 'false';
-        }
-        else {
-            $d = $data;
-        }
-        
-        if(!empty($title)) {
-            $d = $title . "\r\n" . $d;
-        }
-        
-        $logs_path = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR;
-        
-        if(is_dir($logs_path)) {
-            try {
-                file_put_contents(
-                    $logs_path . date('H:i:s') . '.txt',
-                    date('H:i:s') . ': ' . $d . "\r\n"."\r\n", FILE_APPEND
-                );
+            if(!empty($title)) {
+                $d = $title . "\r\n" . $d;
             }
-            catch (Exception $exc) {}
+            // same for all plugins
+        
+            $logs_path = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR;
+
+            if(is_dir($logs_path)) {
+                try {
+                    file_put_contents(
+                        $logs_path . date('Y-m-d', time()) . '.txt',
+                        date('H:i:s') . ': ' . $d . "\r\n", FILE_APPEND
+                    );
+                }
+                catch (Exception $exc) {}
+            }
         }
     }
 }

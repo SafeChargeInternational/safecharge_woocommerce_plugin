@@ -15,9 +15,11 @@ if(!defined('ABSPATH')) {
 }
 
 require_once 'sc_config.php';
+require_once 'SC_LOGGER.php';
 
 $wc_sc = null;
 
+add_filter('woocommerce_payment_gateways', 'woocommerce_add_sc_gateway' );
 add_action('plugins_loaded', 'woocommerce_sc_init', 0);
 
 function woocommerce_sc_init()
@@ -26,14 +28,12 @@ function woocommerce_sc_init()
         return;
     }
     
-    require_once 'WC_SC.php';
-    require_once 'SC_LOGGER.php';
     require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    require_once 'WC_SC.php';
     
     global $wc_sc;
     $wc_sc = new WC_SC();
     
-    add_filter('woocommerce_payment_gateways', 'woocommerce_add_sc_gateway' );
 	add_action('init', 'sc_enqueue');
     // replace the text at thank you page
     add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');

@@ -23,6 +23,7 @@ class WC_SC extends WC_Payment_Gateway
     public function __construct()
     {
         require_once 'SC_Versions_Resolver.php';
+        require_once 'SC_REST_API.php';
         
         $_SESSION['SC_Variables']['webMasterId'] = $this->webMasterId .= WOOCOMMERCE_VERSION;
         $plugin_dir = basename(dirname(__FILE__));
@@ -72,6 +73,25 @@ class WC_SC extends WC_Payment_Gateway
         $_SESSION['SC_Variables']['test']               = $this->test;
         $_SESSION['SC_Variables']['save_logs']          = $this->save_logs;
         $_SESSION['SC_Variables']['rewrite_dmn']        = $this->rewrite_dmn;
+        $_SESSION['create_logs']                        = $this->save_logs;
+        
+        // prepare the data for the UPOs
+        if(is_user_logged_in()) {
+            $_SESSION['SC_Variables']['upos_data']['userTokenId'] =
+                @wp_get_current_user()->data->user_email;
+            
+            $_SESSION['SC_Variables']['upos_data']['clientRequestId'] = uniqid();
+            $_SESSION['SC_Variables']['upos_data']['timestamp'] = date('YmdHis', time());
+            
+            $_SESSION['SC_Variables']['upos_data']['checksum'] =
+                @hash(
+                    $this->hash_type,
+                    $this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['upos_data']['userTokenId']
+                        . $_SESSION['SC_Variables']['upos_data']['clientRequestId']
+                        . $_SESSION['SC_Variables']['upos_data']['timestamp']
+                        . $this->secret
+                );
+        }
         
         $_SESSION['SC_Variables']['sc_country'] = SC_Versions_Resolver::get_client_country(new WC_Customer);
         if(isset($_POST["billing_country"]) && !empty($_POST["billing_country"])) {
@@ -109,7 +129,6 @@ class WC_SC extends WC_Payment_Gateway
 		$this->msg['class'] = "";
 
         SC_Versions_Resolver::process_admin_options($this);
-    //    add_action('woocommerce_update_options_payment_gateways', array( $this, 'process_admin_options' ));
         
 		add_action('woocommerce_checkout_process', array($this, 'sc_checkout_process'));
         add_action('woocommerce_receipt_'.$this->id, array($this, 'generate_sc_form'));
@@ -601,10 +620,6 @@ class WC_SC extends WC_Payment_Gateway
             $params['merchantId']           = $this->merchantId;
             $params['merchantSiteId']       = $this->merchantSiteId;
             $params['notify_url']           = $notify_url . 'sc_listener';
-            
-            // TODO this parameter does not present in REST docs !!!
-        //    $params['site_url']             = get_site_url();
-            
             $params['client_request_id']    = $TimeStamp .'_'. uniqid();
             
             $params['urlDetails'] = array(
@@ -632,8 +647,6 @@ class WC_SC extends WC_Payment_Gateway
                 .$TimeStamp
                 .$this->secret
             ));
-            
-            require_once 'SC_REST_API.php';
             
             SC_LOGGER::create_log($params, 'params sent to REST: ');
         //    SC_LOGGER::create_log($_SESSION['SC_Variables'], 'SC_Variables: ');
@@ -924,8 +937,6 @@ class WC_SC extends WC_Payment_Gateway
             $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl'] = $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl']['notificationUrl'];
 
             SC_LOGGER::create_log('pay_with_d3d_p3d call to the REST API.');
-
-            require_once 'SC_REST_API.php';
 
             $p3d_resp = SC_REST_API::call_rest_api(
                 @$_SESSION['SC_Variables']['test'] == 'yes' ? SC_TEST_P3D_URL : SC_LIVE_P3D_URL
@@ -1505,9 +1516,6 @@ class WC_SC extends WC_Payment_Gateway
             
             return;
         }
-
-        // call refund method
-        require_once 'SC_REST_API.php';
 
         $notify_url = $this->set_notify_url();
         
