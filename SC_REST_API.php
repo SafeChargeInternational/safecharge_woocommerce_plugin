@@ -383,16 +383,22 @@ class SC_REST_API
      * @param string $payment_method - apm|d3d
      * 
      * @return array|bool
+     * 
+     * @since 2019-07-25
      */
-    public static function process_payment($data, $sc_variables, $order_id, $payment_method)
+//    public static function process_payment($data, $sc_variables, $order_id, $payment_method)
+    public static function process_payment($data, $payment_method)
     {
         $resp = false;
         
+        $data = array_merge($data, $sc_variables);
+        
         try {
             // common parameters for the methods
+            /*
             $params = array(
-                'merchantId'        => $sc_variables['merchantId'],
-                'merchantSiteId'    => $sc_variables['merchantSiteId'],
+                'merchantId'        => $data['merchantId'],
+                'merchantSiteId'    => $data['merchantSiteId'],
                 'userTokenId'       => $data['email'], // the email of the logged user or user who did the payment
                 'clientUniqueId'    => $order_id,
                 'clientRequestId'   => $data['client_request_id'],
@@ -449,12 +455,14 @@ class SC_REST_API
                 'webMasterId'       => @$data['webMasterId'],
                 'deviceDetails'     => self::get_device_details(),
             );
+             * 
+             */
 
             // set parameters specific for the payment method
             switch ($payment_method) {
                 case 'apm':
                     // for D3D we use other token
-                    $session_token_data = self::get_session_token($sc_variables);
+                    $session_token_data = self::get_session_token($data);
                     $session_token = @$session_token_data['sessionToken'];
                     
                     SC_LOGGER::create_log($session_token_data, 'session_token_data: ');
@@ -463,43 +471,37 @@ class SC_REST_API
                         return false;
                     }
 
-                    $params['paymentMethod'] = $sc_variables['APM_data']['payment_method'];
+                    $params['paymentMethod'] = $data['APM_data']['payment_method'];
                     
                     // append payment method credentionals
-                    if(isset($sc_variables['APM_data']['apm_fields'])) {
-                        $params['userAccountDetails'] = $sc_variables['APM_data']['apm_fields'];
+                    if(isset($data['APM_data']['apm_fields'])) {
+                        $params['userAccountDetails'] = $data['APM_data']['apm_fields'];
                     }
                     
                     $params['sessionToken'] = $session_token;
 
-                    $endpoint_url = $sc_variables['test'] == 'no' ? SC_LIVE_PAYMENT_URL : SC_TEST_PAYMENT_URL;
+                    $endpoint_url = $data['test'] == 'no' ? SC_LIVE_PAYMENT_URL : SC_TEST_PAYMENT_URL;
                     break;
 
                 case 'd3d':
                     // in D3D use the session token from card tokenization
-                    if(!isset($sc_variables['lst']) || empty($sc_variables['lst']) || !$sc_variables['lst']) {
-                        SC_LOGGER::create_log(@$sc_variables['lst'], 'Missing Last Session Token: ');
+                    if(!isset($data['lst']) || empty($data['lst']) || !$data['lst']) {
+                        SC_LOGGER::create_log(@$data['lst'], 'Missing Last Session Token: ');
                         return false;
                     }
 
-                    $params['sessionToken'] = $sc_variables['lst'];
+                    $params['sessionToken'] = $data['lst'];
                     $params['isDynamic3D'] = 1;
                     
-                    if(isset($sc_variables['APM_data']['apm_fields']['ccTempToken'])) {
-                        $params['cardData']['ccTempToken'] = $sc_variables['APM_data']['apm_fields']['ccTempToken'];
+                    if(isset($data['APM_data']['apm_fields']['ccTempToken'])) {
+                        $params['cardData']['ccTempToken'] = $data['APM_data']['apm_fields']['ccTempToken'];
                     }
-                    elseif(isset($sc_variables['APM_data']['apm_fields']['ccCardNumber'])) {
-                        $params['cardData']['ccTempToken'] = $sc_variables['APM_data']['apm_fields']['ccCardNumber'];
-                    }
-                    
-                    if(isset($sc_variables['APM_data']['apm_fields']['CVV'])) {
-                        $params['cardData']['CVV'] = $sc_variables['APM_data']['apm_fields']['CVV'];
-                    }
-                    if(isset($sc_variables['APM_data']['apm_fields']['ccNameOnCard'])) {
-                        $params['cardData']['cardHolderName'] = $sc_variables['APM_data']['apm_fields']['ccNameOnCard'];
+                    // for UPOs we get UPO ID and CVV
+                    elseif(isset($data['userPaymentOption'])) {
+                        $params['userPaymentOption'] = $data['userPaymentOption'];
                     }
 
-                    $endpoint_url = $sc_variables['test'] == 'no' ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
+                    $endpoint_url = $data['test'] == 'no' ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
                     break;
 
                 // if we can't set $endpoint_url stop here
@@ -538,6 +540,8 @@ class SC_REST_API
      * @param bool $is_ajax
      * 
      * @return array|bool
+     * 
+     * @since 2019-07-25
      */
     public static function get_session_token($data, $is_ajax = false)
     {
@@ -550,23 +554,32 @@ class SC_REST_API
         $resp_arr = array();
         
         try {
-            $params = array(
-                'merchantId'        => $data['merchantId'],
-                'merchantSiteId'    => $data['merchantSiteId'],
-                'clientRequestId'   => $data['cri1'],
-                'timeStamp'         => current(explode('_', $data['cri1'])),
-            );
-
             SC_LOGGER::create_log(
                 $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,
                 'Call REST API for Session Token with URL: '
             );
             SC_LOGGER::create_log('Call REST API for Session Token. ');
-
+            
+            // check in case we pass complete data
+            if(isset($data['clientRequestId'], $data['checksum'])) {
+                $checksum = $data['checksum'];
+                $params = $data;
+            }
+            else {
+                $params = array(
+                    'merchantId'        => $data['merchantId'],
+                    'merchantSiteId'    => $data['merchantSiteId'],
+                    'clientRequestId'   => $data['cri1'],
+                    'timeStamp'         => current(explode('_', $data['cri1'])),
+                );
+                
+                $checksum = $data['cs1'];
+            }
+            
             $resp_arr = self::call_rest_api(
                 $data['test'] == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL,
                 $params,
-                $data['cs1']
+                $checksum
             );
         }
         catch(Exception $e) {
@@ -612,7 +625,7 @@ class SC_REST_API
      * 
      * @return array $device_details
      */
-    private static function get_device_details()
+    public static function get_device_details()
     {
         $device_details = array(
             'deviceType'    => 'UNKNOWN', // DESKTOP, SMARTPHONE, TABLET, TV, and UNKNOWN

@@ -13,10 +13,10 @@ div.payment_method_sc {
     background-color: #fafafa !important;
 }
 
-#sc_apms_list {
+#sc_apms_list, #sc_upos_list {
     box-shadow: 0 2px 4px 0 rgba(0,0,0,0.19);
     width: 100%;
-    margin: 1em 0 1.4em 0;
+    margin: 0.5em 0 1.4em 0;
 }
 
 .apm_container {
@@ -46,8 +46,18 @@ div.payment_method_sc {
 .apm_field {
     padding-left: 0.7em;
     padding-right: 0.7em;
-    padding-top: 1em;
     position: relative;
+}
+
+.SfcField {
+    padding-top: 1em;
+    border-bottom: .1rem solid #9B9B9B;
+}
+
+#sc_upos_list .apm_title div {
+    position: absolute;
+    margin-left: 50px;
+    top: 0px;
 }
 
 .SfcField iframe {
@@ -56,7 +66,7 @@ div.payment_method_sc {
 }
 
 .apm_field .question_mark {
-    top: 26px;
+    top: 5px;
     position: absolute;
     right: 0.7rem;
 }
@@ -77,28 +87,13 @@ div.payment_method_sc {
     padding-bottom: 8px !important;
     padding-left: 0px !important;
     padding-right: 0px !important;
-    width: 100%;
+    width: 90%;
     box-shadow: none !important;
+    color: #43454b;
+    font-size: 16px;
 }
 
-/* Chrome, Firefox, Opera, Safari 10.1+ */
-.apm_field input::placeholder, .SfcField iframe::placeholder {
-    color: #9B9B9B !important;
-    opacity: 1; /* Firefox */
-    font-size: 15px;
-}
-
-/* Internet Explorer 10-11 */
-.apm_field input:-ms-input-placeholder, .SfcField iframe input:-ms-input-placeholder {
-    color: #9B9B9B !important;
-    font-size: 15px;
-}
-
-/* Microsoft Edge */
-.apm_field input::-ms-input-placeholder, .SfcField iframe input::-ms-input-placeholder {
-    color: #9B9B9B !important;
-    font-size: 15px;
-}
+.apm_field input::placeholder { color: #52545A; }
 
 .apm_error {
     background: none;
@@ -121,7 +116,7 @@ div.payment_method_sc {
 }
 
 /* fixes for last field borders */
-.apm_fields .apm_field:last-child input {
+.apm_fields .apm_field:last-child input, #sc_card_cvc {
     border: 0 !important;
 }
 
@@ -159,7 +154,5 @@ form.woocommerce-checkout #payment.woocommerce-checkout-payment {
     position: absolute;
     right: 1rem;
     bottom: 1.3rem;
+    top: 5px;
 }
-
-/* hide "Refund via SafeCharge" button */
-/*.do-api-refund { display: none !important; }*/

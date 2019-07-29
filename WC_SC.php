@@ -130,7 +130,8 @@ class WC_SC extends WC_Payment_Gateway
 
         SC_Versions_Resolver::process_admin_options($this);
         
-		add_action('woocommerce_checkout_process', array($this, 'sc_checkout_process'));
+	//	add_action('woocommerce_checkout_process', array($this, 'sc_checkout_process'));
+        /* TODO - move this in the index */
         add_action('woocommerce_receipt_'.$this->id, array($this, 'generate_sc_form'));
         
         /* Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
@@ -364,6 +365,43 @@ class WC_SC extends WC_Payment_Gateway
         
         SC_LOGGER::create_log('generate_sc_form()');
         
+        $order = new WC_Order($order_id);
+        
+        if(@$_REQUEST['redirectUrl'] == 1) {
+            $pending_url = $this->get_return_url();
+            
+            echo 
+                '<table id="sc_pay_msg" style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
+                    .'<td style="padding: 0px; border: 0px; width: 100px;">'
+                        . '<img src="'. $this->plugin_url .'icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
+                    . '</td>'
+                    .'<td style="text-align: left; border: 0px;">'
+                        . '<span>'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'</span>'
+                    . '</td>'
+                .'</tr></table>'
+
+                .'<form action="'. @$_SESSION['SC_P3D_acsUrl'] .'" method="post" id="sc_payment_form">'
+                    .'<input type="hidden" name="PaReq" value="'. @$_SESSION['SC_P3D_PaReq'] .'">'
+                    .'<input type="hidden" name="TermUrl" value="'
+                        . $pending_url
+                        . (strpos($pending_url, '?') != false ? '&' : '?')
+                        . 'wc-api=sc_listener&action=p3d">'
+                    .'<noscript>'
+                        . '<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'
+                            . __('Pay via '. SC_GATEWAY_TITLE, 'sc').'" />'
+                        . '<a class="button cancel" href="' .$order->get_cancel_order_url().'">'
+                            . __('Cancel order &amp; restore cart', 'sc').'</a>'
+                    .'</noscript>'
+
+                    .'<script type="text/javascript">'
+                        .'jQuery(function(){'
+                            .'jQuery("#sc_payment_form").submit();'
+                        .'});'
+                    .'</script>'
+                .'</form>';
+            exit;
+        }
+        
         try {
             $TimeStamp = date('Ymdhis');
             $order = new WC_Order($order_id);
@@ -500,10 +538,10 @@ class WC_SC extends WC_Payment_Gateway
 
             $params['user_token'] = "auto";
 
-            $params['payment_method'] = '';
-            if(isset($_SESSION['sc_subpayment']) && $_SESSION['sc_subpayment'] != '') {
-                $params['payment_method'] = str_replace($this->id.'_', '', $_SESSION['sc_subpayment']);
-            }
+//            $params['payment_method'] = '';
+//            if(isset($_SESSION['sc_subpayment']) && $_SESSION['sc_subpayment'] != '') {
+//                $params['payment_method'] = str_replace($this->id.'_', '', $_SESSION['sc_subpayment']);
+//            }
 
             $params['total_amount']     = SC_Versions_Resolver::get_order_data($order, 'order_total');
             $params['currency']         = get_woocommerce_currency();
@@ -631,13 +669,7 @@ class WC_SC extends WC_Payment_Gateway
             
             // set the payment method type
             $payment_method = 'apm';
-            if(in_array(
-                @$_SESSION['SC_Variables']['APM_data']['payment_method'],
-                array('cc_card', 'dc_card')
-            )) {
-                $payment_method = 'd3d';
-            }
-                
+            
             $params['checksum'] = hash($this->settings['hash_type'], stripslashes(
                 $_SESSION['SC_Variables']['merchantId']
                 .$_SESSION['SC_Variables']['merchantSiteId']
@@ -648,10 +680,13 @@ class WC_SC extends WC_Payment_Gateway
                 .$this->secret
             ));
             
-            SC_LOGGER::create_log($params, 'params sent to REST: ');
-        //    SC_LOGGER::create_log($_SESSION['SC_Variables'], 'SC_Variables: ');
+            echo '<pre>'.print_r($params,true).'</pre>';
+        //    echo '<pre>'.print_r($_SESSION,true).'</pre>';
+            echo '<pre>'.print_r($this,true).'</pre>';
             
-            // ALWAYS CHECK USED PARAMS IN process_payment
+//            SC_LOGGER::create_log($params, 'params sent to REST: ');
+//            SC_LOGGER::create_log($_SESSION['SC_Variables'], 'SC_Variables: ');
+            die;
             $resp = SC_REST_API::process_payment(
                 $params
                 ,$_SESSION['SC_Variables']
@@ -776,8 +811,6 @@ class WC_SC extends WC_Payment_Gateway
                         ),
                         'cardData'          => array(
                             'ccTempToken'       => $_SESSION['SC_Variables']['APM_data']['apm_fields']['ccCardNumber'],
-                            'CVV'               => $_SESSION['SC_Variables']['APM_data']['apm_fields']['CVV'],
-                            'cardHolderName'    => $_SESSION['SC_Variables']['APM_data']['apm_fields']['ccNameOnCard'],
                         ),
                         'paResponse'        => '',
                         'urlDetails'        => array('notificationUrl' => $params['urlDetails']),
@@ -993,36 +1026,345 @@ class WC_SC extends WC_Payment_Gateway
      **/
     public function process_payment($order_id)
     {
-        // get AMP fields and add them to the session for future use
-        if(isset($_POST, $_POST['payment_method_sc']) && !empty($_POST['payment_method_sc'])) {
-            $_SESSION['SC_Variables']['APM_data']['payment_method'] = $_POST['payment_method_sc'];
-            
-            if(
-                isset($_POST[$_POST['payment_method_sc']])
-                && !empty($_POST[$_POST['payment_method_sc']]) 
-                && is_array($_POST[$_POST['payment_method_sc']])
-            ) {
-                $_SESSION['SC_Variables']['APM_data']['apm_fields'] = $_POST[$_POST['payment_method_sc']];
-            }
+        if(isset($_SESSION['SC_P3D_PaReq'])) {
+            unset($_SESSION['SC_P3D_PaReq']);
         }
-        
-        // lst parameter is passed from the form. It is the session token used for
-        // card tokenization. We MUST use the same token for D3D Payment
-        if(isset($_POST, $_POST['lst']) && !empty($_POST['lst'])) {
-            $_SESSION['SC_Variables']['lst'] = $_POST['lst'];
+        if(isset($_SESSION['SC_P3D_acsUrl'])) {
+            unset($_SESSION['SC_P3D_acsUrl']);
         }
         
         $order = new WC_Order($order_id);
-       
+        $order_status = strtolower($order->get_status());
+        
+        SC_LOGGER::create_log($order_status, '$order_status:');
+        
+        # when use Cashier - redirect to receipt page
+        if($this->payment_api == 'cashier') {
+            return array(
+                'result' 	=> 'success',
+                'redirect'	=> add_query_arg(
+                    array(
+                    //    'order-pay' => $this->get_order_data($order, 'id'),
+                        'order-pay' => $order_id,
+                        'key' => $this->get_order_data($order, 'order_key')
+                    ),
+                    wc_get_page_permalink('pay')
+                )
+            );
+        }
+        
+        # when use REST - call the API
+        $time           = date('Ymdhis');
+        $endpoint_url   = '';
+        $is_apm_payment = false;
+        
+        $params = array(
+            'merchantId'        => $this->merchantId,
+            'merchantSiteId'    => $this->merchantSiteId,
+            'userTokenId'       => @$_POST['billing_email'],
+            'clientUniqueId'    => $order_id,
+            'clientRequestId'   => $time .'_'. uniqid(),
+            'currency'          => $order->get_currency(),
+            'amount'            => (string) $order->get_total(),
+            'amountDetails'     => array(
+                'totalShipping'     => '0.00',
+                'totalHandling'     => '0.00',
+                'totalDiscount'     => '0.00',
+                'totalTax'          => '0.00',
+            ),
+            'shippingAddress'   => array(
+                'firstName'         => urlencode(preg_replace("/[[:punct:]]/", '', @$_POST['shipping_first_name'])),
+                'lastName'          => urlencode(preg_replace("/[[:punct:]]/", '', @$_POST['shipping_last_name'])),
+                'address'           => urlencode(preg_replace("/[[:punct:]]/", '', @$_POST['shipping_address_1'])),
+                'cell'              => '',
+                'phone'             => '',
+                'zip'               => urlencode(preg_replace("/[[:punct:]]/", '', @$_POST['shipping_postcode'])),
+                'city'              => urlencode(preg_replace("/[[:punct:]]/", '', @$_POST['shipping_city'])),
+                'country'           => urlencode(preg_replace("/[[:punct:]]/", '', @$_POST['shipping_country'])),
+                'state'             => '',
+                'email'             => '',
+                'shippingCounty'    => '',
+            ),
+            'urlDetails'        => array(
+                'successUrl'        => $this->get_return_url(),
+                'failureUrl'        => $this->get_return_url(),
+                'pendingUrl'        => $this->get_return_url(),
+                'notificationUrl'   => $this->set_notify_url(),
+            ),
+            'timeStamp'         => $time,
+            'webMasterId'       => $this->webMasterId,
+            'deviceDetails'     => '',
+        );
+        
+        // for the session token
+        $st_params = array(
+            'merchantId'        => $params['merchantId'],
+            'merchantSiteId'    => $params['merchantSiteId'],
+            'clientRequestId'   => uniqid(),
+            'timeStamp'         => $time,
+        );
+        
+        $st_params['checksum'] = hash(
+            $this->hash_type,
+            implode('', $st_params) . $this->secret
+        );
+        
+        $st_params['test'] = $this->test;
+        
+        $session_token_data = SC_REST_API::get_session_token($st_params);
+        
+        if($session_token_data === false) {
+            wc_add_notice(__('Payment failed, please try again later!', 'sc' ), 'error');
+            return array(
+                'result' 	=> 'error',
+                'redirect'	=> add_query_arg(
+                    array(),
+                    wc_get_page_permalink('checkout')
+                )
+            );
+        }
+        
+        $params['sessionToken'] = $session_token_data['sessionToken'];
+        // for the session token END
+        
+        $params['userDetails'] = array(
+            'firstName'         => urlencode(preg_replace("/[[:punct:]]/", '', $_POST['billing_first_name'])),
+            'lastName'          => urlencode(preg_replace("/[[:punct:]]/", '', $_POST['billing_last_name'])),
+            'address'           => urlencode(preg_replace("/[[:punct:]]/", '', $_POST['billing_address_1'])),
+            'phone'             => urlencode(preg_replace("/[[:punct:]]/", '', $_POST['billing_phone'])),
+            'zip'               => urlencode(preg_replace("/[[:punct:]]/", '', $_POST['billing_postcode'])),
+            'city'              => urlencode(preg_replace("/[[:punct:]]/", '', $_POST['billing_city'])),
+            'country'           => urlencode(preg_replace("/[[:punct:]]/", '', $_POST['billing_country'])),
+            'state'             => '',
+            'email'             => $_POST['billing_email'],
+            'county'            => '',
+        );
+        
+        $params['billingAddress'] = array(
+            'firstName'         => $params['userDetails']['firstName'],
+            'lastName'          => $params['userDetails']['lastName'],
+            'address'           => $params['userDetails']['address'],
+            'cell'              => '',
+            'phone'             => $params['userDetails']['phone'],
+            'zip'               => $params['userDetails']['zip'],
+            'city'              => $params['userDetails']['city'],
+            'country'           => $params['userDetails']['country'],
+            'state'             => $params['userDetails']['state'],
+            'email'             => $params['userDetails']['email'],
+            'county'            => $params['userDetails']['county'],
+        );
+        
+        $params['items'][0] = array(
+            'name'      => $order_id,
+            'price'     => $params['amount'],
+            'quantity'  => 1,
+        );
+        
+        $params['checksum'] = hash(
+            $this->hash_type,
+            $params['merchantId'] . $params['merchantSiteId'] . $params['clientRequestId']
+                . $params['amount'] . $params['currency'] . $time . $this->secret
+        );
+        
+        // in case of UPO
+        if(is_numeric(@$_POST['sc_payment_method'])) {
+            $params['userPaymentOption'] = array(
+                'userPaymentOptionId'   => $_POST['sc_payment_method'],
+                'CVV'                   => @$_POST['upo_cvv_field_' . $_POST['sc_payment_method']],
+            );
+            
+            $params['isDynamic3D'] = 1;
+            $endpoint_url = $this->test == 'no' ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
+        }
+        // in case of Card
+        elseif(in_array(@$_POST['sc_payment_method'], array('cc_card', 'dc_card'))) {
+            if(isset($_POST[@$_POST['sc_payment_method']]['ccTempToken'])) {
+                $params['cardData']['ccTempToken'] = $_POST[$_POST['sc_payment_method']]['ccTempToken'];
+            }
+            
+            if(isset($_POST[@$_POST['sc_payment_method']]['CVV'])) {
+                $params['cardData']['CVV'] = $_POST[$_POST['sc_payment_method']]['CVV'];
+            }
+            
+            if(isset($_POST[@$_POST['sc_payment_method']]['cardHolderName'])) {
+                $params['cardData']['cardHolderName'] = $_POST[$_POST['sc_payment_method']]['cardHolderName'];
+            }
+            
+            $params['isDynamic3D'] = 1;
+            $endpoint_url = $this->test == 'no' ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
+        }
+        // in case of APM
+        elseif(isset($_POST[@$_POST['sc_payment_method']]) && is_array($_POST[$_POST['sc_payment_method']])) {
+            $is_apm_payment = true;
+            $params['paymentMethod'] = $_POST['sc_payment_method'];
+            $params['userAccountDetails'] = $_POST[$_POST['sc_payment_method']];
+            $endpoint_url = $this->test == 'no' ? SC_LIVE_PAYMENT_URL : SC_TEST_PAYMENT_URL;
+        }
+        
+//        $params['cardData']['cardHolderName'] = 'Ukie Cvetko';
+//        $params['cardData']['CVV'] = '111';
+        
+        $resp = SC_REST_API::call_rest_api(
+            $endpoint_url,
+            $params,
+            $params['checksum']
+        );
+        
+        SC_LOGGER::create_log($resp, 'REST response:');
+        
+        if(!$resp) {
+            wc_add_notice(__('Payment failed, please try again later!', 'sc' ), 'error');
+            return array(
+                'result' 	=> 'error',
+                'redirect'	=> add_query_arg(
+                    array(),
+                    wc_get_page_permalink('checkout')
+                )
+            );
+        }
+
+        // If we get Transaction ID save it as meta-data
+        if(isset($resp['transactionId']) && $resp['transactionId']) {
+            $order->update_meta_data(SC_GW_TRANS_ID_KEY, $resp['transactionId'], 0);
+        }
+
+        if(@$resp['transactionStatus'] == 'DECLINED') {
+            wc_add_notice(__('Payment was DECLINED, please choose different payment method and try again!', 'sc' ), 'error');
+            return array(
+                'result' 	=> 'error',
+                'redirect'	=> add_query_arg(
+                    array(),
+                    wc_get_page_permalink('checkout')
+                )
+            );
+        }
+        
+        if($this->get_request_status($resp) == 'ERROR' || @$resp['transactionStatus'] == 'ERROR') {
+            if($order_status == 'pending') {
+                $order->set_status('failed');
+            }
+
+            $error_txt = 'Payment error';
+
+            if(@$resp['reason'] != '') {
+                $error_txt .= ': ' . $resp['errCode'] . ' - ' . $resp['reason'] . '.';
+            }
+            elseif(@$resp['transactionStatus'] != '') {
+                $error_txt .= ': ' . $resp['transactionStatus'] . '.';
+            }
+            elseif(@$resp['threeDReason'] != '') {
+                $error_txt .= ': ' . $resp['threeDReason'] . '.';
+            }
+
+            $order->add_order_note($error_txt);
+            $order->save();
+
+            wc_add_notice(__($error_txt, 'sc' ), 'error');
+            return array(
+                'result' 	=> 'error',
+                'redirect'	=> add_query_arg(
+                    array(),
+                    wc_get_page_permalink('checkout')
+                )
+            );
+        }
+        
+        if($this->get_request_status($resp) == 'SUCCESS') {
+            # The case with D3D and P3D
+            // isDynamic3D is hardcoded to be 1, see SC_REST_API line 509
+            // for the three cases see: https://www.safecharge.com/docs/API/?json#dynamic3D,
+            // Possible Scenarios for Dynamic 3D (isDynamic3D = 1)
+
+            // prepare the new session data
+            if(!$is_apm_payment) {
+                $params_p3d = $params;
+                
+                $params_p3d['orderId']          = $resp['orderId'];
+                $params_p3d['transactionType']  = @$resp['transactionType'];
+                $params_p3d['paResponse']       = '';
+                
+                $_SESSION['SC_P3D_Params'] = $params_p3d;
+                
+                // case 1
+                if(!empty(@$resp['acsUrl']) && intval(@$resp['threeDFlow']) == 1) {
+                    SC_LOGGER::create_log('D3D case 1');
+                    
+                    $_SESSION['SC_P3D_PaReq']   = @$resp['paRequest'];
+                    $_SESSION['SC_P3D_acsUrl']  = @$resp['acsUrl'];
+
+                    // step 1 - go to acsUrl
+                    return array(
+                        'result' 	=> 'success',
+                        'redirect'	=> add_query_arg(
+                            array(
+                                'order-pay' => $order_id,
+                                'key' => $this->get_order_data($order, 'order_key'),
+                                'redirectUrl' => 1
+                            ),
+                            wc_get_page_permalink('pay')
+                        )
+                    );
+
+                    // step 2 - wait for the DMN
+                }
+                // case 2
+                elseif(intval(@$resp['threeDFlow']) == 1) {
+                    SC_LOGGER::create_log('', 'D3D case 2.');
+                    $this->pay_with_d3d_p3d();
+                }
+                // case 3 do nothing
+            }
+            # The case with D3D and P3D END
+
+            // in case we have redirectURL
+            if(isset($resp['redirectURL']) && !empty($resp['redirectURL'])) {
+                SC_LOGGER::create_log($resp['redirectURL'], 'we have redirectURL: ');
+
+                if(@$resp['gwErrorCode'] == -1 || @$resp['gwErrorReason']) {
+                    $msg = __('Payment with redirect URL error: ' . @$resp['gwErrorReason'] . '.', 'sc');
+                    
+                    $order->add_order_note($msg);
+                    $order->save();
+                    
+                    wc_add_notice(__($msg, 'sc' ), 'error');
+                    return array(
+                        'result' 	=> 'error',
+                        'redirect'	=> add_query_arg(
+                            array('Status' => 'fail'),
+                            $params['failureUrl']
+                        )
+                    );
+                }
+
+                return array(
+                    'result' 	=> 'success',
+                    'redirect'	=> add_query_arg(
+                        array(),
+                        $resp['redirectURL']
+                    )
+                );
+            }
+        } // when SUCCESS
+        
+        if(isset($resp['transactionId']) && $resp['transactionId'] != '') {
+            $order->add_order_note(__('Payment succsess for Transaction Id ', 'sc') . $resp['transactionId']);
+        }
+        else {
+            $order->add_order_note(__('Payment succsess.', 'sc'));
+        }
+
+        // save the response transactionType value
+        if(isset($resp['transactionType']) && $resp['transactionType'] != '') {
+            $order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, $resp['transactionType']);
+        }
+
+        $order->save();
+        
         return array(
             'result' 	=> 'success',
-        //    'redirect'	=> SC_Versions_Resolver::get_redirect_url($order),
             'redirect'	=> add_query_arg(
-                array(
-                    'order-pay' => $this->get_order_data($order, 'id'),
-                    'key' => $this->get_order_data($order, 'order_key')
-                ),
-                wc_get_page_permalink('pay')
+                array('Status' => 'success'),
+                wc_get_page_permalink('order-received')
             )
         );
     }
@@ -1276,15 +1618,17 @@ class WC_SC extends WC_Payment_Gateway
         exit;
     }
     
-    public function sc_checkout_process()
-    {
-        $_SESSION['sc_subpayment'] = '';
-        if(isset($_POST['payment_method_sc'])) {
-            $_SESSION['sc_subpayment'] = $_POST['payment_method_sc'];
-        }
-        
-		return true;
-	}
+//    public function sc_checkout_process()
+//    {
+//        SC_LOGGER::create_log($_POST, 'post sc_checkout_process:');
+//        
+//        $_SESSION['sc_subpayment'] = '';
+//        if(isset($_POST['sc_payment_method'])) {
+//            $_SESSION['sc_subpayment'] = $_POST['sc_payment_method'];
+//        }
+//        
+//		return true;
+//	}
 
 	public function showMessage($content)
     {
@@ -1410,12 +1754,6 @@ class WC_SC extends WC_Payment_Gateway
 
             case 'order_currency':
                 return $order->get_currency();
-
-            case 'order_currency':
-                return $order->get_currency();
-
-            case 'order_version':
-                return $order->get_version();
 
             case 'order_version':
                 return $order->get_version();
