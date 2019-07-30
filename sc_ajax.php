@@ -168,6 +168,7 @@ if(
             
             // add icons for the upos
             $icons = array();
+            $upos_final = array();
 
             if($upos && $payment_methods) {
                 foreach($upos as $upo_key => $upo) {
@@ -178,7 +179,6 @@ if(
                         || (isset($upo['expiryDate'])
                             && strtotime($upo['expiryDate']) < strtotime(date('Ymd')))
                     ) {
-                        unset($upos[$upo_key]);
                         continue;
                     }
 
@@ -194,13 +194,13 @@ if(
                                     $upo['upoData']['brand'],
                                     $pm['logoURL']
                                 );
-
-                                break;
                             }
                             else {
                                 $icons[$pm['paymentMethod']] = $pm['logoURL'];
-                                break;
                             }
+                            
+                            $upos_final[] = $upo;
+                            break;
                         }
                     }
                 }
@@ -213,7 +213,7 @@ if(
                 'langCode'          => $_SESSION['SC_Variables']['languageCode'],
                 'sessionToken'      => $apms_data['sessionToken'],
                 'data'              => array(
-                    'upos'  => $upos,
+                    'upos'  => $upos_final,
                     'paymentMethods'=> $payment_methods,
                     'icons' => $icons
                 )
