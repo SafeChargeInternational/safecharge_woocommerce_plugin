@@ -15,25 +15,12 @@ class SC_HELPER
      * 
      * @param type $url - API URL
      * @param array $params - parameters
-     * @param string $checksum - the checksum
-     * @param array $other_params - other parameters we use
      * 
      * @return mixed
      */
-    public static function call_rest_api($url, $params, $checksum = '', $other_params = array())
+    public static function call_rest_api($url, $params)
     {
         $resp = false;
-        
-        if(
-            (!isset($params['checksum']) or empty($params['checksum']))
-            and !empty($checksum)
-        ) {
-            $params['checksum'] = $checksum;
-        }
-        
-        if(!empty($other_params) and is_array($other_params)) {
-            $params = array_merge($params, $other_params);
-        }
         
         // get them only if we pass them empty
         if(isset($params['deviceDetails']) && empty($params['deviceDetails'])) {

@@ -166,7 +166,7 @@ if(
         
         // when we want Session Token only
         if(isset($_POST['needST']) && $_POST['needST'] == 1) {
-            SC_HELPER::call_rest_api('Ajax, get Session Token.');
+            SC_HELPER::create_log('Ajax, get Session Token.');
             
             $session_data['test'] = @$_SESSION['SC_Variables']['test'];
             echo json_encode(array('status' => 1, 'data' => $session_data));
