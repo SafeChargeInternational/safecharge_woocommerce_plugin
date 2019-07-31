@@ -15,7 +15,9 @@ if(!defined('ABSPATH')) {
 }
 
 require_once 'sc_config.php';
-require_once 'SC_LOGGER.php';
+require_once 'SC_Versions_Resolver.php';
+//require_once 'SC_LOGGER.php';
+require_once 'SC_HELPER.php';
 
 $wc_sc = null;
 
@@ -140,7 +142,7 @@ function sc_show_final_text()
             $order->save();
         }
         catch (Exception $ex) {
-            SC_LOGGER::create_log($ex->getMessage(), 'Cashier handle exception error: ');
+            SC_HELPER::create_log($ex->getMessage(), 'Cashier handle exception error: ');
         }
     }
     // REST API tahnk you page handler
@@ -247,7 +249,7 @@ function sc_add_buttons()
     }
     
     if($order_status == 'completed'|| $order_status == 'pending') {
-        require_once 'SC_Versions_Resolver.php';
+    //    require_once 'SC_Versions_Resolver.php';
         global $wc_sc;
 
         $time = date('YmdHis', time());
@@ -262,7 +264,6 @@ function sc_add_buttons()
             'merchantSiteId'        => $wc_sc->settings['merchantSiteId'],
             'clientRequestId'       => $time . '_' . $order_tr_id,
             'clientUniqueId'        => $_REQUEST['post'],
-        //    'amount'                => SC_Versions_Resolver::get_order_data($order, 'order_total'),
             'amount'                => $wc_sc->get_order_data($order, 'order_total'),
             'currency'              => get_woocommerce_currency(),
             'relatedTransactionId'  => $order_tr_id,
@@ -362,7 +363,7 @@ function sc_wpml_thank_you_page( $order_received_url, $order )
     $lang_code = get_post_meta( $order->id, 'wpml_language', true );
     $order_received_url = apply_filters( 'wpml_permalink', $order_received_url , $lang_code );
     
-    SC_LOGGER::create_log($order_received_url, 'sc_wpml_thank_you_page: ');
+    SC_HELPER::create_log($order_received_url, 'sc_wpml_thank_you_page: ');
  
     return $order_received_url;
 }

@@ -22,8 +22,8 @@ class WC_SC extends WC_Payment_Gateway
     
     public function __construct()
     {
-        require_once 'SC_Versions_Resolver.php';
-        require_once 'SC_REST_API.php';
+    //    require_once 'SC_Versions_Resolver.php';
+    //    require_once 'SC_REST_API.php';
         
         $_SESSION['SC_Variables']['webMasterId'] = $this->webMasterId .= WOOCOMMERCE_VERSION;
         $plugin_dir = basename(dirname(__FILE__));
@@ -71,9 +71,9 @@ class WC_SC extends WC_Payment_Gateway
         $_SESSION['SC_Variables']['payment_api']        = $this->payment_api;
         $_SESSION['SC_Variables']['transactionType']    = $this->transaction_type;
         $_SESSION['SC_Variables']['test']               = $this->test;
-        $_SESSION['SC_Variables']['save_logs']          = $this->save_logs;
+    //    $_SESSION['SC_Variables']['save_logs']          = $this->save_logs;
         $_SESSION['SC_Variables']['rewrite_dmn']        = $this->rewrite_dmn;
-        $_SESSION['create_logs']                        = $this->save_logs;
+        $_SESSION['sc_create_logs']                     = $this->save_logs;
         
         // prepare the data for the UPOs
         if(is_user_logged_in()) {
@@ -358,12 +358,12 @@ class WC_SC extends WC_Payment_Gateway
             }
             elseif($_SESSION['SC_CASHIER_FORM_RENDED'] === true) {
                 $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
-                SC_LOGGER::create_log('second call of generate_sc_form() when use Cashier, stop here!');
+                SC_HELPER::create_log('second call of generate_sc_form() when use Cashier, stop here!');
                 return;
             }
         }
         
-        SC_LOGGER::create_log('generate_sc_form()');
+        SC_HELPER::create_log('generate_sc_form()');
         
         $order = new WC_Order($order_id);
         
@@ -549,12 +549,12 @@ class WC_SC extends WC_Payment_Gateway
             $params['webMasterId']      = $this->webMasterId;
         }
         catch (Exception $ex) {
-            SC_LOGGER::create_log($ex->getMessage(), 'Exception while preparing order parameters: ');
+            SC_HELPER::create_log($ex->getMessage(), 'Exception while preparing order parameters: ');
         }
         
         # Cashier payment
         if($this->payment_api == 'cashier') {
-            SC_LOGGER::create_log('Cashier payment');
+            SC_HELPER::create_log('Cashier payment');
             
             $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
             
@@ -584,7 +584,7 @@ class WC_SC extends WC_Payment_Gateway
             $test_diff = $params['total_amount'] - $params['handling'] - $test_sum;
             if($test_diff != 0) {
                 $params['handling'] += $test_diff;
-                SC_LOGGER::create_log($test_diff, 'Total diff, added to handling: ');
+                SC_HELPER::create_log($test_diff, 'Total diff, added to handling: ');
             }
             # Items calculations END
 
@@ -598,8 +598,8 @@ class WC_SC extends WC_Payment_Gateway
                 }
             }
 
-            SC_LOGGER::create_log($this->URL, 'Endpoint URL: ');
-            SC_LOGGER::create_log($params, 'Order params');
+            SC_HELPER::create_log($this->URL, 'Endpoint URL: ');
+            SC_HELPER::create_log($params, 'Order params');
             
             $info_msg = 
                 '<table id="sc_pay_msg" style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
@@ -642,7 +642,7 @@ class WC_SC extends WC_Payment_Gateway
         }
         # REST API payment
         elseif($this->payment_api == 'rest') {
-            SC_LOGGER::create_log('REST API payment');
+            SC_HELPER::create_log('REST API payment');
             
             // for the REST we do not care about details
             $params['handling'] = '0.00';
@@ -684,8 +684,8 @@ class WC_SC extends WC_Payment_Gateway
         //    echo '<pre>'.print_r($_SESSION,true).'</pre>';
             echo '<pre>'.print_r($this,true).'</pre>';
             
-//            SC_LOGGER::create_log($params, 'params sent to REST: ');
-//            SC_LOGGER::create_log($_SESSION['SC_Variables'], 'SC_Variables: ');
+//            SC_HELPER::create_log($params, 'params sent to REST: ');
+//            SC_HELPER::create_log($_SESSION['SC_Variables'], 'SC_Variables: ');
             die;
             $resp = SC_REST_API::process_payment(
                 $params
@@ -694,7 +694,7 @@ class WC_SC extends WC_Payment_Gateway
                 ,$payment_method
             );
             
-            SC_LOGGER::create_log('REST API payment was sent.');
+            SC_HELPER::create_log('REST API payment was sent.');
             
             if(!$resp) {
                 if($order_status == 'pending') {
@@ -704,7 +704,7 @@ class WC_SC extends WC_Payment_Gateway
                 $order->add_order_note(__('Payment API response is FALSE.', 'sc'));
                 $order->save();
                 
-                SC_LOGGER::create_log($resp, 'REST API Payment ERROR: ');
+                SC_HELPER::create_log($resp, 'REST API Payment ERROR: ');
                 
                 echo 
                     '<script>'
@@ -741,7 +741,7 @@ class WC_SC extends WC_Payment_Gateway
                 $order->add_order_note($error_txt);
                 $order->save();
                 
-                SC_LOGGER::create_log($resp['errCode'].': '.$resp['reason'], 'REST API Payment ERROR: ');
+                SC_HELPER::create_log($resp['errCode'].': '.$resp['reason'], 'REST API Payment ERROR: ');
                 
                 echo 
                     '<script>'
@@ -826,7 +826,7 @@ class WC_SC extends WC_Payment_Gateway
                         && !empty($resp['acsUrl'])
                         && intval($resp['threeDFlow']) == 1
                     ) {
-                        SC_LOGGER::create_log('D3D case 1');
+                        SC_HELPER::create_log('D3D case 1');
                         
                         // step 1 - go to acsUrl
                         $html =
@@ -866,7 +866,7 @@ class WC_SC extends WC_Payment_Gateway
                     }
                     // case 2
                     elseif(isset($resp['threeDFlow']) && intval($resp['threeDFlow']) == 1) {
-                        SC_LOGGER::create_log('', 'D3D case 2.');
+                        SC_HELPER::create_log('', 'D3D case 2.');
                         $this->pay_with_d3d_p3d();
                     }
                     // case 3 do nothing
@@ -875,7 +875,7 @@ class WC_SC extends WC_Payment_Gateway
                 
                 // in case we have redirectURL
                 if(isset($resp['redirectURL']) && !empty($resp['redirectURL'])) {
-                    SC_LOGGER::create_log($resp['redirectURL'], 'we have redirectURL: ');
+                    SC_HELPER::create_log($resp['redirectURL'], 'we have redirectURL: ');
                     
                     if(@$resp['gwErrorCode'] == -1 || @$resp['gwErrorReason']) {
                         $order->add_order_note(
@@ -928,7 +928,7 @@ class WC_SC extends WC_Payment_Gateway
         }
         # ERROR - not existing payment api
         else {
-            SC_LOGGER::create_log(
+            SC_HELPER::create_log(
                 'Wrong paiment api ('. $this->payment_api .').'
                 , 'Payment form ERROR: '
             );
@@ -969,7 +969,7 @@ class WC_SC extends WC_Payment_Gateway
             $_SESSION['SC_P3D_Params']['transactionType'] = $this->transaction_type;
             $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl'] = $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl']['notificationUrl'];
 
-            SC_LOGGER::create_log('pay_with_d3d_p3d call to the REST API.');
+            SC_HELPER::create_log('pay_with_d3d_p3d call to the REST API.');
 
             $p3d_resp = SC_REST_API::call_rest_api(
                 @$_SESSION['SC_Variables']['test'] == 'yes' ? SC_TEST_P3D_URL : SC_LIVE_P3D_URL
@@ -979,7 +979,7 @@ class WC_SC extends WC_Payment_Gateway
             );
         }
         catch (Exception $e) {
-            SC_LOGGER::create_log($e->getMessage(), 'pay_with_d3d_p3d Exception: ');
+            SC_HELPER::create_log($e->getMessage(), 'pay_with_d3d_p3d Exception: ');
             
             echo 
                 '<script>'
@@ -996,7 +996,7 @@ class WC_SC extends WC_Payment_Gateway
             $order->add_order_note(__('Payment 3D API response fails.', 'sc'));
             $order->save();
 
-            SC_LOGGER::create_log($resp, 'REST API Payment 3D ERROR: ');
+            SC_HELPER::create_log($resp, 'REST API Payment 3D ERROR: ');
 
             echo 
                 '<script>'
@@ -1036,7 +1036,7 @@ class WC_SC extends WC_Payment_Gateway
         $order = new WC_Order($order_id);
         $order_status = strtolower($order->get_status());
         
-        SC_LOGGER::create_log($order_status, '$order_status:');
+        SC_HELPER::create_log($order_status, '$order_status:');
         
         # when use Cashier - redirect to receipt page
         if($this->payment_api == 'cashier') {
@@ -1210,7 +1210,7 @@ class WC_SC extends WC_Payment_Gateway
             $params['checksum']
         );
         
-        SC_LOGGER::create_log($resp, 'REST response:');
+        SC_HELPER::create_log($resp, 'REST response:');
         
         if(!$resp) {
             wc_add_notice(__('Payment failed, please try again later!', 'sc' ), 'error');
@@ -1287,7 +1287,7 @@ class WC_SC extends WC_Payment_Gateway
                 
                 // case 1
                 if(!empty(@$resp['acsUrl']) && intval(@$resp['threeDFlow']) == 1) {
-                    SC_LOGGER::create_log('D3D case 1');
+                    SC_HELPER::create_log('D3D case 1');
                     
                     $_SESSION['SC_P3D_PaReq']   = @$resp['paRequest'];
                     $_SESSION['SC_P3D_acsUrl']  = @$resp['acsUrl'];
@@ -1309,7 +1309,7 @@ class WC_SC extends WC_Payment_Gateway
                 }
                 // case 2
                 elseif(intval(@$resp['threeDFlow']) == 1) {
-                    SC_LOGGER::create_log('', 'D3D case 2.');
+                    SC_HELPER::create_log('', 'D3D case 2.');
                     $this->pay_with_d3d_p3d();
                 }
                 // case 3 do nothing
@@ -1318,7 +1318,7 @@ class WC_SC extends WC_Payment_Gateway
 
             // in case we have redirectURL
             if(isset($resp['redirectURL']) && !empty($resp['redirectURL'])) {
-                SC_LOGGER::create_log($resp['redirectURL'], 'we have redirectURL: ');
+                SC_HELPER::create_log($resp['redirectURL'], 'we have redirectURL: ');
 
                 if(@$resp['gwErrorCode'] == -1 || @$resp['gwErrorReason']) {
                     $msg = __('Payment with redirect URL error: ' . @$resp['gwErrorReason'] . '.', 'sc');
@@ -1376,7 +1376,7 @@ class WC_SC extends WC_Payment_Gateway
      */
     public function process_dmns($do_not_call_api = false)
     {
-        SC_LOGGER::create_log(@$_REQUEST, 'Receive DMN with params: ');
+        SC_HELPER::create_log(@$_REQUEST, 'Receive DMN with params: ');
         
         $req_status = $this->get_request_status();
         
@@ -1386,32 +1386,32 @@ class WC_SC extends WC_Payment_Gateway
             && in_array($_REQUEST['transactionType'], array('Sale', 'Auth'))
             && $this->checkAdvancedCheckSum()
         ) {
-            SC_LOGGER::create_log('A sale/auth.');
+            SC_HELPER::create_log('A sale/auth.');
             $order_id = 0;
             
             // Cashier
             if(!empty($_REQUEST['invoice_id'])) {
-                SC_LOGGER::create_log('Cashier sale.');
+                SC_HELPER::create_log('Cashier sale.');
                 
                 try {
                     $arr = explode("_", $_REQUEST['invoice_id']);
                     $order_id  = intval($arr[0]);
                 }
                 catch (Exception $ex) {
-                    SC_LOGGER::create_log($ex->getMessage(), 'Cashier DMN Exception when try to get Order ID: ');
+                    SC_HELPER::create_log($ex->getMessage(), 'Cashier DMN Exception when try to get Order ID: ');
                     echo 'DMN Exception: ' . $ex->getMessage();
                     exit;
                 }
             }
             // REST
             else {
-                SC_LOGGER::create_log('REST sale.');
+                SC_HELPER::create_log('REST sale.');
                 
                 try {
                     $order_id = $_REQUEST['merchant_unique_id'];
                 }
                 catch (Exception $ex) {
-                    SC_LOGGER::create_log($ex->getMessage(), 'REST DMN Exception when try to get Order ID: ');
+                    SC_HELPER::create_log($ex->getMessage(), 'REST DMN Exception when try to get Order ID: ');
                     echo 'DMN Exception: ' . $ex->getMessage();
                     exit;
                 }
@@ -1429,7 +1429,7 @@ class WC_SC extends WC_Payment_Gateway
                 }
             }
             catch (Exception $ex) {
-                SC_LOGGER::create_log($ex->getMessage(), 'Sale DMN Exception: ');
+                SC_HELPER::create_log($ex->getMessage(), 'Sale DMN Exception: ');
                 echo 'DMN Exception: ' . $ex->getMessage();
                 exit;
             }
@@ -1450,7 +1450,7 @@ class WC_SC extends WC_Payment_Gateway
             && ($_REQUEST['transactionType'] == 'Void' || $_REQUEST['transactionType'] == 'Settle')
             && $this->checkAdvancedCheckSum()
         ) {
-            SC_LOGGER::create_log('', $_REQUEST['transactionType']);
+            SC_HELPER::create_log('', $_REQUEST['transactionType']);
             
             try {
                 $order = new WC_Order($_REQUEST['clientUniqueId']);
@@ -1463,7 +1463,7 @@ class WC_SC extends WC_Payment_Gateway
                 $order_id = @$_REQUEST['clientUniqueId'];
             }
             catch (Exception $ex) {
-                SC_LOGGER::create_log(
+                SC_HELPER::create_log(
                     $ex->getMessage(),
                     'process_dmns() REST API DMN DMN Exception: probably invalid order number'
                 );
@@ -1491,12 +1491,12 @@ class WC_SC extends WC_Payment_Gateway
             && !empty($req_status)
             && $this->checkAdvancedCheckSum()
         ) {
-            SC_LOGGER::create_log('Refund DMN.');
+            SC_HELPER::create_log('Refund DMN.');
             
             $order = new WC_Order(@$_REQUEST['order_id']);
 
             if(!is_a($order, 'WC_Order')) {
-                SC_LOGGER::create_log('DMN meassage: there is no Order!');
+                SC_HELPER::create_log('DMN meassage: there is no Order!');
                 
                 echo 'There is no Order';
                 exit;
@@ -1542,7 +1542,7 @@ class WC_SC extends WC_Payment_Gateway
         # D3D and P3D payment
         // the idea here is to get $_REQUEST['paResponse'] and pass it to P3D
         elseif(@$_REQUEST['action'] == 'p3d') {
-            SC_LOGGER::create_log('p3d.');
+            SC_HELPER::create_log('p3d.');
             
             // the DMN from case 1 - issuer/bank
             if(
@@ -1566,7 +1566,7 @@ class WC_SC extends WC_Payment_Gateway
                     );
                 }
                 catch (Exception $ex) {
-                    SC_LOGGER::create_log(
+                    SC_HELPER::create_log(
                         $ex->getMessage(),
                         'process_dmns() REST API DMN DMN Exception: '
                     );
@@ -1583,7 +1583,7 @@ class WC_SC extends WC_Payment_Gateway
         
         # other cases
         if(!isset($_REQUEST['action']) && $this->checkAdvancedCheckSum()) {
-            SC_LOGGER::create_log('', 'Other cases.');
+            SC_HELPER::create_log('', 'Other cases.');
             
             try {
                 $order = new WC_Order(@$_REQUEST['clientUniqueId']);
@@ -1596,7 +1596,7 @@ class WC_SC extends WC_Payment_Gateway
                 );
             }
             catch (Exception $ex) {
-                SC_LOGGER::create_log(
+                SC_HELPER::create_log(
                     $ex->getMessage(),
                     'process_dmns() REST API DMN Exception: '
                 );
@@ -1620,7 +1620,7 @@ class WC_SC extends WC_Payment_Gateway
     
 //    public function sc_checkout_process()
 //    {
-//        SC_LOGGER::create_log($_POST, 'post sc_checkout_process:');
+//        SC_HELPER::create_log($_POST, 'post sc_checkout_process:');
 //        
 //        $_SESSION['sc_subpayment'] = '';
 //        if(isset($_POST['sc_payment_method'])) {
@@ -1807,8 +1807,8 @@ class WC_SC extends WC_Payment_Gateway
             // the hooks calling this method, fired twice when change status
             // to Refunded, but we do not want to try more than one SC Refunds
             if(isset($_SESSION['sc_last_refund_id'])) {
-            //    SC_LOGGER::create_log($_SESSION['sc_last_refund_id'], 'we have session: ');
-            //    SC_LOGGER::create_log($refund_data['id'], 'refund id: ');
+            //    SC_HELPER::create_log($_SESSION['sc_last_refund_id'], 'we have session: ');
+            //    SC_HELPER::create_log($refund_data['id'], 'refund id: ');
                 
                 if(intval($_SESSION['sc_last_refund_id']) == intval($refund_data['id'])) {
                     unset($_SESSION['sc_last_refund_id']);
@@ -1819,7 +1819,7 @@ class WC_SC extends WC_Payment_Gateway
                 }
             }
             else {
-            //    SC_LOGGER::create_log($refund_data['id'], 'create session: ');
+            //    SC_HELPER::create_log($refund_data['id'], 'create session: ');
                 $_SESSION['sc_last_refund_id'] = $refund_data['id'];
             }
             
@@ -1837,7 +1837,7 @@ class WC_SC extends WC_Payment_Gateway
             );
         }
         catch (Exception $ex) {
-            SC_LOGGER::create_log($ex->getMessage(), 'sc_create_refund() Exception: ');
+            SC_HELPER::create_log($ex->getMessage(), 'sc_create_refund() Exception: ');
             return;
         }
         
@@ -1987,7 +1987,7 @@ class WC_SC extends WC_Payment_Gateway
             $order->update_meta_data('_scIsRestock', 1);
             $order->save();
             
-            SC_LOGGER::create_log('Items were restocked.');
+            SC_HELPER::create_log('Items were restocked.');
         }
         
         return;
@@ -2005,7 +2005,7 @@ class WC_SC extends WC_Payment_Gateway
      */
     private function change_order_status($order, $order_id, $status, $transactionType = '', $res_args = array())
     {
-        SC_LOGGER::create_log(
+        SC_HELPER::create_log(
             'Order ' . $order_id .' has Status: ' . $status,
             'WC_SC change_order_status() status-order: '
         );

@@ -13,6 +13,7 @@ if (!session_id()) {
 }
 
 require_once 'sc_config.php';
+require_once 'SC_HELPER.php';
 
 // The following fileds are MANDATORY for success
 if(
@@ -28,7 +29,7 @@ if(
     && !empty($_SESSION['SC_Variables']['merchantSiteId'])
     && in_array($_SESSION['SC_Variables']['payment_api'], array('cashier', 'rest'))
 ) {
-    require_once 'SC_LOGGER.php';
+//    require_once 'SC_LOGGER.php';
     
     // when enable or disable SC Checkout
     if(in_array(@$_POST['enableDisableSCCheckout'], array('enable', 'disable'))) {
@@ -53,7 +54,7 @@ if(
         exit;
     }
     
-    require_once 'SC_REST_API.php';
+//    require_once 'SC_REST_API.php';
     
     // if there is no webMasterId in the session get it from the post
     if(
@@ -64,10 +65,47 @@ if(
         $_SESSION['SC_Variables']['webMasterId'] = 'WoCommerce ' . $_POST['woVersion'];
     }
     
-    // when merchant cancel the order via Void button
+    // Void, Cancel
     if(isset($_POST['cancelOrder']) && $_POST['cancelOrder'] == 1) {
-        SC_REST_API::void_and_settle_order($_SESSION['SC_Variables'], 'void', true);
+        $status = 1;
+        $url = $_SESSION['SC_Variables']['test'] == 'no' ? SC_LIVE_VOID_URL : SC_TEST_VOID_URL;
+        
+        $resp = SC_HELPER::call_rest_api($url, $_SESSION['SC_Variables']);
+        
+        if(
+            !$resp || !is_array($resp)
+            || @$resp['status'] == 'ERROR'
+            || @$resp['transactionStatus'] == 'ERROR'
+            || @$resp['transactionStatus'] == 'DECLINED'
+        ) {
+            $status = 0;
+        }
+        
         unset($_SESSION['SC_Variables']);
+        
+        echo json_encode(array('status' => $status, 'data' => $resp));
+        exit;
+    }
+    
+    // Settle
+    if(isset($_POST['settleOrder']) && $_POST['settleOrder'] == 1) {
+        $status = 1;
+        $url = $_SESSION['SC_Variables']['test'] == 'no' ? SC_LIVE_SETTLE_URL : SC_TEST_SETTLE_URL;
+        
+        $resp = SC_HELPER::call_rest_api($url, $_SESSION['SC_Variables']);
+        
+        if(
+            !$resp || !is_array($resp)
+            || @$resp['status'] == 'ERROR'
+            || @$resp['transactionStatus'] == 'ERROR'
+            || @$resp['transactionStatus'] == 'DECLINED'
+        ) {
+            $status = 0;
+        }
+        
+        unset($_SESSION['SC_Variables']);
+        
+        echo json_encode(array('status' => $status, 'data' => $resp));
         exit;
     }
     
@@ -106,13 +144,6 @@ if(
         exit;
     }
     
-    // when merchant settle the order via Settle button
-    if(isset($_POST['settleOrder']) && $_POST['settleOrder'] == 1) {
-        SC_REST_API::void_and_settle_order($_SESSION['SC_Variables'], 'settle', true);
-        unset($_SESSION['SC_Variables']);
-        exit;
-    }
-    
     if($_SESSION['SC_Variables']['payment_api'] == 'rest') {
         // when we want Session Token
         if(isset($_POST['needST']) && $_POST['needST'] == 1) {
@@ -147,7 +178,7 @@ if(
                     $upos = $upos_data['paymentMethods'];
                 }
                 else {
-                    SC_LOGGER::create_log($upos_data, '$upos_data:');
+                    SC_HELPER::create_log($upos_data, '$upos_data:');
                 }
             }
             # get UPOs END
@@ -156,7 +187,7 @@ if(
             $apms_data = SC_REST_API::get_rest_apms($_SESSION['SC_Variables']);
             
             if(!is_array($apms_data) || !isset($apms_data['paymentMethods']) || empty($apms_data['paymentMethods'])) {
-                SC_LOGGER::create_log($apms_data, '$apms_data:');
+                SC_HELPER::create_log($apms_data, '$apms_data:');
                 
                 echo json_encode(array('status' => 0));
                 exit;

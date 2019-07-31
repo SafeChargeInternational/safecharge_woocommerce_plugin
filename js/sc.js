@@ -574,7 +574,6 @@ function settleAndCancelOrder(question, action) {
                 if(resp && typeof resp.status != 'undefined' && resp.data != 'undefined') {
                     if(resp.status == 1) {
                         jQuery('#custom_loader').hide();
-                        alert('You will be redirected to Orders list.');
 
                         var urlParts = window.location.toString().split('post.php');
                         window.location = urlParts[0] + 'edit.php?post_type=shop_order';
