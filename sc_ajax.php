@@ -29,8 +29,6 @@ if(
     && !empty($_SESSION['SC_Variables']['merchantSiteId'])
     && in_array($_SESSION['SC_Variables']['payment_api'], array('cashier', 'rest'))
 ) {
-//    require_once 'SC_LOGGER.php';
-    
     // when enable or disable SC Checkout
     if(in_array(@$_POST['enableDisableSCCheckout'], array('enable', 'disable'))) {
         require dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-includes/plugin.php';
@@ -53,8 +51,6 @@ if(
         echo json_encode(array('status' => 1, data => 'action error.'));
         exit;
     }
-    
-//    require_once 'SC_REST_API.php';
     
     // if there is no webMasterId in the session get it from the post
     if(
@@ -136,106 +132,144 @@ if(
             }
 
             echo json_encode(array('status' => 1, 'msg' => ''));
+            exit;
         }
-        else {
-            echo json_encode(array('status' => 0, 'msg' => 'The log files are less than 30.'));
-        }
-
+        
+        echo json_encode(array('status' => 0, 'msg' => 'The log files are less than 30.'));
         exit;
     }
     
     if($_SESSION['SC_Variables']['payment_api'] == 'rest') {
-        // when we want Session Token
-        if(isset($_POST['needST']) && $_POST['needST'] == 1) {
-            SC_REST_API::get_session_token($_SESSION['SC_Variables'], true);
+        // prepare Session Token
+        $st_endpoint_url = $_SESSION['SC_Variables']['test'] == 'yes'
+            ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL;
+
+        $st_params = array(
+            'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
+            'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
+            'clientRequestId'   => $_SESSION['SC_Variables']['cri1'],
+            'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri1'])),
+            'checksum'          => $_SESSION['SC_Variables']['cs1']
+        );
+
+        $session_data = SC_HELPER::call_rest_api($st_endpoint_url, $st_params);
+        
+        if(
+            !$session_data || !is_array($session_data)
+            || !isset($session_data['status']) || $session_data['status'] != 'SUCCESS'
+        ) {
+            SC_HELPER::create_log($session_data, 'getting getSessionToken error: ');
+
+            echo json_encode(array('status' => 0));
+            exit;
         }
-        // when we want APMs
-        elseif(isset($_POST['country']) && $_POST['country'] != '') {
+        
+        // when we want Session Token only
+        if(isset($_POST['needST']) && $_POST['needST'] == 1) {
+            SC_HELPER::call_rest_api('Ajax, get Session Token.');
+            
+            $session_data['test'] = @$_SESSION['SC_Variables']['test'];
+            echo json_encode(array('status' => 1, 'data' => $session_data));
+            exit;
+            
+        //    SC_REST_API::get_session_token($_SESSION['SC_Variables'], true);
+        }
+        
+        // when we want APMs and UPOs
+        if(isset($_POST['country']) && $_POST['country'] != '') {
             // if the Country come as POST variable
             if(empty($_SESSION['SC_Variables']['sc_country'])) {
                 $_SESSION['SC_Variables']['sc_country'] = @$_POST['country'];
             }
 
+            # get APMs
+            $apms_params = array(
+                'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
+                'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
+                'clientRequestId'   => $_SESSION['SC_Variables']['cri2'],
+                'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri2'])),
+                'checksum'          => $_SESSION['SC_Variables']['cs2'],
+                'sessionToken'      => $session_data['sessionToken'],
+                'currencyCode'      => $_SESSION['SC_Variables']['currencyCode'],
+                'countryCode'       => $_SESSION['SC_Variables']['sc_country'],
+                'languageCode'      => $_SESSION['SC_Variables']['languageCode'],
+            );
+            
+            $endpoint_url = $_SESSION['SC_Variables']['test'] == 'yes'
+                ? SC_TEST_REST_PAYMENT_METHODS_URL : SC_LIVE_REST_PAYMENT_METHODS_URL;
+            
+            $apms_data = SC_HELPER::call_rest_api($endpoint_url, $apms_params);
+            
+            if(!is_array($apms_data) || !isset($apms_data['paymentMethods']) || empty($apms_data['paymentMethods'])) {
+                SC_HELPER::create_log($apms_data, 'getting APMs error: ');
+
+                echo json_encode(array('status' => 0));
+                exit;
+            }
+            
+            // set template data with the payment methods
+            $payment_methods = $apms_data['paymentMethods'];
+            # get APMs END
+            
             # get UPOs
             $upos = array();
+            $icons = array();
 
             if(isset($_SESSION['SC_Variables']['upos_data'])) {
-                $upos_data = SC_REST_API::get_user_upos(
-                    array(
-                        'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
-                        'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
-                        'userTokenId'       => $_SESSION['SC_Variables']['upos_data']['userTokenId'],
-                        'clientRequestId'   => $_SESSION['SC_Variables']['upos_data']['clientRequestId'],
-                        'timeStamp'         => $_SESSION['SC_Variables']['upos_data']['timestamp'],
-                    ),
-                    array(
-                        'checksum'          => $_SESSION['SC_Variables']['upos_data']['checksum'],
-                        'test'              => $_SESSION['SC_Variables']['test'],
-                    )
+                $endpoint_url = $_SESSION['SC_Variables']['test'] == 'yes'
+                    ? SC_TEST_USER_UPOS_URL : SC_LIVE_USER_UPOS_URL;
+                
+                $upos_params = array(
+                    'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
+                    'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
+                    'userTokenId'       => $_SESSION['SC_Variables']['upos_data']['userTokenId'],
+                    'clientRequestId'   => $_SESSION['SC_Variables']['upos_data']['clientRequestId'],
+                    'timeStamp'         => $_SESSION['SC_Variables']['upos_data']['timestamp'],
+                    'checksum'          => $_SESSION['SC_Variables']['upos_data']['checksum'],
                 );
                 
+                $upos_data = SC_HELPER::call_rest_api($endpoint_url, $upos_params);
+                
                 if(isset($upos_data['paymentMethods']) && $upos_data['paymentMethods']) {
-                    $upos = $upos_data['paymentMethods'];
+                    foreach($upos_data['paymentMethods'] as $upo_key => $upo) {
+                        if(
+                            @$upo['upoStatus'] != 'enabled'
+                            || (isset($upo['upoData']['ccCardNumber'])
+                                && empty($upo['upoData']['ccCardNumber']))
+                            || (isset($upo['expiryDate'])
+                                && strtotime($upo['expiryDate']) < strtotime(date('Ymd')))
+                        ) {
+                            continue;
+                        }
+
+                        // search in payment methods
+                        foreach($payment_methods as $pm) {
+                            if(@$pm['paymentMethod'] == @$upo['paymentMethodName']) {
+                                if(
+                                    in_array(@$upo['paymentMethodName'], array('cc_card', 'dc_card'))
+                                    && @$upo['upoData']['brand']
+                                ) {
+                                    $icons[@$upo['upoData']['brand']] = str_replace(
+                                        'default_cc_card',
+                                        $upo['upoData']['brand'],
+                                        $pm['logoURL']
+                                    );
+                                }
+                                else {
+                                    $icons[$pm['paymentMethod']] = $pm['logoURL'];
+                                }
+
+                                $upos[] = $upo;
+                                break;
+                            }
+                        }
+                    }
                 }
                 else {
                     SC_HELPER::create_log($upos_data, '$upos_data:');
                 }
             }
             # get UPOs END
-            
-            # get APMs
-            $apms_data = SC_REST_API::get_rest_apms($_SESSION['SC_Variables']);
-            
-            if(!is_array($apms_data) || !isset($apms_data['paymentMethods']) || empty($apms_data['paymentMethods'])) {
-                SC_HELPER::create_log($apms_data, '$apms_data:');
-                
-                echo json_encode(array('status' => 0));
-                exit;
-            }
-
-            // set template data with the payment methods
-            $payment_methods = $apms_data['paymentMethods'];
-            # get APMs END
-            
-            // add icons for the upos
-            $icons = array();
-            $upos_final = array();
-
-            if($upos && $payment_methods) {
-                foreach($upos as $upo_key => $upo) {
-                    if(
-                        @$upo['upoStatus'] != 'enabled'
-                        || (isset($upo['upoData']['ccCardNumber'])
-                            && empty($upo['upoData']['ccCardNumber']))
-                        || (isset($upo['expiryDate'])
-                            && strtotime($upo['expiryDate']) < strtotime(date('Ymd')))
-                    ) {
-                        continue;
-                    }
-
-                    // search in payment methods
-                    foreach($payment_methods as $pm) {
-                        if(@$pm['paymentMethod'] == @$upo['paymentMethodName']) {
-                            if(
-                                in_array(@$upo['paymentMethodName'], array('cc_card', 'dc_card'))
-                                && @$upo['upoData']['brand']
-                            ) {
-                                $icons[@$upo['upoData']['brand']] = str_replace(
-                                    'default_cc_card',
-                                    $upo['upoData']['brand'],
-                                    $pm['logoURL']
-                                );
-                            }
-                            else {
-                                $icons[$pm['paymentMethod']] = $pm['logoURL'];
-                            }
-                            
-                            $upos_final[] = $upo;
-                            break;
-                        }
-                    }
-                }
-            }
             
             echo json_encode(array(
                 'status'            => 1,
@@ -244,15 +278,18 @@ if(
                 'langCode'          => $_SESSION['SC_Variables']['languageCode'],
                 'sessionToken'      => $apms_data['sessionToken'],
                 'data'              => array(
-                    'upos'  => $upos_final,
-                    'paymentMethods'=> $payment_methods,
-                    'icons' => $icons
+                    'upos'              => $upos,
+                    'paymentMethods'    => $payment_methods,
+                    'icons'             => $icons
                 )
             ));
+            
+            exit;
         }
         
         exit;
     }
+    
     // here we no need APMs
     else {
         echo json_encode(array(
