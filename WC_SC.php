@@ -22,9 +22,6 @@ class WC_SC extends WC_Payment_Gateway
     
     public function __construct()
     {
-    //    require_once 'SC_Versions_Resolver.php';
-    //    require_once 'SC_REST_API.php';
-        
         $_SESSION['SC_Variables']['webMasterId'] = $this->webMasterId .= WOOCOMMERCE_VERSION;
         $plugin_dir = basename(dirname(__FILE__));
         $this->plugin_path = plugin_dir_path( __FILE__ ) . $plugin_dir . DIRECTORY_SEPARATOR;
@@ -351,6 +348,8 @@ class WC_SC extends WC_Payment_Gateway
      **/
     public function generate_sc_form($order_id)
     {
+        SC_HELPER::create_log('generate_sc_form');
+        
         // prevent execute this method twice when use Cashier
         if($this->payment_api == 'cashier') {
             if( ! isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
@@ -1097,6 +1096,8 @@ class WC_SC extends WC_Payment_Gateway
         );
         
         // for the session token
+        $st_endpoint_url = $this->test == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL;
+        
         $st_params = array(
             'merchantId'        => $params['merchantId'],
             'merchantSiteId'    => $params['merchantSiteId'],
@@ -1109,11 +1110,15 @@ class WC_SC extends WC_Payment_Gateway
             implode('', $st_params) . $this->secret
         );
         
-        $st_params['test'] = $this->test;
+        $session_token_data = SC_HELPER::call_rest_api($st_endpoint_url, $st_params);
         
-        $session_token_data = SC_REST_API::get_session_token($st_params);
-        
-        if($session_token_data === false) {
+        if(
+            !$session_token_data || !is_array($session_token_data)
+            || !isset($session_token_data['status'])
+            || $session_token_data['status'] != 'SUCCESS'
+        ) {
+            SC_HELPER::create_log($session_token_data, '$session_token_data problem:');
+            
             wc_add_notice(__('Payment failed, please try again later!', 'sc' ), 'error');
             return array(
                 'result' 	=> 'error',
@@ -1201,16 +1206,7 @@ class WC_SC extends WC_Payment_Gateway
             $endpoint_url = $this->test == 'no' ? SC_LIVE_PAYMENT_URL : SC_TEST_PAYMENT_URL;
         }
         
-//        $params['cardData']['cardHolderName'] = 'Ukie Cvetko';
-//        $params['cardData']['CVV'] = '111';
-        
-        $resp = SC_REST_API::call_rest_api(
-            $endpoint_url,
-            $params,
-            $params['checksum']
-        );
-        
-        SC_HELPER::create_log($resp, 'REST response:');
+        $resp = SC_HELPER::call_rest_api($endpoint_url, $params);
         
         if(!$resp) {
             wc_add_notice(__('Payment failed, please try again later!', 'sc' ), 'error');
