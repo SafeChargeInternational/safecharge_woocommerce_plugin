@@ -16,7 +16,6 @@ if(!defined('ABSPATH')) {
 
 require_once 'sc_config.php';
 require_once 'SC_Versions_Resolver.php';
-//require_once 'SC_LOGGER.php';
 require_once 'SC_HELPER.php';
 
 $wc_sc = null;
@@ -41,9 +40,10 @@ function woocommerce_sc_init()
     add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
     // eliminates the problem with different permalinks
     add_action('template_redirect', 'sc_iframe_redirect');
-    
     // add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
     add_action( 'woocommerce_order_item_add_action_buttons', 'sc_add_buttons');
+    // redirect when show receipt page
+    add_action('woocommerce_receipt_'.$wc_sc->id, array($wc_sc, 'generate_sc_form'));
     
     // those actions are valid only when the plugin is enabled
     if($wc_sc->settings['enabled'] == 'yes') {
@@ -147,7 +147,7 @@ function sc_show_final_text()
     }
     // REST API tahnk you page handler
     else{
-        if ( strtolower(@$_REQUEST['Status']) == 'fail' ) {
+        if ( strtolower(@$_REQUEST['Status']) == 'error' ) {
             $msg = __("Your payment failed. Please, try again.", 'sc');
         }
         else {

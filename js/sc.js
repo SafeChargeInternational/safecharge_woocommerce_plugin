@@ -121,95 +121,6 @@ function scValidateAPMFields() {
         scFormFalse();
         return;
     }
-    
-//    if(jQuery('input[name="payment_method"]:checked').val() != 'sc') {
-//        jQuery('form.woocommerce-checkout').submit();
-//        return; // just in case the submiting is too slow
-//    }
-//    
-//    var formValid = true;
-//    
-//    if(jQuery('li.apm_container').length > 0) {
-//        formValid = false;
-//        
-//        jQuery('li.apm_container').each(function(){
-//            var self = jQuery(this);
-//            var radioBtn = self.find('input.sc_payment_method_field');
-//            
-//            if(radioBtn.is(':checked')) {
-//                formValid = true;
-//                var apmField = self.find('.apm_field input');
-//                selectedPM = radioBtn.val();
-//                
-//                // SafeCharge fields
-//                if(selectedPM == 'cc_card' || selectedPM == 'dc_card') {
-//                    // all fields must have class sfc-complete
-//                    if(jQuery('#sc_' + selectedPM).find('.SfcField').length
-//                        != jQuery('#sc_' + selectedPM).find('.sfc-complete').length
-//                    ) {
-//                        formValid = false;
-//                    }
-//                }
-//                // other fields
-//                else if (
-//                    typeof apmField.attr('pattern') != 'undefined'
-//                    && apmField.attr('pattern') !== false
-//                    && apmField.attr('pattern') != ''
-//                ) {
-//                    var regex = new RegExp(apmField.attr('pattern'), "i");
-//                    
-//                    // SHOW error
-//                    if(regex.test(apmField.val()) == false || apmField.val() == '') {
-//                        apmField.parent('.apm_field').find('.apm_error')
-//                            .removeClass('error_info')
-//                            .show();
-//                    
-//                        formValid = false;
-//                        jQuery('#custom_loader').remove();
-//                    }
-//                    // HIDE error
-//                    else {
-//                        apmField.parent('.apm_field').find('.error').hide();
-//                    }
-//                }
-//            }
-//        });
-//    }
-//    
-//    if(formValid) {
-//        // check if method needed tokenization
-//        if(selectedPM == 'cc_card' || selectedPM == 'dc_card') {
-//            sfc.getToken(sfcFirstField).then(function(result) {
-//                // Stop progress animation!
-//                if (result.status === 'SUCCESS') {
-//                    console.log(result)
-//                    jQuery('#' + selectedPM + '_ccTempToken').val(result.ccTempToken);
-//                    
-//                    jQuery('form.woocommerce-checkout')
-//                        .append('<input type="hidden" name="lst", value="'+result.sessionToken+'" />')
-//                        .submit();
-//                }
-//                else {
-//                    jQuery('#custom_loader').hide();
-//                    alert('Unexpected error. Please try again later!');
-//                }
-//            });
-//        }
-//        // or just submit the form
-//        else {
-//            jQuery('form.woocommerce-checkout').submit();
-//        }
-//    }
-//    else {
-//        jQuery('form.woocommerce-checkout').prepend(
-//            '<ul class="woocommerce-error" role="alert">'
-//                +'<li><strong>Please, choose payment method, and fill all fields!</strong></li>'
-//            +'</ul>'
-//        );
-//
-//        jQuery('#custom_loader').hide();
-//        window.location.hash = '#main';
-//    }
  }
  
  function scFormFalse() {
@@ -458,8 +369,10 @@ function getAPMs() {
 
                         html_apms +=
                                 '</div>'
-                            +'</li>';
+                            + '</li>';
                     }
+                    
+                    html_apms += '<input type="hidden" name="lst" id="sc_lst" value="" />';
                     
                     print_apms_options(html_upos, html_apms);
                     

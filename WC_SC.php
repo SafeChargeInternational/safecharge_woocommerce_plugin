@@ -129,7 +129,7 @@ class WC_SC extends WC_Payment_Gateway
         
 	//	add_action('woocommerce_checkout_process', array($this, 'sc_checkout_process'));
         /* TODO - move this in the index */
-        add_action('woocommerce_receipt_'.$this->id, array($this, 'generate_sc_form'));
+//        add_action('woocommerce_receipt_'.$this->id, array($this, 'generate_sc_form'));
         
         /* Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
         we check in the method is this order made via SC paygate */
@@ -348,42 +348,61 @@ class WC_SC extends WC_Payment_Gateway
      **/
     public function generate_sc_form($order_id)
     {
-        SC_HELPER::create_log('generate_sc_form');
+        SC_HELPER::create_log('generate_sc_form()');
         
         // prevent execute this method twice when use Cashier
-        if($this->payment_api == 'cashier') {
-            if( ! isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
-                $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
-            }
-            elseif($_SESSION['SC_CASHIER_FORM_RENDED'] === true) {
-                $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
-                SC_HELPER::create_log('second call of generate_sc_form() when use Cashier, stop here!');
-                return;
-            }
-        }
+//        if($this->payment_api == 'cashier') {
+//            if( ! isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
+//                $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
+//            }
+//            elseif($_SESSION['SC_CASHIER_FORM_RENDED'] === true) {
+//                $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
+//                SC_HELPER::create_log('second call of generate_sc_form() when use Cashier, stop here!');
+//                return;
+//            }
+//        }
         
-        SC_HELPER::create_log('generate_sc_form()');
+        $url = $this->get_return_url();
+        
+        $loading_table_html =
+            '<table id="sc_pay_msg" style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
+                .'<td style="padding: 0px; border: 0px; width: 100px;">'
+                    . '<img src="'. $this->plugin_url .'icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
+                . '</td>'
+                .'<td style="text-align: left; border: 0px;">'
+                    . '<span>'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'</span>'
+                . '</td>'
+            .'</tr></table>';
+        
+        // try to prepend the loading table first
+        echo 
+            '<script type="text/javascript">'
+                . 'jQuery("header.entry-header").prepend(\''.$loading_table_html.'\');'
+            .'</script>'
+            .'<noscript>'. $loading_table_html .'</noscript>';
+        
+        // Order error
+        if(@$_REQUEST['status'] == 'error') {
+            echo
+                '<script type="text/javascript">'
+                    . 'window.location.href = "'. $url .'?Status=error"'
+                .'</script>'
+                .'<noscript>'
+                    . '<a href="' . $url .'">' . __('Click to continue!', 'sc').'</a>'
+                .'</noscript>';
+            
+            exit;
+        }
         
         $order = new WC_Order($order_id);
         
+        // Order with Redirect URL
         if(@$_REQUEST['redirectUrl'] == 1) {
-            $pending_url = $this->get_return_url();
-            
             echo 
-                '<table id="sc_pay_msg" style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
-                    .'<td style="padding: 0px; border: 0px; width: 100px;">'
-                        . '<img src="'. $this->plugin_url .'icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
-                    . '</td>'
-                    .'<td style="text-align: left; border: 0px;">'
-                        . '<span>'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'</span>'
-                    . '</td>'
-                .'</tr></table>'
-
-                .'<form action="'. @$_SESSION['SC_P3D_acsUrl'] .'" method="post" id="sc_payment_form">'
+                '<form action="'. @$_SESSION['SC_P3D_acsUrl'] .'" method="post" id="sc_payment_form">'
                     .'<input type="hidden" name="PaReq" value="'. @$_SESSION['SC_P3D_PaReq'] .'">'
                     .'<input type="hidden" name="TermUrl" value="'
-                        . $pending_url
-                        . (strpos($pending_url, '?') != false ? '&' : '?')
+                        . $url . (strpos($url, '?') != false ? '&' : '?')
                         . 'wc-api=sc_listener&action=p3d">'
                     .'<noscript>'
                         . '<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'
@@ -398,9 +417,11 @@ class WC_SC extends WC_Payment_Gateway
                         .'});'
                     .'</script>'
                 .'</form>';
+            
             exit;
         }
         
+        // when we will pay with the Cashier
         try {
             $TimeStamp = date('Ymdhis');
             $order = new WC_Order($order_id);
@@ -409,7 +430,6 @@ class WC_SC extends WC_Payment_Gateway
             $order->add_order_note(__("User is redicted to ".SC_GATEWAY_TITLE." Payment page.", 'sc'));
             $order->save();
 
-            $this->set_environment();
             $notify_url = $this->set_notify_url();
             
             $items = $order->get_items();
@@ -535,13 +555,7 @@ class WC_SC extends WC_Payment_Gateway
             $params['shippingZip'] = $sh_zip;
             // get and pass shipping data END
 
-            $params['user_token'] = "auto";
-
-//            $params['payment_method'] = '';
-//            if(isset($_SESSION['sc_subpayment']) && $_SESSION['sc_subpayment'] != '') {
-//                $params['payment_method'] = str_replace($this->id.'_', '', $_SESSION['sc_subpayment']);
-//            }
-
+            $params['user_token']       = "auto";
             $params['total_amount']     = SC_Versions_Resolver::get_order_data($order, 'order_total');
             $params['currency']         = get_woocommerce_currency();
             $params['merchantLocale']   = get_locale();
@@ -549,459 +563,149 @@ class WC_SC extends WC_Payment_Gateway
         }
         catch (Exception $ex) {
             SC_HELPER::create_log($ex->getMessage(), 'Exception while preparing order parameters: ');
+            
+            echo
+                '<script type="text/javascript">'
+                    . 'window.location.href = "'. $url .'?Status=error"'
+                .'</script>'
+                .'<noscript>'
+                    . '<a href="' . $url .'">' . __('Click to continue!', 'sc').'</a>'
+                .'</noscript>';
+            
+            exit;
         }
         
         # Cashier payment
-        if($this->payment_api == 'cashier') {
-            SC_HELPER::create_log('Cashier payment');
-            
-            $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
-            
-            $i = $test_sum = 0; // use it for the last check of the total
-            
-            # Items calculations
-            foreach ( $items as $item ) {
-                $i++;
-                
-                $params['item_name_'.$i]        = urlencode($item['name']);
-                $params['item_number_'.$i]      = $item['product_id'];
-                $params['item_quantity_'.$i]    = $item['qty'];
+        SC_HELPER::create_log('Cashier payment');
 
-                // this is the real price
-                $item_qty   = intval($item['qty']);
-            //    $item_price = ($item['line_subtotal'] + $item['line_subtotal_tax']) / $item_qty;
-                $item_price = $item['line_total'] / $item_qty;
-                
-                $params['item_amount_'.$i] = number_format($item_price, 2, '.', '');
-                
-                $test_sum += ($item_qty * $params['item_amount_'.$i]);
-            }
-            
-            // last check for correct calculations
-            $test_sum -= $params['discount'];
-            
-            $test_diff = $params['total_amount'] - $params['handling'] - $test_sum;
-            if($test_diff != 0) {
-                $params['handling'] += $test_diff;
-                SC_HELPER::create_log($test_diff, 'Total diff, added to handling: ');
-            }
-            # Items calculations END
+        $_SESSION['SC_CASHIER_FORM_RENDED'] = true;
 
-            // be sure there are no array elements in $params !!!
-            $params['checksum'] = hash($this->hash_type, stripslashes($this->secret . implode('', $params)));
+        $i = $test_sum = 0; // use it for the last check of the total
 
-            $params_array = array();
-            foreach($params as $key => $value) {
-                if(!is_array($value)) {
-                    $params_array[] = "<input type='hidden' name='$key' value='$value'/>";
-                }
-            }
+        # Items calculations
+        foreach ( $items as $item ) {
+            $i++;
 
-            SC_HELPER::create_log($this->URL, 'Endpoint URL: ');
-            SC_HELPER::create_log($params, 'Order params');
-            
-            $info_msg = 
-                '<table id="sc_pay_msg" style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
-                    .'<td style="padding: 0px; border: 0px; width: 100px;">'
-                        . '<img src="'.$this->plugin_url.'icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
-                    . '</td>'
-                    .'<td style="text-align: left; border: 0px;">'
-                        . '<span>'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'</span>'
-                    . '</td>'
-                .'</tr></table';
+            $params['item_name_'.$i]        = urlencode($item['name']);
+            $params['item_number_'.$i]      = $item['product_id'];
+            $params['item_quantity_'.$i]    = $item['qty'];
 
-            $html = '<form action="'.$this->URL.'" method="post" id="sc_payment_form">';
+            // this is the real price
+            $item_qty   = intval($item['qty']);
+        //    $item_price = ($item['line_subtotal'] + $item['line_subtotal_tax']) / $item_qty;
+            $item_price = $item['line_total'] / $item_qty;
 
-            if($this->cashier_in_iframe == 'yes') {
-                $html = '<form action="'.$this->URL.'" method="post" id="sc_payment_form" target="i_frame">';
-            }
+            $params['item_amount_'.$i] = number_format($item_price, 2, '.', '');
 
-            $html .=
-                    implode('', $params_array)
-                    .'<noscript>'
-                        .'<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'.__('Pay via '. SC_GATEWAY_TITLE, 'sc').'" /><a class="button cancel" href="'.$order->get_cancel_order_url().'">'.__('Cancel order &amp; restore cart', 'sc').'</a>'
-                    .'</noscript>'
-                    .'<script type="text/javascript">'
-                        .'jQuery(function(){'
-                            .'jQuery("header.entry-header").prepend(\''.$info_msg.'\');'
-                            .'jQuery("#sc_payment_form").submit();'
-                
-                            .'if(jQuery("#i_frame").length > 0) {'
-                                .'jQuery("#i_frame")[0].scrollIntoView();'
-                            .'}'
-                        .'});'
-                    .'</script>'
-                .'</form>';
-
-            if($this->cashier_in_iframe == 'yes') {
-                $html .= '<iframe id="i_frame" name="i_frame" onLoad=""; style="width: 100%; height: 1000px;"></iframe>';
-            }
-
-            echo $html;
+            $test_sum += ($item_qty * $params['item_amount_'.$i]);
         }
-        # REST API payment
-        elseif($this->payment_api == 'rest') {
-            SC_HELPER::create_log('REST API payment');
-            
-            // for the REST we do not care about details
-            $params['handling'] = '0.00';
-            $params['discount'] = '0.00';
-            
-            $params['items'][0] = array(
-                'name'      => $order_id,
-                'price'     => $params['total_amount'],
-                'quantity'  => 1,
-            );
-            
-            // map here variables names different for Cashier and REST
-            $params['merchantId']           = $this->merchantId;
-            $params['merchantSiteId']       = $this->merchantSiteId;
-            $params['notify_url']           = $notify_url . 'sc_listener';
-            $params['client_request_id']    = $TimeStamp .'_'. uniqid();
-            
-            $params['urlDetails'] = array(
-                'successUrl'        => $this->get_return_url(),
-                'failureUrl'        => $this->get_return_url(),
-                'pendingUrl'        => $this->get_return_url(),
-                'notificationUrl'   => $notify_url,
-            );
-            
-            // set the payment method type
-            $payment_method = 'apm';
-            
-            $params['checksum'] = hash($this->settings['hash_type'], stripslashes(
-                $_SESSION['SC_Variables']['merchantId']
-                .$_SESSION['SC_Variables']['merchantSiteId']
-                .$params['client_request_id']
-                .$params['total_amount']
-                .$params['currency']
-                .$TimeStamp
-                .$this->secret
-            ));
-            
-            echo '<pre>'.print_r($params,true).'</pre>';
-        //    echo '<pre>'.print_r($_SESSION,true).'</pre>';
-            echo '<pre>'.print_r($this,true).'</pre>';
-            
-//            SC_HELPER::create_log($params, 'params sent to REST: ');
-//            SC_HELPER::create_log($_SESSION['SC_Variables'], 'SC_Variables: ');
-            die;
-            $resp = SC_REST_API::process_payment(
-                $params
-                ,$_SESSION['SC_Variables']
-                ,$_REQUEST['order-pay']
-                ,$payment_method
-            );
-            
-            SC_HELPER::create_log('REST API payment was sent.');
-            
-            if(!$resp) {
-                if($order_status == 'pending') {
-                    $order->set_status('failed');
-                }
-                
-                $order->add_order_note(__('Payment API response is FALSE.', 'sc'));
-                $order->save();
-                
-                SC_HELPER::create_log($resp, 'REST API Payment ERROR: ');
-                
-                echo 
-                    '<script>'
-                        .'window.location.href = "'.$params['error_url'].'?Status=fail";'
-                    .'</script>';
-                exit;
-            }
-            
-            // If we get Transaction ID save it as meta-data
-            if(isset($resp['transactionId']) && $resp['transactionId']) {
-                $order->update_meta_data(SC_GW_TRANS_ID_KEY, $resp['transactionId'], 0);
-            }
-            
-            if(
-                $this->get_request_status($resp) == 'ERROR'
-                || @$resp['transactionStatus'] == 'ERROR'
-            ) {
-                if($order_status == 'pending') {
-                    $order->set_status('failed');
-                }
-                
-                $error_txt = 'Payment error';
-                
-                if(@$resp['reason'] != '') {
-                    $error_txt .= ': ' . $resp['errCode'] . ' - ' . $resp['reason'] . '.';
-                }
-                elseif(@$resp['transactionStatus'] != '') {
-                    $error_txt .= ': ' . $resp['transactionStatus'] . '.';
-                }
-                elseif(@$resp['threeDReason'] != '') {
-                    $error_txt .= ': ' . $resp['threeDReason'] . '.';
-                }
-                
-                $order->add_order_note($error_txt);
-                $order->save();
-                
-                SC_HELPER::create_log($resp['errCode'].': '.$resp['reason'], 'REST API Payment ERROR: ');
-                
-                echo 
-                    '<script>'
-                        .'window.location.href = "'. $params['error_url'] 
-                        . (strpos($params['error_url'], '?') === false ? '?' : '&')
-                        . 'Status=fail";'
-                    .'</script>';
-                exit;
-            }
-            
-            // pay with redirect URL
-            if($this->get_request_status($resp) == 'SUCCESS') {
-                # The case with D3D and P3D
-                // isDynamic3D is hardcoded to be 1, see SC_REST_API line 509
-                // for the three cases see: https://www.safecharge.com/docs/API/?json#dynamic3D,
-                // Possible Scenarios for Dynamic 3D (isDynamic3D = 1)
-                
-                // clear the old session data
-                if(isset($_SESSION['SC_P3D_Params'])) {
-                    unset($_SESSION['SC_P3D_Params']);
-                }
-                
-                // prepare the new session data
-                if($payment_method == 'd3d') {
-                    $params_p3d = array(
-                        'sessionToken'      => $resp['sessionToken'],
-                        'orderId'           => $resp['orderId'],
-                        'merchantId'        => $resp['merchantId'],
-                        'merchantSiteId'    => $resp['merchantSiteId'],
-                        'userTokenId'       => $resp['userTokenId'],
-                        'clientUniqueId'    => $resp['clientUniqueId'],
-                        'clientRequestId'   => $resp['clientRequestId'],
-                        'transactionType'   => $resp['transactionType'],
-                        'currency'          => $params['currency'],
-                        'amount'            => $params['total_amount'],
-                        'amountDetails'     => array(
-                            'totalShipping'     => '0.00',
-                            'totalHandling'     => $params['handling'],
-                            'totalDiscount'     => $params['discount'],
-                            'totalTax'          => @$params['total_tax'] ? $params['total_tax'] : '0.00',
-                        ),
-                        'items'             => $params['items'],
-                        'deviceDetails'     => array(), // get them in SC_REST_API Class
-                        'shippingAddress'   => array(
-                            'firstName'         => $params['shippingFirstName'],
-                            'lastName'          => $params['shippingLastName'],
-                            'address'           => $params['shippingAddress'],
-                            'phone'             => '',
-                            'zip'               => $params['shippingZip'],
-                            'city'              => $params['shippingCity'],
-                            'country'           => $params['shippingCountry'],
-                            'state'             => '',
-                            'email'             => '',
-                            'shippingCounty'    => '',
-                        ),
-                        'billingAddress'    => array(
-                            'firstName'         => $params['first_name'],
-                            'lastName'          => $params['last_name'],
-                            'address'           => $params['address1'],
-                            'phone'             => $params['phone1'],
-                            'zip'               => $params['zip'],
-                            'city'              => $params['city'],
-                            'country'           => $params['country'],
-                            'state'             => '',
-                            'email'             => $params['email'],
-                            'county'            => '',
-                        ),
-                        'cardData'          => array(
-                            'ccTempToken'       => $_SESSION['SC_Variables']['APM_data']['apm_fields']['ccCardNumber'],
-                        ),
-                        'paResponse'        => '',
-                        'urlDetails'        => array('notificationUrl' => $params['urlDetails']),
-                        'timeStamp'         => $params['time_stamp'],
-                        'checksum'          => $params['checksum'],
-                    );
-                    
-                    $_SESSION['SC_P3D_Params'] = $params_p3d;
-                    
-                    // case 1
-                    if(
-                        isset($resp['acsUrl'], $resp['threeDFlow'])
-                        && !empty($resp['acsUrl'])
-                        && intval($resp['threeDFlow']) == 1
-                    ) {
-                        SC_HELPER::create_log('D3D case 1');
-                        
-                        // step 1 - go to acsUrl
-                        $html =
-                            '<table id="sc_pay_msg" style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
-                                .'<td style="padding: 0px; border: 0px; width: 100px;">'
-                                    . '<img src="'.$this->plugin_url.'icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
-                                . '</td>'
-                                .'<td style="text-align: left; border: 0px;">'
-                                    . '<span>'.__('Thank you for your order. We are now redirecting you to '. SC_GATEWAY_TITLE .' Payment Gateway to make payment.', 'sc').'</span>'
-                                . '</td>'
-                            .'</tr></table>'
-                            
-                            .'<form action="'. $resp['acsUrl'] .'" method="post" id="sc_payment_form">'
-                                .'<input type="hidden" name="PaReq" value="'. @$resp['paRequest'] .'">'
-                                .'<input type="hidden" name="TermUrl" value="'
-                                    . $params['pending_url']
-                                    . (strpos($params['pending_url'], '?') != false ? '&' : '?')
-                                    . 'wc-api=sc_listener&action=p3d">'
-                                .'<noscript>'
-                                    . '<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'
-                                        . __('Pay via '. SC_GATEWAY_TITLE, 'sc').'" />'
-                                    . '<a class="button cancel" href="' .$order->get_cancel_order_url().'">'
-                                        . __('Cancel order &amp; restore cart', 'sc').'</a>'
-                                .'</noscript>'
 
-                                .'<script type="text/javascript">'
-                                    .'jQuery(function(){'
-                                        .'jQuery("#sc_payment_form").submit();'
-                                    .'});'
-                                .'</script>'
-                            .'</form>';
-                        
-                        echo $html;
-                        exit;
-                        
-                        // step 2 - wait for the DMN
-                    }
-                    // case 2
-                    elseif(isset($resp['threeDFlow']) && intval($resp['threeDFlow']) == 1) {
-                        SC_HELPER::create_log('', 'D3D case 2.');
-                        $this->pay_with_d3d_p3d();
-                    }
-                    // case 3 do nothing
-                }
-                # The case with D3D and P3D END
-                
-                // in case we have redirectURL
-                if(isset($resp['redirectURL']) && !empty($resp['redirectURL'])) {
-                    SC_HELPER::create_log($resp['redirectURL'], 'we have redirectURL: ');
-                    
-                    if(@$resp['gwErrorCode'] == -1 || @$resp['gwErrorReason']) {
-                        $order->add_order_note(
-                            __('Payment with redirect URL error: ' . @$resp['gwErrorReason'] . '.', 'sc'));
-                        $order->save();
-                        
-                        echo 
-                            '<script>'
-                                .'window.location.href = "' . $params['error_url']
-                                    . (strpos($params['error_url'], '?') === false ? '?' : '&')
-                                    . 'Status=fail'
-                            .'</script>';
-                        exit;
-                    }
-                    
-                    echo 
-                        '<script>'
-                            .'window.location.href = "' . $resp['redirectURL'] . '";'
-                        .'</script>';
-                    
-                    exit;
-                }
-            }
-            
-            $order_status = strtolower($order->get_status());
-            
-            if(isset($resp['transactionId']) && $resp['transactionId'] != '') {
-                $order->add_order_note(__('Payment succsess for Transaction Id ', 'sc') . $resp['transactionId']);
-            }
-            else {
-                $order->add_order_note(__('Payment succsess.'));
-            }
-            
-            // save the response transactionType value
-            if(isset($resp['transactionType']) && $resp['transactionType'] != '') {
-                $order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, $resp['transactionType']);
-            }
-            
-            $order->save();
-            
-            echo 
-                '<script>'
-                    .'window.location.href = "'
-                        . $params['error_url']
-                        . (strpos($params['error_url'], '?') === false ? '?' : '&')
-                        . 'Status=success";'
-                .'</script>';
-            
-            exit;
+        // last check for correct calculations
+        $test_sum -= $params['discount'];
+
+        $test_diff = $params['total_amount'] - $params['handling'] - $test_sum;
+        if($test_diff != 0) {
+            $params['handling'] += $test_diff;
+            SC_HELPER::create_log($test_diff, 'Total diff, added to handling: ');
         }
-        # ERROR - not existing payment api
-        else {
-            SC_HELPER::create_log(
-                'Wrong paiment api ('. $this->payment_api .').'
-                , 'Payment form ERROR: '
-            );
-            
-            echo 
-                '<script>'
-                    .'window.location.href = "'
-                        . $params['error_url']
-                        . (strpos($params['error_url'], '?') === false ? '?' : '&')
-                        . 'Status=fail&invoice_id='
-                        . $order_id.'&wc-api=sc_listener&reason=not-existing-payment-API'
-                .'</script>';
-            exit;
+        # Items calculations END
+
+        // be sure there are no array elements in $params !!!
+        $params['checksum'] = hash($this->hash_type, stripslashes($this->secret . implode('', $params)));
+
+        $params_array = array();
+        foreach($params as $key => $value) {
+            if(!is_array($value)) {
+                $params_array[] = "<input type='hidden' name='$key' value='$value'/>";
+            }
         }
+        
+        $url = $this->test == 'true' ? SC_TEST_CASHIER_URL : SC_LIVE_CASHIER_URL;
+
+        SC_HELPER::create_log($url, 'Endpoint URL: ');
+        SC_HELPER::create_log($params, 'Order params');
+        
+        $html = '<form action="'. $url .'" method="post" id="sc_payment_form">';
+
+        if($this->cashier_in_iframe == 'yes') {
+            $html = '<form action="'. $url .'" method="post" id="sc_payment_form" target="i_frame">';
+        }
+
+        $html .=
+                implode('', $params_array)
+                .'<noscript>'
+                    .'<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'.__('Pay via '. SC_GATEWAY_TITLE, 'sc').'" /><a class="button cancel" href="'.$order->get_cancel_order_url().'">'.__('Cancel order &amp; restore cart', 'sc').'</a>'
+                .'</noscript>'
+                .'<script type="text/javascript">'
+                    .'jQuery(function(){'
+                        .'jQuery("#sc_payment_form").submit();'
+
+                        .'if(jQuery("#i_frame").length > 0) {'
+                            .'jQuery("#i_frame")[0].scrollIntoView();'
+                        .'}'
+                    .'});'
+                .'</script>'
+            .'</form>';
+
+        if($this->cashier_in_iframe == 'yes') {
+            $html .= '<iframe id="i_frame" name="i_frame" onLoad=""; style="width: 100%; height: 1000px;"></iframe>';
+        }
+
+        echo $html;
+        exit;
     }
     
     /**
      * Function pay_with_d3d_p3d
      * After we get the DMN form the issuer/bank call this process
      * to continue the flow.
+     * 
+     * @param bool $use_js_redirect - js redirect or no
+     * @return bool
      */
     public function pay_with_d3d_p3d()
     {
-        $p3d_resp = false;
+        SC_HELPER::create_log('pay_with_d3d_p3d call to the REST API.');
         
-        try {
-            $order = new WC_Order(@$_SESSION['SC_P3D_Params']['clientUniqueId']);
-
-            if(!$order) {
-                echo 
-                    '<script>'
-                        .'window.location.href = "'.$this->get_return_url().'?Status=fail";'
-                    .'</script>';
-                exit;
-            }
-
-            // some corrections
-            $_SESSION['SC_P3D_Params']['transactionType'] = $this->transaction_type;
-            $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl'] = $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl']['notificationUrl'];
-
-            SC_HELPER::create_log('pay_with_d3d_p3d call to the REST API.');
-
-            $p3d_resp = SC_REST_API::call_rest_api(
-                @$_SESSION['SC_Variables']['test'] == 'yes' ? SC_TEST_P3D_URL : SC_LIVE_P3D_URL
-                ,@$_SESSION['SC_P3D_Params']
-                ,$_SESSION['SC_P3D_Params']['checksum']
-                ,array('webMasterId' => $this->webMasterId)
-            );
+        $p3d_resp   = false;
+        $order      = new WC_Order(@$_SESSION['SC_P3D_Params']['clientUniqueId']);
+        
+        if(!$order) {
+            return false;
         }
-        catch (Exception $e) {
-            SC_HELPER::create_log($e->getMessage(), 'pay_with_d3d_p3d Exception: ');
-            
-            echo 
-                '<script>'
-                    .'window.location.href = "'.$this->get_return_url().'?Status=fail";'
-                .'</script>';
-            exit;
+
+        // some corrections
+        $_SESSION['SC_P3D_Params']['transactionType'] = $this->transaction_type;
+    //    $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl'] = $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl']['notificationUrl'];
+        if(isset($_REQUEST['PaRes']) && $_REQUEST['PaRes']) {
+            $_SESSION['SC_P3D_Params']['paResponse'] = $_REQUEST['PaRes'];
         }
+
+        $p3d_resp = SC_HELPER::call_rest_api(
+            @$_SESSION['SC_Variables']['test'] == 'yes' ? SC_TEST_P3D_URL : SC_LIVE_P3D_URL
+            ,@$_SESSION['SC_P3D_Params']
+        );
         
         if(!$p3d_resp) {
+            SC_HELPER::create_log($resp, 'REST API Payment 3D ERROR: ');
+            
             if($order_status == 'pending') {
                 $order->set_status('failed');
             }
 
             $order->add_order_note(__('Payment 3D API response fails.', 'sc'));
             $order->save();
-
-            SC_HELPER::create_log($resp, 'REST API Payment 3D ERROR: ');
-
-            echo 
-                '<script>'
-                    .'window.location.href = "'.$this->get_return_url().'?Status=fail";'
-                .'</script>';
-            exit;
+            
+            return false;
+        }
+        
+        if(@$p3d_resp['status'] == 'ERROR' || @$p3d_resp['transactionStatus'] == 'ERROR') {
+            SC_HELPER::create_log('status or transactionStatus ERROR');
+            
+            $order->set_status('failed');
+            $order->save();
+            
+            return false;
         }
         
         // save the response type of transaction
@@ -1009,11 +713,7 @@ class WC_SC extends WC_Payment_Gateway
             $order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, $p3d_resp['transactionType']);
         }
         
-        echo 
-            '<script>'
-                .'window.location.href = "'. $this->get_return_url() .'";'
-            .'</script>';
-        exit;
+        return true;
     }
     
 	/**
@@ -1035,15 +735,12 @@ class WC_SC extends WC_Payment_Gateway
         $order = new WC_Order($order_id);
         $order_status = strtolower($order->get_status());
         
-        SC_HELPER::create_log($order_status, '$order_status:');
-        
         # when use Cashier - redirect to receipt page
         if($this->payment_api == 'cashier') {
             return array(
                 'result' 	=> 'success',
                 'redirect'	=> add_query_arg(
                     array(
-                    //    'order-pay' => $this->get_order_data($order, 'id'),
                         'order-pay' => $order_id,
                         'key' => $this->get_order_data($order, 'order_key')
                     ),
@@ -1092,44 +789,47 @@ class WC_SC extends WC_Payment_Gateway
             ),
             'timeStamp'         => $time,
             'webMasterId'       => $this->webMasterId,
-            'deviceDetails'     => '',
+            'deviceDetails'     => SC_HELPER::get_device_details(),
+            'sessionToken'      => @$_POST['lst'],
         );
         
         // for the session token
-        $st_endpoint_url = $this->test == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL;
-        
-        $st_params = array(
-            'merchantId'        => $params['merchantId'],
-            'merchantSiteId'    => $params['merchantSiteId'],
-            'clientRequestId'   => uniqid(),
-            'timeStamp'         => $time,
-        );
-        
-        $st_params['checksum'] = hash(
-            $this->hash_type,
-            implode('', $st_params) . $this->secret
-        );
-        
-        $session_token_data = SC_HELPER::call_rest_api($st_endpoint_url, $st_params);
-        
-        if(
-            !$session_token_data || !is_array($session_token_data)
-            || !isset($session_token_data['status'])
-            || $session_token_data['status'] != 'SUCCESS'
-        ) {
-            SC_HELPER::create_log($session_token_data, '$session_token_data problem:');
-            
-            wc_add_notice(__('Payment failed, please try again later!', 'sc' ), 'error');
-            return array(
-                'result' 	=> 'error',
-                'redirect'	=> add_query_arg(
-                    array(),
-                    wc_get_page_permalink('checkout')
-                )
+        if(!$params['sessionToken']) {
+            $st_endpoint_url = $this->test == 'yes' ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL;
+
+            $st_params = array(
+                'merchantId'        => $params['merchantId'],
+                'merchantSiteId'    => $params['merchantSiteId'],
+                'clientRequestId'   => uniqid(),
+                'timeStamp'         => $time,
             );
+
+            $st_params['checksum'] = hash(
+                $this->hash_type,
+                implode('', $st_params) . $this->secret
+            );
+
+            $session_token_data = SC_HELPER::call_rest_api($st_endpoint_url, $st_params);
+
+            if(
+                !$session_token_data || !is_array($session_token_data)
+                || !isset($session_token_data['status'])
+                || $session_token_data['status'] != 'SUCCESS'
+            ) {
+                SC_HELPER::create_log($session_token_data, '$session_token_data problem:');
+
+                wc_add_notice(__('Payment failed, please try again later!', 'sc' ), 'error');
+                return array(
+                    'result' 	=> 'error',
+                    'redirect'	=> add_query_arg(
+                        array(),
+                        wc_get_page_permalink('checkout')
+                    )
+                );
+            }
+
+            $params['sessionToken'] = $session_token_data['sessionToken'];
         }
-        
-        $params['sessionToken'] = $session_token_data['sessionToken'];
         // for the session token END
         
         $params['userDetails'] = array(
@@ -1209,12 +909,14 @@ class WC_SC extends WC_Payment_Gateway
         $resp = SC_HELPER::call_rest_api($endpoint_url, $params);
         
         if(!$resp) {
-            wc_add_notice(__('Payment failed, please try again later!', 'sc' ), 'error');
+            $order->add_order_note(__('There is no response for the Order.', 'sc' ));
+            $order->save();
+            
             return array(
-                'result' 	=> 'error',
+                'result' 	=> 'success',
                 'redirect'	=> add_query_arg(
-                    array(),
-                    wc_get_page_permalink('checkout')
+                    array('Status' => 'error'),
+                    $this->get_return_url()
                 )
             );
         }
@@ -1225,12 +927,15 @@ class WC_SC extends WC_Payment_Gateway
         }
 
         if(@$resp['transactionStatus'] == 'DECLINED') {
-            wc_add_notice(__('Payment was DECLINED, please choose different payment method and try again!', 'sc' ), 'error');
+            $order->add_order_note(__('Order Declined.', 'sc' ));
+            $order->set_status('cancelled');
+            $order->save();
+            
             return array(
-                'result' 	=> 'error',
+                'result' 	=> 'success',
                 'redirect'	=> add_query_arg(
-                    array(),
-                    wc_get_page_permalink('checkout')
+                    array('Status' => 'error'),
+                    $this->get_return_url()
                 )
             );
         }
@@ -1245,22 +950,18 @@ class WC_SC extends WC_Payment_Gateway
             if(@$resp['reason'] != '') {
                 $error_txt .= ': ' . $resp['errCode'] . ' - ' . $resp['reason'] . '.';
             }
-            elseif(@$resp['transactionStatus'] != '') {
-                $error_txt .= ': ' . $resp['transactionStatus'] . '.';
-            }
             elseif(@$resp['threeDReason'] != '') {
                 $error_txt .= ': ' . $resp['threeDReason'] . '.';
             }
-
-            $order->add_order_note($error_txt);
+            
+            $order->add_order_note(__($error_txt, 'sc' ));
             $order->save();
-
-            wc_add_notice(__($error_txt, 'sc' ), 'error');
+            
             return array(
-                'result' 	=> 'error',
+                'result' 	=> 'success',
                 'redirect'	=> add_query_arg(
-                    array(),
-                    wc_get_page_permalink('checkout')
+                    array('Status' => 'error'),
+                    $this->get_return_url()
                 )
             );
         }
@@ -1305,8 +1006,16 @@ class WC_SC extends WC_Payment_Gateway
                 }
                 // case 2
                 elseif(intval(@$resp['threeDFlow']) == 1) {
-                    SC_HELPER::create_log('', 'D3D case 2.');
-                    $this->pay_with_d3d_p3d();
+                    SC_HELPER::create_log('D3D case 2.');
+                    $resp = $this->pay_with_d3d_p3d();
+                    
+                    return array(
+                        'result' 	=> 'success',
+                        'redirect'	=> add_query_arg(
+                            !$resp ? array('Status' => 'error') : array(),
+                            $this->get_return_url()
+                        )
+                    );
                 }
                 // case 3 do nothing
             }
@@ -1317,26 +1026,31 @@ class WC_SC extends WC_Payment_Gateway
                 SC_HELPER::create_log($resp['redirectURL'], 'we have redirectURL: ');
 
                 if(@$resp['gwErrorCode'] == -1 || @$resp['gwErrorReason']) {
-                    $msg = __('Payment with redirect URL error: ' . @$resp['gwErrorReason'] . '.', 'sc');
+                    $msg = __('Error with the Payment: ' . @$resp['gwErrorReason'] . '.', 'sc');
                     
                     $order->add_order_note($msg);
                     $order->save();
                     
-                    wc_add_notice(__($msg, 'sc' ), 'error');
                     return array(
-                        'result' 	=> 'error',
+                        'result' 	=> 'success',
                         'redirect'	=> add_query_arg(
-                            array('Status' => 'fail'),
-                            $params['failureUrl']
+                            array('Status' => 'error'),
+                            $this->get_return_url()
                         )
                     );
                 }
+                
+                $_SESSION['SC_P3D_acsUrl'] = $resp['redirectURL'];
 
                 return array(
                     'result' 	=> 'success',
                     'redirect'	=> add_query_arg(
-                        array(),
-                        $resp['redirectURL']
+                        array(
+                            'order-pay' => $order_id,
+                            'key' => $this->get_order_data($order, 'order_key'),
+                            'redirectURL' => 1,
+                        ),
+                        wc_get_page_permalink('pay')
                     )
                 );
             }
@@ -1359,7 +1073,7 @@ class WC_SC extends WC_Payment_Gateway
         return array(
             'result' 	=> 'success',
             'redirect'	=> add_query_arg(
-                array('Status' => 'success'),
+                array(),
                 wc_get_page_permalink('order-received')
             )
         );
@@ -1546,7 +1260,18 @@ class WC_SC extends WC_Payment_Gateway
                 && is_array($_SESSION['SC_P3D_Params'])
             ) {
                 $_SESSION['SC_P3D_Params']['paResponse'] = $_REQUEST['PaRes'];
-                $this->pay_with_d3d_p3d();
+                $resp = $this->pay_with_d3d_p3d();
+                $url = $this->get_return_url();
+                
+                if(!$resp) {
+                    $url .= '?Status=error';
+                }
+                
+                echo 
+                    '<script>'
+                        .'window.location.href = "'. $url .'";'
+                    .'</script>';
+                exit;
             }
             // the DMN from case 2 - p3d
             elseif(isset($_REQUEST['merchantId'], $_REQUEST['merchantSiteId'])) {
@@ -1614,17 +1339,17 @@ class WC_SC extends WC_Payment_Gateway
         exit;
     }
     
-//    public function sc_checkout_process()
-//    {
-//        SC_HELPER::create_log($_POST, 'post sc_checkout_process:');
-//        
-//        $_SESSION['sc_subpayment'] = '';
-//        if(isset($_POST['sc_payment_method'])) {
-//            $_SESSION['sc_subpayment'] = $_POST['sc_payment_method'];
-//        }
-//        
-//		return true;
-//	}
+    public function sc_checkout_process()
+    {
+        SC_HELPER::create_log($_POST, 'post sc_checkout_process:');
+        
+        $_SESSION['sc_subpayment'] = '';
+        if(isset($_POST['sc_payment_method'])) {
+            $_SESSION['sc_subpayment'] = $_POST['sc_payment_method'];
+        }
+        
+		return true;
+	}
 
 	public function showMessage($content)
     {
@@ -2168,34 +1893,6 @@ class WC_SC extends WC_Payment_Gateway
         
         $order->save();
     }
-    
-    private function set_environment()
-    {
-		if ($this->test == 'yes'){
-            $this->use_session_token_url    = SC_TEST_SESSION_TOKEN_URL;
-            $this->use_merch_paym_meth_url  = SC_TEST_REST_PAYMENT_METHODS_URL;
-            
-            // set payment URL
-            if($this->payment_api == 'cashier') {
-                $this->URL = SC_TEST_CASHIER_URL;
-            }
-            elseif($this->payment_api == 'rest') {
-                $this->URL = SC_TEST_PAYMENT_URL;
-            }
-		}
-        else {
-            $this->use_session_token_url    = SC_LIVE_SESSION_TOKEN_URL;
-            $this->use_merch_paym_meth_url  = SC_LIVE_REST_PAYMENT_METHODS_URL;
-            
-            // set payment URL
-            if($this->payment_api == 'cashier') {
-                $this->URL = SC_LIVE_CASHIER_URL;
-            }
-            elseif($this->payment_api == 'rest') {
-                $this->URL = SC_LIVE_PAYMENT_URL;
-            }
-		}
-	}
     
     private function formatLocation($locale)
     {
