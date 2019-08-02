@@ -350,18 +350,6 @@ class WC_SC extends WC_Payment_Gateway
     {
         SC_HELPER::create_log('generate_sc_form()');
         
-        // prevent execute this method twice when use Cashier
-//        if($this->payment_api == 'cashier') {
-//            if( ! isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
-//                $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
-//            }
-//            elseif($_SESSION['SC_CASHIER_FORM_RENDED'] === true) {
-//                $_SESSION['SC_CASHIER_FORM_RENDED'] = false;
-//                SC_HELPER::create_log('second call of generate_sc_form() when use Cashier, stop here!');
-//                return;
-//            }
-//        }
-        
         $url = $this->get_return_url();
         
         $loading_table_html =
@@ -620,7 +608,7 @@ class WC_SC extends WC_Payment_Gateway
             }
         }
         
-        $url = $this->test == 'true' ? SC_TEST_CASHIER_URL : SC_LIVE_CASHIER_URL;
+        $url = $this->test == 'yes' ? SC_TEST_CASHIER_URL : SC_LIVE_CASHIER_URL;
 
         SC_HELPER::create_log($url, 'Endpoint URL: ');
         SC_HELPER::create_log($params, 'Order params');

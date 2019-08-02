@@ -159,10 +159,6 @@ function sc_show_final_text()
     if(isset($_SESSION['SC_Variables'])) {
         unset($_SESSION['SC_Variables']);
     }
-    // prevent generate_sc_form() to render form twice
-    if(isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
-        unset($_SESSION['SC_CASHIER_FORM_RENDED']);
-    }
     
     return $msg;
 }
