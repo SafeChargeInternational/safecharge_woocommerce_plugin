@@ -295,7 +295,7 @@ function getAPMs() {
                                     +'</div>'
                                     
                                     + '<div class="apm_field">'
-                                        + '<input type="text" id="sc_card_holder_name" style="width: 100%; padding-bottom: 0px !important;" name="'+ pMethods[i].paymentMethod
+                                        + '<input type="text" id="sc_card_holder_name" name="'+ pMethods[i].paymentMethod
                                             +'[cardHolderName]" placeholder="Card holder name" />'
                                     + '</div>'
                                     
@@ -459,7 +459,8 @@ function print_apms_options(upos, apms) {
     // change submit button type and behavior
     jQuery('form.woocommerce-checkout button[type=submit]')
         .attr('type', 'button')
-        .attr('onclick', 'scValidateAPMFields()');
+        .attr('onclick', 'scValidateAPMFields()')
+        .prop('disabled', false);
 }
 
 // when the admin select to Settle or Void the Order
@@ -564,6 +565,7 @@ function enableDisableSCCheckout(action) {
             // go to DMN page to change order status
             if(typeof resp != 'undefined' && typeof resp.status != 'undefined' && resp.status == 1) {
                 if(jQuery('#sc_apms_list').length == 0) {
+                    jQuery('#place_order').prop('disabled', true);
                     getAPMs();
                 }
             }
@@ -594,7 +596,7 @@ jQuery(function() {
     fieldsStyle = {
         base: {
             fontSize: '15px'
-            ,fontFamily: jQuery('#sc_card_holder_name').css('font-family')
+            ,fontFamily: 'sans-serif'
             ,color: '#43454b'
             ,fontSmoothing: 'antialiased'
             ,'::placeholder': {

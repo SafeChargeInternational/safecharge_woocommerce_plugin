@@ -91,9 +91,24 @@ div.payment_method_sc {
     box-shadow: none !important;
     color: #43454b;
     font-size: 16px;
+    font-family: sans-serif;
 }
 
-.apm_field input::placeholder { color: #52545A; }
+.apm_field input::placeholder {
+    color: #52545A;
+    font-family: sans-serif;
+}
+
+#sc_card_holder_name {
+    width: 100%;
+    padding-bottom: 0px !important;
+    padding-top: 1em;
+    font-family: sans-serif;
+}
+
+#sc_card_holder_name::placeholder {
+    font-family: sans-serif;
+}
 
 .apm_error {
     background: none;
