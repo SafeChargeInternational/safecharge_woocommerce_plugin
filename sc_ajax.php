@@ -171,8 +171,6 @@ if(
             $session_data['test'] = @$_SESSION['SC_Variables']['test'];
             echo json_encode(array('status' => 1, 'data' => $session_data));
             exit;
-            
-        //    SC_REST_API::get_session_token($_SESSION['SC_Variables'], true);
         }
         
         // when we want APMs and UPOs
@@ -247,7 +245,7 @@ if(
                             if(@$pm['paymentMethod'] == @$upo['paymentMethodName']) {
                                 if(
                                     in_array(@$upo['paymentMethodName'], array('cc_card', 'dc_card'))
-                                    && @$upo['upoData']['brand']
+                                    && @$upo['upoData']['brand'] && @$pm['logoURL']
                                 ) {
                                     $icons[@$upo['upoData']['brand']] = str_replace(
                                         'default_cc_card',
@@ -255,7 +253,7 @@ if(
                                         $pm['logoURL']
                                     );
                                 }
-                                else {
+                                elseif(@$pm['logoURL']) {
                                     $icons[$pm['paymentMethod']] = $pm['logoURL'];
                                 }
 

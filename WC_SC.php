@@ -68,7 +68,6 @@ class WC_SC extends WC_Payment_Gateway
         $_SESSION['SC_Variables']['payment_api']        = $this->payment_api;
         $_SESSION['SC_Variables']['transactionType']    = $this->transaction_type;
         $_SESSION['SC_Variables']['test']               = $this->test;
-    //    $_SESSION['SC_Variables']['save_logs']          = $this->save_logs;
         $_SESSION['SC_Variables']['rewrite_dmn']        = $this->rewrite_dmn;
         $_SESSION['sc_create_logs']                     = $this->save_logs;
         

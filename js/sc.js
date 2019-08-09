@@ -36,7 +36,7 @@ function scValidateAPMFields() {
         if(selectedPM == 'cc_card' || selectedPM == 'dc_card' || selectedPM == 'paydotcom') {
             sfc.getToken(sfcFirstField).then(function(result) {
                 try {
-                    console.log(result.isVerified)
+                //    console.log(result.isVerified)
                     
                     if (!result.status || result.status !== 'SUCCESS') {
                         if(result.reason) {
@@ -60,7 +60,7 @@ function scValidateAPMFields() {
                     }
                 }
                 catch(exception) {
-                    console.log(exception);
+                    console.error(exception);
                     alert("Unexpected error, please try again later");
                 }
             });
@@ -174,6 +174,10 @@ function getAPMs() {
             data: { country: jQuery("#billing_country").val() },
             dataType: 'json'
         })
+            .error(function(){
+                alert('Error when try to get the Payment Methods. Please try again later or use different Payment Option!');
+                return;
+            })
             .done(function(resp) {
                 if(resp === null) {
                     return;
@@ -203,7 +207,7 @@ function getAPMs() {
                     }
                     catch (exception) {
                         alert('Mandatory data is missing, please try again later!');
-                        console.log(exception);
+                        console.error(exception);
                         return;
                     }
 
