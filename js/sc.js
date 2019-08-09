@@ -235,6 +235,10 @@ function getAPMs() {
                                 html_upos += 
                                     '<img src="'+ resp.data.icons[upos[j].paymentMethodName].replace('/svg/', '/svg/solid-white/') +'" />';
                             }
+                            else if(resp.data.icons[upos[j].paymentMethodName].search('apmgw_') > -1) {
+                                html_upos += 
+                                    '<img src="#" alt="'+ resp.data.icons[upos[j].paymentMethodName].replace('apmgw_', '') +'" />';
+                            }
                         }
                         catch(exception) {}
 
@@ -281,6 +285,9 @@ function getAPMs() {
                         if(typeof pMethods[i]['logoURL'] != 'undefined') {
                             newImg = '<img src="'+ pMethods[i]['logoURL'].replace('/svg/', '/svg/solid-white/')
                                 +'" alt="'+ pmMsg +'" />';
+                        }
+                        else {
+                            newImg = '<img src="#" alt="'+ pmMsg +'" />';
                         }
                         
                         html_apms +=
@@ -488,22 +495,31 @@ function settleAndCancelOrder(question, action) {
             data: data,
             dataType: 'json'
         })
+            .error(function(){
+                jQuery('#custom_loader').hide();
+                alert('Response error.');
+            })
             .done(function(resp) {
                 if(resp && typeof resp.status != 'undefined' && resp.data != 'undefined') {
                     if(resp.status == 1) {
-                        jQuery('#custom_loader').hide();
-
                         var urlParts = window.location.toString().split('post.php');
                         window.location = urlParts[0] + 'edit.php?post_type=shop_order';
                     }
-                    else if(resp.data.reason != 'undefined') {
-                        jQuery('#custom_loader').hide();
+                    else if(resp.data.reason != 'undefined' && resp.data.reason != '') {
                         alert(resp.data.reason);
+                    }
+                    else if(resp.data.gwErrorReason != 'undefined' && resp.data.gwErrorReason != '') {
+                        alert(resp.data.gwErrorReason);
+                    }
+                    else {
+                        alert('Response error.');
                     }
                 }
                 else {
                     alert('Response error.');
                 }
+                
+                jQuery('#custom_loader').hide();
             });
     }
  }
@@ -708,7 +724,6 @@ jQuery(function() {
         jQuery('.refund-items').hide();
     }
     
-    // load SC Fields
-    
+    jQuery('#refund_amount').prop('readonly', false);
 });
 // document ready function END

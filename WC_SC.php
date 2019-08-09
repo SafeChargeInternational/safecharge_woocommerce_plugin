@@ -1061,7 +1061,7 @@ class WC_SC extends WC_Payment_Gateway
             'result' 	=> 'success',
             'redirect'	=> add_query_arg(
                 array(),
-                wc_get_page_permalink('order-received')
+                $this->get_return_url()
             )
         );
     }
