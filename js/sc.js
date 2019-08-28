@@ -721,7 +721,7 @@ jQuery(function() {
         || jQuery('#order_status').val() == 'wc-on-hold'
         || jQuery('#order_status').val() == 'wc-failed'
     ) {
-        jQuery('.refund-items').hide();
+        jQuery('.refund-items').prop('disabled', true);
     }
     
     jQuery('#refund_amount').prop('readonly', false);
