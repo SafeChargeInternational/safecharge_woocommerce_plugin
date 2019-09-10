@@ -649,6 +649,8 @@ class WC_SC extends WC_Payment_Gateway
      * 
      * @param bool $use_js_redirect - js redirect or no
      * @return bool
+     * 
+     * @deprecated since version 2.2
      */
     public function pay_with_d3d_p3d()
     {
@@ -1773,12 +1775,15 @@ class WC_SC extends WC_Payment_Gateway
         $resp = SC_HELPER::call_rest_api($st_endpoint_url, $params);
         
         if($resp && @$resp['status'] == 'SUCCESS' && @$resp['sessionToken']) {
+            $_SESSION['SC_Variables']['lst'] = $resp['sessionToken'];
+            
             echo
                 '<script type="text/javascript">'
                     . 'var scOpenOrderToken = "' . $resp['sessionToken'] . '"; '
                     . 'var scOrderAmount    = "' . $cart_totals['total'] . '"; '
                     . 'var scOrderCurr      = "' . get_woocommerce_currency() . '"; '
-                    . 'var scMerchantId      = "' . $this->merchantId . '"; '
+                    . 'var scMerchantId     = "' . $this->merchantId . '"; '
+                    . 'var scMerchantSiteId = "' . $this->merchantSiteId . '"; '
                 . '</script>';
         }
     }

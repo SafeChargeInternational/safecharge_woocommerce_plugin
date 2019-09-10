@@ -41,6 +41,7 @@ function scValidateAPMFields() {
                 || typeof scOrderAmount == 'undefined'
                 || typeof scOrderCurr == 'undefined'
                 || typeof scMerchantId == 'undefined'
+                || typeof scMerchantSiteId == 'undefined'
             ) {
                 scFormFalse('Unexpected error, please try again later!');
                 console.error('Missing SDK parameters.');
@@ -51,6 +52,7 @@ function scValidateAPMFields() {
             sfc.createPayment({
                 sessionToken    : scOpenOrderToken,
                 merchantId      : scMerchantId,
+                merchantSiteId  : scMerchantSiteId,
                 currency        : scOrderCurr,
                 amount          : scOrderAmount,
                 cardHolderName  : document.getElementById('sc_card_holder_name').value,
