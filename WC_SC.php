@@ -796,6 +796,7 @@ class WC_SC extends WC_Payment_Gateway
                 implode('', $st_params) . $this->secret
             );
 
+            SC_HELPER::create_log('Try to get sessionToken.');
             $session_token_data = SC_HELPER::call_rest_api($st_endpoint_url, $st_params);
 
             if(
@@ -886,13 +887,18 @@ class WC_SC extends WC_Payment_Gateway
             $endpoint_url = $this->test == 'no' ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
         }
         // in case of APM
-        elseif(isset($_POST[@$_POST['sc_payment_method']]) && is_array($_POST[$_POST['sc_payment_method']])) {
+        elseif(@$_POST['sc_payment_method']) {
             $is_apm_payment = true;
             $params['paymentMethod'] = $_POST['sc_payment_method'];
-            $params['userAccountDetails'] = $_POST[$_POST['sc_payment_method']];
+            
+            if(isset($_POST[$_POST['sc_payment_method']])) {
+                $params['userAccountDetails'] = $_POST[$_POST['sc_payment_method']];
+            }
+            
             $endpoint_url = $this->test == 'no' ? SC_LIVE_PAYMENT_URL : SC_TEST_PAYMENT_URL;
         }
         
+        SC_HELPER::create_log('Try to create a payment with Payment Method:');
         $resp = SC_HELPER::call_rest_api($endpoint_url, $params);
         
         if(!$resp) {
@@ -1563,24 +1569,47 @@ class WC_SC extends WC_Payment_Gateway
             return;
         }
 
-        $notify_url = $this->set_notify_url();
+        $notify_url     = $this->set_notify_url();
+        $notify_url     .= '&action=refund&order_id=' . $order_id;
         
-        // execute refund, the response must be array('msg' => 'some msg', 'new_order_status' => 'some status')
-        $resp = SC_REST_API::refund_order(
-            $this->settings
-            ,$refund_data
-            ,$order_meta_data
-            ,get_woocommerce_currency()
-            ,$notify_url . '&action=refund&order_id=' . $order_id
-        );
-        
-        $refund_url = SC_TEST_REFUND_URL;
-        $cpanel_url = SC_TEST_CPANEL_URL;
+        $refund_url     = SC_TEST_REFUND_URL;
+        $cpanel_url     = SC_TEST_CPANEL_URL;
 
         if($this->settings['test'] == 'no') {
             $refund_url = SC_LIVE_REFUND_URL;
             $cpanel_url = SC_LIVE_CPANEL_URL;
         }
+        
+        $time = date('YmdHis', time());
+        
+        $ref_parameters = array(
+            'merchantId'            => $this->settings['merchantId'],
+            'merchantSiteId'        => $this->settings['merchantSiteId'],
+            'clientRequestId'       => $time . '_' . $order_meta_data['order_tr_id'],
+            'clientUniqueId'        => $refund_data['id'],
+            'amount'                => number_format($refund_data['amount'], 2, '.', ''),
+            'currency'              => get_woocommerce_currency(),
+            'relatedTransactionId'  => $order_meta_data['order_tr_id'], // GW Transaction ID
+            'authCode'              => $order_meta_data['auth_code'],
+            'comment'               => $refund_data['reason'], // optional
+            'url'                   => $notify_url,
+            'timeStamp'             => $time,
+        );
+        
+        $checksum_str = implode('', $ref_parameters);
+        
+        $checksum = hash(
+            $this->settings['hash_type'],
+            $checksum_str . $this->settings['secret']
+        );
+        
+        $ref_parameters['checksum']     = $checksum;
+        $ref_parameters['urlDetails']   = array(
+            'notificationUrl' => $notify_url
+        );
+        $ref_parameters['webMasterId']  = $refund_data['webMasterId'];
+        
+        $resp = SC_HELPER::call_rest_api($refund_url, $ref_parameters);
 
         $msg = '';
         $error_note = 'Please manually delete request Refund #'

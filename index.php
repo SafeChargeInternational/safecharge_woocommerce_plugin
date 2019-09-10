@@ -83,22 +83,33 @@ function sc_enqueue($hook)
     
     # load external files
     $plugin_dir = basename(dirname(__FILE__));
-   
+    $plugin_url = WP_PLUGIN_URL;
+    
+    if(@$_SERVER['HTTPS'] == 'on' || @$_SERVER['REQUEST_SCHEME'] == 'https') {
+        if(strpos($plugin_url, 'https') === false) {
+            $plugin_url = str_replace('http:', 'https:', $plugin_url);
+        }
+    }
+    
     // main JS
-    wp_register_script("sc_js_script", WP_PLUGIN_URL . '/' . $plugin_dir . '/js/sc.js', array('jquery') );
+    wp_register_script("sc_js_script", $plugin_url . '/' . $plugin_dir . '/js/sc.js', array('jquery') );
     
     wp_localize_script(
         'sc_js_script',
         'myAjax',
         array(
-            'ajaxurl' => WP_PLUGIN_URL . '/' . $plugin_dir .'/sc_ajax.php',
+            'ajaxurl' => $plugin_url . '/' . $plugin_dir .'/sc_ajax.php',
         )
     );  
     wp_enqueue_script( 'sc_js_script' );
     // main JS END
     
     // novo style
-    wp_register_style ('novo_style', WP_PLUGIN_URL. '/'. $plugin_dir. '/css/novo.css', '' , '', 'all' );
+    
+    
+    
+    
+    wp_register_style ('novo_style', $plugin_url. '/'. $plugin_dir. '/css/novo.css', '' , '', 'all' );
     wp_enqueue_style( 'novo_style' );
     
     // the Tokenization script

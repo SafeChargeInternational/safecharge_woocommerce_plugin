@@ -20,6 +20,8 @@ class SC_HELPER
      */
     public static function call_rest_api($url, $params)
     {
+        self::create_log($params, 'SC_REST_API, parameters for the REST API call:');
+        
         if(empty($url)) {
             self::create_log('SC_REST_API, the URL is empty!');
             return false;
@@ -31,8 +33,6 @@ class SC_HELPER
         if(isset($params['deviceDetails']) && empty($params['deviceDetails'])) {
             $params['deviceDetails'] = self::get_device_details();
         }
-        
-        self::create_log($params, 'SC_REST_API, parameters for the REST API call:');
         
         $json_post = json_encode($params);
     //    self::create_log($json_post, 'params as json: ');
@@ -221,6 +221,9 @@ class SC_HELPER
             }
             elseif(is_bool($data)) {
                 $d = $data ? 'true' : 'false';
+            }
+            else {
+                $d = $data . "\r\n";
             }
 
             if(!empty($title)) {
