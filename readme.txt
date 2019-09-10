@@ -3,10 +3,10 @@
 Tags: credit card, safecharge, woocommerce
 Wordpress requirements: 
 	- minimum v4.7
-	- tested up to v5.0.3
+	- tested up to v5.2.3
 WooCommerce requirements: 
 	- minimum v 3.0
-	- tested up to v3.5.4
+	- tested up to v3.7.0
 Stable tag: 1.9.3
 
 == Description ==
@@ -42,6 +42,9 @@ Upload the provided archive and install it. As a final step you should activate 
 Please, contact out Tech-Support team (tech-support@safecharge.com) in case of questions and difficulties.
 
 == Changelog ==
+
+= 2.2 - 2019-09-10 =
+* New - Create payments via WebSDK.
 
 = 2.1 - 2019-07-22 =
 * New - Added logger class.

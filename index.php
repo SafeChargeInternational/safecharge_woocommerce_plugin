@@ -3,7 +3,7 @@
 Plugin Name: SafeCharge Payments
 Plugin URI: http://www.safecharge.com
 Description: SafeCharge gateway for woocommerce
-Version: 2.1
+Version: 2.2
 Author: SafeCharge
 Author URI: http://safecharge.com
 */
@@ -44,6 +44,8 @@ function woocommerce_sc_init()
     add_action( 'woocommerce_order_item_add_action_buttons', 'sc_add_buttons');
     // redirect when show receipt page
     add_action('woocommerce_receipt_'.$wc_sc->id, array($wc_sc, 'generate_sc_form'));
+    // on the checkout page get the order total amount
+    add_action('woocommerce_checkout_before_order_review', array($wc_sc, 'checkout_open_order'));
     
     // those actions are valid only when the plugin is enabled
     if($wc_sc->settings['enabled'] == 'yes') {
@@ -105,15 +107,17 @@ function sc_enqueue($hook)
     // main JS END
     
     // novo style
-    
-    
-    
-    
     wp_register_style ('novo_style', $plugin_url. '/'. $plugin_dir. '/css/novo.css', '' , '', 'all' );
     wp_enqueue_style( 'novo_style' );
     
-    // the Tokenization script
-    wp_register_script("sc_websdk", 'https://dev-mobile.safecharge.com/cdn/WebSdk/dist/safecharge.js', array('jquery') );
+    // WebSDK URL for integration and production
+    wp_register_script(
+        "sc_websdk",
+        $wc_sc->test == 'yes'
+            ? 'https://dev-mobile.safecharge.com/cdn/WebSdk/dist/safecharge.js'
+                : 'https://cdn-int.safecharge.com/safecharge_resources/v1/websdk/safecharge.js',
+        array('jquery')
+    );
     wp_enqueue_script( 'sc_websdk' );
     # load external files END
 }

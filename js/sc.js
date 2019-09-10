@@ -11,6 +11,7 @@ var scVoidBtn                   = null;
 var sfc                         = null;
 var scFields                    = null;
 var sfcFirstField               = null;
+var scCard                      = null;
 var scData                      = {};
 // set some classes for the Fields
 var elementClasses = {
@@ -33,7 +34,66 @@ function scValidateAPMFields() {
     
     if(typeof selectedPM != 'undefined' && selectedPM != '') {
         // use cards
-        if(selectedPM == 'cc_card' || selectedPM == 'dc_card' || selectedPM == 'paydotcom') {
+    //    if(selectedPM == 'cc_card' || selectedPM == 'dc_card' || selectedPM == 'paydotcom') {
+        if(selectedPM == 'cc_card' || selectedPM == 'dc_card') {
+            if(
+                typeof scOpenOrderToken == 'undefined'
+                || typeof scOrderAmount == 'undefined'
+                || typeof scOrderCurr == 'undefined'
+                || typeof scMerchantId == 'undefined'
+            ) {
+                scFormFalse('Unexpected error, please try again later!');
+                console.error('Missing SDK parameters.');
+                return;
+            }
+    
+            // create payment with WebSDK
+            sfc.createPayment({
+                sessionToken    : scOpenOrderToken,
+                merchantId      : scMerchantId,
+                currency        : scOrderCurr,
+                amount          : scOrderAmount,
+                cardHolderName  : document.getElementById('sc_card_holder_name').value,
+                paymentOption   : scCard
+
+            }, function(resp){
+                console.log(resp);
+
+                if(typeof resp.result != 'undefined') {
+                    if(resp.result == 'APPROVED' && resp.transactionId != 'undefined') {
+                        console.log(resp.dsTransID)
+
+                        jQuery('#sc_transaction_id').val(resp.dsTransID);
+                        jQuery('form.woocommerce-checkout').submit();
+                        return;
+                    }
+                    else if(resp.result == 'DECLINED') {
+                        scFormFalse('Your Payment was DECLINED. Please try another payment method!');
+                        return;
+                    }
+                    else {
+                        if(resp.errorDescription != 'undefined' && resp.errorDescription != '') {
+                            scFormFalse(resp.errorDescription);
+                        }
+                        else {
+                            scFormFalse('Error with your Payment. Please try again later!');
+                        }
+
+                        return;
+                    }
+                }
+                else {
+                    scFormFalse('Unexpected error, please try again later!');
+                    console.error('Error with SDK response: ' + resp);
+                    return;
+                }
+            });
+                 
+            scFormFalse('Unexpected error, please try again later!');
+            return;
+                            
+            
+            /*
             sfc.getToken(sfcFirstField).then(function(result) {
                 try {
                 //    console.log(result.isVerified)
@@ -64,6 +124,7 @@ function scValidateAPMFields() {
                     alert("Unexpected error, please try again later");
                 }
             });
+            */
         }
         // use APM data
         else if(isNaN(parseInt(selectedPM))) {
@@ -123,13 +184,17 @@ function scValidateAPMFields() {
     }
  }
  
- function scFormFalse() {
+ function scFormFalse(text) {
     // clear the error
     jQuery('.woocommerce-error').remove();
     
+    if(typeof text == 'undefined') {
+        text = "Please, choose payment method, and fill all fields!";
+    }
+    
     jQuery('form.woocommerce-checkout').prepend(
         '<div class="woocommerce-error" role="alert">'
-            +'<strong>Please, choose payment method, and fill all fields!</strong>'
+            +'<strong>'+ text +'</strong>'
         +'</div>'
     );
 
@@ -302,24 +367,13 @@ function getAPMs() {
                             html_apms +=
                                 '<div class="apm_fields" id="sc_'+ pMethods[i].paymentMethod +'">'
                                     +'<div class="apm_field">'
-                                        + '<div id="sc_card_number"></div>'
+                                        + '<div id="card-field-placeholder"></div>'
                                     +'</div>'
                                     
                                     + '<div class="apm_field">'
                                         + '<input type="text" id="sc_card_holder_name" name="'+ pMethods[i].paymentMethod
                                             +'[cardHolderName]" placeholder="Card holder name" />'
-                                    + '</div>'
-                                    
-                                    +'<div class="apm_field">'
-                                        + '<div id="sc_card_expiry"></div>'
-                                    +'</div>'
-                                    
-                                    +'<div class="apm_field">'
-                                        + '<div id="sc_card_cvc"></div>'
-                                    +'</div>'
-                                    
-                                    +'<input type="hidden" id="'+ pMethods[i].paymentMethod
-                                        +'_ccTempToken" name="'+ pMethods[i].paymentMethod +'[ccTempToken]" />';
+                                    + '</div>';
                         }
                         else {
                             html_apms+=
@@ -383,7 +437,7 @@ function getAPMs() {
                             + '</li>';
                     }
                     
-                    html_apms += '<input type="hidden" name="lst" id="sc_lst" value="" />';
+                    html_apms += '<input type="hidden" name="sc_transaction_id" id="sc_transaction_id" value="" />';
                     
                     print_apms_options(html_upos, html_apms);
                     
@@ -447,24 +501,32 @@ function print_apms_options(upos, apms) {
         .promise()
         .done(function(){
             // create the Fields
-            // describe fields
-            var cardNumber = sfcFirstField = scFields.create('ccNumber', {
+            scCard = scFields.create('card', {
+                iconStyle: 'solid',
+                style: {
+                    base: {
+                        iconColor: "#c4f0ff",
+                        color: "#000",
+                        fontWeight: 500,
+                        fontFamily: "Roboto, Open Sans, Segoe UI, sans-serif",
+                        fontSize: '15px',
+                        fontSmoothing: "antialiased",
+                        ":-webkit-autofill": {
+                            color: "#fce883"
+                        },
+                        "::placeholder": {
+                            color: "grey" 
+                        }
+                    },
+                    invalid: {
+                        iconColor: "#FFC7EE",
+                        color: "#FFC7EE"
+                    }
+                },
                 classes: elementClasses
-                ,style: fieldsStyle
             });
-            cardNumber.attach('#sc_card_number');
 
-            var cardExpiry = scFields.create('ccExpiration', {
-                classes: elementClasses
-                ,style: fieldsStyle
-            });
-            cardExpiry.attach('#sc_card_expiry');
-
-            var cardCvc = scFields.create('ccCvc', {
-                classes: elementClasses
-                ,style: fieldsStyle
-            });
-            cardCvc.attach('#sc_card_cvc'); 
+            scCard.attach('#card-field-placeholder');
         });
 
     // change submit button type and behavior

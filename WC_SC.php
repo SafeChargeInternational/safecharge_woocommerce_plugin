@@ -22,10 +22,9 @@ class WC_SC extends WC_Payment_Gateway
     
     public function __construct()
     {
-        $_SESSION['SC_Variables']['webMasterId'] = $this->webMasterId .= WOOCOMMERCE_VERSION;
-        $plugin_dir = basename(dirname(__FILE__));
-        $this->plugin_path = plugin_dir_path( __FILE__ ) . $plugin_dir . DIRECTORY_SEPARATOR;
-        $this->plugin_url = get_site_url() . DIRECTORY_SEPARATOR . 'wp-content'
+        $plugin_dir         = basename(dirname(__FILE__));
+        $this->plugin_path  = plugin_dir_path( __FILE__ ) . $plugin_dir . DIRECTORY_SEPARATOR;
+        $this->plugin_url   = get_site_url() . DIRECTORY_SEPARATOR . 'wp-content'
             . DIRECTORY_SEPARATOR . 'plugins' . DIRECTORY_SEPARATOR . $plugin_dir
             . DIRECTORY_SEPARATOR;
         
@@ -61,6 +60,7 @@ class WC_SC extends WC_Payment_Gateway
         $this->init_form_fields();
         
         # set session variables for REST API, according REST variables names
+        $_SESSION['SC_Variables']['webMasterId']        = $this->webMasterId .= WOOCOMMERCE_VERSION;
         $_SESSION['SC_Variables']['merchantId']         = $this->merchantId;
         $_SESSION['SC_Variables']['merchantSiteId']     = $this->merchantSiteId;
         $_SESSION['SC_Variables']['currencyCode']       = get_woocommerce_currency();
@@ -123,12 +123,12 @@ class WC_SC extends WC_Payment_Gateway
         
 		$this->msg['message'] = "";
 		$this->msg['class'] = "";
+        
+    //    echo '<pre>' . print_r($this, true) . '</pre>';
 
         SC_Versions_Resolver::process_admin_options($this);
         
 	//	add_action('woocommerce_checkout_process', array($this, 'sc_checkout_process'));
-        /* TODO - move this in the index */
-//        add_action('woocommerce_receipt_'.$this->id, array($this, 'generate_sc_form'));
         
         /* Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
         we check in the method is this order made via SC paygate */
@@ -712,12 +712,12 @@ class WC_SC extends WC_Payment_Gateway
      **/
     public function process_payment($order_id)
     {
-        if(isset($_SESSION['SC_P3D_PaReq'])) {
-            unset($_SESSION['SC_P3D_PaReq']);
-        }
-        if(isset($_SESSION['SC_P3D_acsUrl'])) {
-            unset($_SESSION['SC_P3D_acsUrl']);
-        }
+//        if(isset($_SESSION['SC_P3D_PaReq'])) {
+//            unset($_SESSION['SC_P3D_PaReq']);
+//        }
+//        if(isset($_SESSION['SC_P3D_acsUrl'])) {
+//            unset($_SESSION['SC_P3D_acsUrl']);
+//        }
         
         $order = new WC_Order($order_id);
         $order_status = strtolower($order->get_status());
@@ -737,6 +737,15 @@ class WC_SC extends WC_Payment_Gateway
         }
         
         # when use REST - call the API
+        // when we have Approved from the SDK we complete the order here
+        if(@$_POST['sc_transaction_id'] && in_array(@$_POST['sc_payment_method'], array('cc_card', 'dc_card'))) {
+            return array(
+                'result' 	=> 'success',
+                'redirect'	=> add_query_arg(array(), $this->get_return_url())
+            );
+        }
+        
+        
         $time           = date('Ymdhis');
         $endpoint_url   = '';
         $is_apm_payment = false;
@@ -1728,6 +1737,50 @@ class WC_SC extends WC_Payment_Gateway
         }
         
         return;
+    }
+    
+    public function checkout_open_order()
+    {
+        if($this->payment_api == 'cashier') {
+            return;
+        }
+        
+        global $woocommerce;
+        
+        $cart_totals        = @$woocommerce->cart->get_totals();
+        $st_endpoint_url    = $this->test == 'yes'
+            ? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
+        
+        $params = array(
+            'merchantId'        => $this->merchantId,
+            'merchantSiteId'    => $this->merchantSiteId,
+            'clientRequestId'   => $_SESSION['SC_Variables']['cri1'],
+            'amount'            => $cart_totals['total'],
+            'currency'          => $_SESSION['SC_Variables']['currencyCode'],
+            'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri1'])),
+        );
+        
+        $params['checksum'] = hash(
+            $this->hash_type,
+            implode('', $params) . $this->secret
+        );
+        
+        $params['urlDetails'] = array(
+            'successUrl' => $this->get_return_url(),
+            'failureUrl' => $this->get_return_url(),
+        );
+        
+        $resp = SC_HELPER::call_rest_api($st_endpoint_url, $params);
+        
+        if($resp && @$resp['status'] == 'SUCCESS' && @$resp['sessionToken']) {
+            echo
+                '<script type="text/javascript">'
+                    . 'var scOpenOrderToken = "' . $resp['sessionToken'] . '"; '
+                    . 'var scOrderAmount    = "' . $cart_totals['total'] . '"; '
+                    . 'var scOrderCurr      = "' . get_woocommerce_currency() . '"; '
+                    . 'var scMerchantId      = "' . $this->merchantId . '"; '
+                . '</script>';
+        }
     }
     
     /**
