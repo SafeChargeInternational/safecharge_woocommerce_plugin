@@ -1,8 +1,8 @@
 <?php
-/* 
+/*
  * A try to get what we need when work with different versions of WooCommers.
  * For the moment the plugin lowest support version is 3.0.0
- * 
+ *
  * SafeCharge
  * 2018-08
  */
@@ -11,7 +11,7 @@ class SC_Versions_Resolver
     /**
      * Function process_admin_options
      * Add hook to save admin options
-     * 
+     *
      * @param WC_SC $_this - object of type WC_SC
      */
     public static function process_admin_options($_this)
@@ -25,40 +25,40 @@ class SC_Versions_Resolver
     /**
      * Function get_order_data
      * Extract the data from the order
-     * 
+     *
      * @param WC_Order $order
      * @param string $key - a key name to extract
      */
     public static function get_order_data($order, $key = 'completed_date')
     {
-        switch($key) {
+        switch ($key) {
             case 'completed_date':
                 return $order->get_date_completed() ?
-                    gmdate( 'Y-m-d H:i:s', $order->get_date_completed()->getOffsetTimestamp() ) : '';
+                    gmdate('Y-m-d H:i:s', $order->get_date_completed()->getOffsetTimestamp()) : '';
 
             case 'paid_date':
                 return $order->get_date_paid() ?
-                    gmdate( 'Y-m-d H:i:s', $order->get_date_paid()->getOffsetTimestamp() ) : '';
+                    gmdate('Y-m-d H:i:s', $order->get_date_paid()->getOffsetTimestamp()) : '';
 
             case 'modified_date':
                 return $order->get_date_modified() ?
-                    gmdate( 'Y-m-d H:i:s', $order->get_date_modified()->getOffsetTimestamp() ) : '';
+                    gmdate('Y-m-d H:i:s', $order->get_date_modified()->getOffsetTimestamp()) : '';
 
-            case 'order_date';
+            case 'order_date':
                 return $order->get_date_created() ?
-                    gmdate( 'Y-m-d H:i:s', $order->get_date_created()->getOffsetTimestamp() ) : '';
+                    gmdate('Y-m-d H:i:s', $order->get_date_created()->getOffsetTimestamp()) : '';
 
             case 'id':
                 return $order->get_id();
 
             case 'post':
-                return get_post( $order->get_id() );
+                return get_post($order->get_id());
 
             case 'status':
                 return $order->get_status();
 
             case 'post_status':
-                return get_post_status( $order->get_id() );
+                return get_post_status($order->get_id());
 
             case 'customer_message':
             case 'customer_note':
@@ -69,13 +69,13 @@ class SC_Versions_Resolver
                 return $order->get_customer_id();
 
             case 'tax_display_cart':
-                return get_option( 'woocommerce_tax_display_cart' );
+                return get_option('woocommerce_tax_display_cart');
 
             case 'display_totals_ex_tax':
-                return 'excl' === get_option( 'woocommerce_tax_display_cart' );
+                return 'excl' === get_option('woocommerce_tax_display_cart');
 
             case 'display_cart_ex_tax':
-                return 'excl' === get_option( 'woocommerce_tax_display_cart' );
+                return 'excl' === get_option('woocommerce_tax_display_cart');
 
             case 'cart_discount':
                 return $order->get_total_discount();
@@ -111,11 +111,11 @@ class SC_Versions_Resolver
                 return $order->get_version();
 
             default:
-                return get_post_meta( $order->get_id(), '_' . $key, true );
+                return get_post_meta($order->get_id(), '_' . $key, true);
         }
 
         // try to call {get_$key} method
-        if ( is_callable( array( $order, "get_{$key}" ) ) ) {
+        if (is_callable(array( $order, "get_{$key}" ))) {
             return $order->{"get_{$key}"}();
         }
     }
@@ -123,10 +123,10 @@ class SC_Versions_Resolver
     /**
      * Function get_page_id
      * Get permalink, by page name
-     * 
+     *
      * @param string $page
      * @return string|false
-     * 
+     *
      * @deprecated
      */
     public static function get_page_id($page)
@@ -137,10 +137,10 @@ class SC_Versions_Resolver
     /**
      * Function get_redirect_url
      * Get the redirect url for an order
-     * 
+     *
      * @param WC_Order $order
      * @return string
-     * 
+     *
      * @deprecated
      */
     public static function get_redirect_url($order)
@@ -156,26 +156,24 @@ class SC_Versions_Resolver
     
     /**
      * Function get_client_country
-     * 
+     *
      * @param WC_Customer $client
      * @return string
      */
     public static function get_client_country($client)
     {
-        if ( version_compare( WOOCOMMERCE_VERSION, '3.0.0', '>' ) ) {
+        if (version_compare(WOOCOMMERCE_VERSION, '3.0.0', '>')) {
             return $client->get_billing_country();
-        }
-        else {
+        } else {
             return $client->get_country();
         }
     }
     
     public static function get_shipping($order)
     {
-        if ( version_compare( WOOCOMMERCE_VERSION, '3.0.0', '>' ) ) {
+        if (version_compare(WOOCOMMERCE_VERSION, '3.0.0', '>')) {
             return $order->get_shipping_total();
-        }
-        else {
+        } else {
             return $order->get_total_shipping();
         }
     }

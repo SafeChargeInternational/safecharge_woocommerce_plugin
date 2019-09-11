@@ -8,8 +8,8 @@ Author: SafeCharge
 Author URI: http://safecharge.com
 */
 
-if(!defined('ABSPATH')) {
-    $die = file_get_contents(dirname( __FILE__ ) . DIRECTORY_SEPARATOR . 'die.html');
+if (!defined('ABSPATH')) {
+    $die = file_get_contents(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'die.html');
     echo $die;
     die;
 }
@@ -22,7 +22,7 @@ add_action('plugins_loaded', 'woocommerce_sc_init', 0);
 
 function woocommerce_sc_init()
 {
-    if(!class_exists('WC_Payment_Gateway')) {
+    if (!class_exists('WC_Payment_Gateway')) {
         return;
     }
     
@@ -32,28 +32,28 @@ function woocommerce_sc_init()
     global $wc_sc;
     $wc_sc = new WC_SC();
     
-    add_filter('woocommerce_payment_gateways', 'woocommerce_add_sc_gateway' );
-	add_action('init', 'sc_enqueue');
+    add_filter('woocommerce_payment_gateways', 'woocommerce_add_sc_gateway');
+    add_action('init', 'sc_enqueue');
     // replace the text at thank you page
     add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
     // eliminates the problem with different permalinks
     add_action('template_redirect', 'sc_iframe_redirect');
     
     // add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
-    add_action( 'woocommerce_order_item_add_action_buttons', 'sc_add_buttons');
+    add_action('woocommerce_order_item_add_action_buttons', 'sc_add_buttons');
     
     // those actions are valid only when the plugin is enabled
-    if($wc_sc->settings['enabled'] == 'yes') {
+    if ($wc_sc->settings['enabled'] == 'yes') {
         // for WPML plugin
-        if(
+        if (
             is_plugin_active('sitepress-multilingual-cms' . DIRECTORY_SEPARATOR . 'sitepress.php')
             && $wc_sc->settings['use_wpml_thanks_page'] == 'yes'
         ) {
-            add_filter( 'woocommerce_get_checkout_order_received_url', 'sc_wpml_thank_you_page', 10, 2 );
+            add_filter('woocommerce_get_checkout_order_received_url', 'sc_wpml_thank_you_page', 10, 2);
         }
 
         // if the merchant needs to rewrite the DMN URL
-        if(isset($wc_sc->settings['rewrite_dmn']) && $wc_sc->settings['rewrite_dmn'] == 'yes') {
+        if (isset($wc_sc->settings['rewrite_dmn']) && $wc_sc->settings['rewrite_dmn'] == 'yes') {
             add_action('template_redirect', 'sc_rewrite_return_url'); // need WC_SC
         }
     }
@@ -74,7 +74,7 @@ function sc_enqueue($hook)
     global $wc_sc;
         
     # DMNs catch
-    if(isset($_REQUEST['wc-api']) && $_REQUEST['wc-api'] == 'sc_listener') {
+    if (isset($_REQUEST['wc-api']) && $_REQUEST['wc-api'] == 'sc_listener') {
         $wc_sc->process_dmns();
     }
     
@@ -84,7 +84,7 @@ function sc_enqueue($hook)
    
     // main JS
 //    wp_register_script("sc_js_script", WP_PLUGIN_URL . '/' . $plugin_dir . '/js/sc.js', array('jquery') );
-    wp_register_script("sc_js_script", $url_path . '/js/sc.js', array('jquery') );
+    wp_register_script("sc_js_script", $url_path . '/js/sc.js', array('jquery'));
     
     wp_localize_script(
         'sc_js_script',
@@ -93,18 +93,18 @@ function sc_enqueue($hook)
         //    'ajaxurl' => WP_PLUGIN_URL . '/' . $plugin_dir .'/sc_ajax.php',
             'ajaxurl' => $url_path .'/sc_ajax.php',
         )
-    );  
-    wp_enqueue_script( 'sc_js_script' );
+    );
+    wp_enqueue_script('sc_js_script');
     // main JS END
     
     // novo style
 //    wp_register_style ('novo_style', WP_PLUGIN_URL. '/'. $plugin_dir. '/css/novo.css', '' , '', 'all' );
-    wp_register_style ('novo_style', $url_path . '/css/novo.css', '' , '', 'all' );
-    wp_enqueue_style( 'novo_style' );
+    wp_register_style('novo_style', $url_path . '/css/novo.css', '', '', 'all');
+    wp_enqueue_style('novo_style');
     
     // the Tokenization script
-    wp_register_script("sc_token_js", 'https://cdn.safecharge.com/js/v1/safecharge.js', array('jquery') );
-    wp_enqueue_script( 'sc_token_js' );
+    wp_register_script("sc_token_js", 'https://cdn.safecharge.com/js/v1/safecharge.js', array('jquery'));
+    wp_enqueue_script('sc_token_js');
     # load external files END
 }
 
@@ -117,9 +117,9 @@ function sc_show_final_text()
     $msg = __("Thank you. Your payment process is completed. Your order status will be updated soon.", 'sc');
    
     // Cashier
-    if(@$_REQUEST['invoice_id'] && @$_REQUEST['ppp_status'] && $wc_sc->checkAdvancedCheckSum()) {
+    if (@$_REQUEST['invoice_id'] && @$_REQUEST['ppp_status'] && $wc_sc->checkAdvancedCheckSum()) {
         try {
-            $arr = explode("_",$_REQUEST['invoice_id']);
+            $arr = explode("_", $_REQUEST['invoice_id']);
             $order_id  = $arr[0];
             $order = new WC_Order($order_id);
 
@@ -128,8 +128,7 @@ function sc_show_final_text()
                 $order->update_status('failed', 'User order failed.');
 
                 $msg = __("Your payment failed. Please, try again.", 'sc');
-            }
-            else {
+            } else {
                 $transactionId = "TransactionId = "
                     . (isset($_REQUEST['TransactionID']) ? $_REQUEST['TransactionID'] : "");
 
@@ -141,28 +140,25 @@ function sc_show_final_text()
             }
             
             $order->save();
-        }
-        catch (Exception $ex) {
+        } catch (Exception $ex) {
             create_log($ex->getMessage(), 'Cashier handle exception error: ');
         }
-        
     }
     // REST API tahnk you page handler
-    else{
-        if ( strtolower(@$_REQUEST['Status']) == 'fail' ) {
+    else {
+        if (strtolower(@$_REQUEST['Status']) == 'fail') {
             $msg = __("Your payment failed. Please, try again.", 'sc');
-        }
-        else {
+        } else {
             $woocommerce->cart->empty_cart();
         }
     }
     
     // clear session variables for the order
-    if(isset($_SESSION['SC_Variables'])) {
+    if (isset($_SESSION['SC_Variables'])) {
         unset($_SESSION['SC_Variables']);
     }
     // prevent generate_sc_form() to render form twice
-    if(isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
+    if (isset($_SESSION['SC_CASHIER_FORM_RENDED'])) {
         unset($_SESSION['SC_CASHIER_FORM_RENDED']);
     }
     
@@ -174,24 +170,24 @@ function sc_iframe_redirect()
     global $wp;
     global $wc_sc;
     
-    if(!is_checkout()) {
+    if (!is_checkout()) {
         return;
     }
     
-    if(!isset($_REQUEST['order-received'])) {
+    if (!isset($_REQUEST['order-received'])) {
         $url_parts = explode('/', trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/'));
         
-        if(!$url_parts || empty($url_parts)) {
+        if (!$url_parts || empty($url_parts)) {
             return;
         }
         
-        if(!in_array('order-received', $url_parts)) {
+        if (!in_array('order-received', $url_parts)) {
             return;
         }
     }
     
     // when we use iframe
-    if(@$_REQUEST['use_iframe'] == 1) {
+    if (@$_REQUEST['use_iframe'] == 1) {
         echo
             '<table id="sc_pay_msg" style="border: 0px; cursor: wait; line-height: 32px; width: 100%;"><tr>'
                 .'<td style="padding: 0px; border: 0px; width: 100px;">'
@@ -217,13 +213,13 @@ function sc_iframe_redirect()
 function sc_check_checkout_apm()
 {
     // if custom fields are empty stop checkout process displaying an error notice.
-    if(
+    if (
         isset($_SESSION['SC_Variables']['payment_api'])
         && $_SESSION['SC_Variables']['payment_api'] == 'rest'
         && empty($_POST['payment_method_sc'])
     ) {
-        $notice = __( 'Please select '. SC_GATEWAY_TITLE .' payment method to continue!', 'sc' );
-        wc_add_notice( '<strong>' . $notice . '</strong>', 'error' );
+        $notice = __('Please select '. SC_GATEWAY_TITLE .' payment method to continue!', 'sc');
+        wc_add_notice('<strong>' . $notice . '</strong>', 'error');
     }
 }
 
@@ -235,22 +231,21 @@ function sc_add_buttons()
         $order_payment_method = $order->get_meta('_paymentMethod');
         
         // hide Refund Button
-        if(!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))) {
+        if (!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))) {
             echo '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
         }
-    }
-    catch (Exception $ex) {
+    } catch (Exception $ex) {
         echo '<script type="text/javascript">console.error("'
             . $ex->getMessage() . '")</script>';
         exit;
     }
     
     // to show SC buttons we must be sure the order is paid via SC Paygate
-    if(!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_GW_TRANS_ID_KEY)) {
+    if (!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_GW_TRANS_ID_KEY)) {
         return;
     }
     
-    if($order_status == 'completed'|| $order_status == 'pending') {
+    if ($order_status == 'completed'|| $order_status == 'pending') {
         require_once 'SC_Versions_Resolver.php';
         global $wc_sc;
 
@@ -282,26 +277,26 @@ function sc_add_buttons()
         );
         
         // Show VOID button
-        if($order_has_refund != '1' && in_array($order_payment_method, array('cc_card', 'dc_card'))) {
-            $buttons_html .= 
+        if ($order_has_refund != '1' && in_array($order_payment_method, array('cc_card', 'dc_card'))) {
+            $buttons_html .=
                 ' <button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
-                . __( 'Are you sure, you want to Cancel Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
+                . __('Are you sure, you want to Cancel Order #'. $_REQUEST['post'] .'?', 'sc') .'\', '
                 . '\'void\', \''. WOOCOMMERCE_VERSION .'\')" class="button generate-items">'
-                . __( 'Void', 'sc' ) .'</button>';
+                . __('Void', 'sc') .'</button>';
         }
         
         // show SETTLE button ONLY if setting transaction_type IS Auth AND P3D resonse transaction_type IS Auth
-        if(
+        if (
             $order_status == 'pending'
             && $order->get_meta(SC_GW_P3D_RESP_TR_TYPE) == 'Auth'
             && $wc_sc->settings['transaction_type'] == 'Auth'
         ) {
             $buttons_html .=
                 ' <button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
-                . __( 'Are you sure, you want to Settle Order #'. $_REQUEST['post'] .'?', 'sc' ) .'\', '
+                . __('Are you sure, you want to Settle Order #'. $_REQUEST['post'] .'?', 'sc') .'\', '
             //    . '\'settle\', ' . $_REQUEST['post'] .')" class="button generate-items">'
                 . '\'settle\', \'' . WOOCOMMERCE_VERSION .'\')" class="button generate-items">'
-                . __( 'Settle', 'sc' ) .'</button>';
+                . __('Settle', 'sc') .'</button>';
         }
         
         $checksum = hash(
@@ -330,12 +325,12 @@ function sc_add_buttons()
  * Function sc_rewrite_return_url
  * When user have problem with white spaces in the URL, it have option to
  * rewrite the return URL and redirect to new one.
- * 
+ *
  * @global WC_SC $wc_sc
  */
 function sc_rewrite_return_url()
 {
-    if(
+    if (
         isset($_REQUEST['ppp_status']) && $_REQUEST['ppp_status'] != ''
         && (!isset($_REQUEST['wc_sc_redirected']) || $_REQUEST['wc_sc_redirected'] == 0)
     ) {
@@ -343,12 +338,12 @@ function sc_rewrite_return_url()
         $host = (strpos($_SERVER["SERVER_PROTOCOL"], 'HTTP/') !== false ? 'http' : 'https')
             . '://' . $_SERVER['HTTP_HOST'] . current(explode('?', $_SERVER['REQUEST_URI']));
         
-        if(isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
+        if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] != '') {
             $new_url = preg_replace('/\+|\s|\%20/', '_', $_SERVER['QUERY_STRING']);
             // put flag the URL was rewrited
             $new_url .= '&wc_sc_redirected=1';
             
-            wp_redirect( $host . '?' . $new_url );
+            wp_redirect($host . '?' . $new_url);
             exit;
         }
     }
@@ -357,15 +352,15 @@ function sc_rewrite_return_url()
 /**
  * Function sc_wpml_thank_you_page
  * Fix for WPML plugin "Thank you" page
- * 
+ *
  * @param string $order_received_url
  * @param WC_Order $order
  * @return string $order_received_url
  */
-function sc_wpml_thank_you_page( $order_received_url, $order )
+function sc_wpml_thank_you_page($order_received_url, $order)
 {
-    $lang_code = get_post_meta( $order->id, 'wpml_language', true );
-    $order_received_url = apply_filters( 'wpml_permalink', $order_received_url , $lang_code );
+    $lang_code = get_post_meta($order->id, 'wpml_language', true);
+    $order_received_url = apply_filters('wpml_permalink', $order_received_url, $lang_code);
     
     create_log($order_received_url, 'sc_wpml_thank_you_page: ');
  
@@ -376,60 +371,56 @@ function sc_wpml_thank_you_page( $order_received_url, $order )
 * Function create_log
 * Create logs. You MUST have defined SC_LOG_FILE_PATH const,
 * holding the full path to the log file.
-* 
+*
 * @param mixed $data
 * @param string $title - title of the printed log
 */
 function create_log($data, $title = '')
 {
-   if(
+    if (
        !isset($_SESSION['SC_Variables']['save_logs'])
        || $_SESSION['SC_Variables']['save_logs'] == 'no'
        || $_SESSION['SC_Variables']['save_logs'] === null
    ) {
-       return;
-   }
+        return;
+    }
 
-   $d = '';
+    $d = '';
 
-   if(is_array($data)) {
-        foreach($data as $k => $dd) {
-            if(is_array($dd)) {
-                if(isset($dd['cardData'], $dd['cardData']['CVV'])) {
+    if (is_array($data)) {
+        foreach ($data as $k => $dd) {
+            if (is_array($dd)) {
+                if (isset($dd['cardData'], $dd['cardData']['CVV'])) {
                     $data[$k]['cardData']['CVV'] = md5($dd['cardData']['CVV']);
                 }
-                if(isset($dd['cardData'], $dd['cardData']['cardHolderName'])) {
+                if (isset($dd['cardData'], $dd['cardData']['cardHolderName'])) {
                     $data[$k]['cardData']['cardHolderName'] = md5($dd['cardData']['cardHolderName']);
                 }
             }
         }
 
         $d = print_r($data, true);
-    }
-    elseif(is_object($data)) {
+    } elseif (is_object($data)) {
         $d = print_r($data, true);
+    } elseif (is_bool($data)) {
+        $d = $data ? 'true' : 'false';
+    } else {
+        $d = $data;
     }
-   elseif(is_bool($data)) {
-       $d = $data ? 'true' : 'false';
-   }
-   else {
-       $d = $data;
-   }
 
-   if(!empty($title)) {
-       $d = $title . "\r\n" . $d;
-   }
+    if (!empty($title)) {
+        $d = $title . "\r\n" . $d;
+    }
 
-   if(defined('SC_LOG_FILE_PATH')) {
-       try {
-           file_put_contents(SC_LOG_FILE_PATH, date('H:i:s') . ': ' . $d . "\r\n"."\r\n", FILE_APPEND);
-       }
-       catch (Exception $exc) {
-           echo
+    if (defined('SC_LOG_FILE_PATH')) {
+        try {
+            file_put_contents(SC_LOG_FILE_PATH, date('H:i:s') . ': ' . $d . "\r\n"."\r\n", FILE_APPEND);
+        } catch (Exception $exc) {
+            echo
                '<script>'
                    .'error.log("Log file was not created, by reason: '.$exc.'");'
                    .'console.log("Log file was not created, by reason: '.$data.'");'
                .'</script>';
-       }
-   }
+        }
+    }
 }
