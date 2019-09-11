@@ -531,7 +531,7 @@ class SC_REST_API
         }
         
         if ($is_ajax) {
-            $resp_arr['test'] = @$_SESSION['SC_Variables']['test'];
+            $resp_arr['test'] = @$session['SC_Variables']['test'];
             echo json_encode(array('status' => 1, 'data' => $resp_arr));
             exit;
         }
@@ -640,7 +640,7 @@ class SC_REST_API
         }
         
         if ($is_ajax) {
-            echo json_encode($data);
+            echo wp_json_encode($data);
             exit;
         }
         
@@ -657,10 +657,12 @@ class SC_REST_API
      */
     private static function create_log($data, $title = '')
     {
+        global $session;
+        
         if (
-            !isset($_SESSION['SC_Variables']['save_logs'])
-            || $_SESSION['SC_Variables']['save_logs'] == 'no'
-            || $_SESSION['SC_Variables']['save_logs'] === null
+            !isset($session['SC_Variables']['save_logs'])
+            || $session['SC_Variables']['save_logs'] === 'no'
+            || $session['SC_Variables']['save_logs'] === null
         ) {
             return;
         }
@@ -698,12 +700,16 @@ class SC_REST_API
         // for WC only
         if (defined('SC_LOG_FILE_PATH')) {
             try {
-                file_put_contents(SC_LOG_FILE_PATH, date('H:i:s') . ': ' . $d . "\r\n"."\r\n", FILE_APPEND);
+                global $wp_filesystem;
+                $wp_filesystem->put_contents(
+                    SC_LOG_FILE_PATH,
+                    date('H:i:s') . ': ' . $d . "\r\n"."\r\n"
+                );
             } catch (Exception $exc) {
                 echo
                     '<script>'
-                        .'error.log("Log file was not created, by reason: '.$exc->getMessage().'");'
-                        .'console.log("Log file was not created, by reason: '.$data.'");'
+                        .'error.log("Log file was not created, by reason: ' . esc_html($exc) . '");'
+                        .'console.log("Log file was not created, by reason: ' . esc_html($data) . '");'
                     .'</script>';
             }
         }
