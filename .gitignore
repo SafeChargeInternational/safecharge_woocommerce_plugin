@@ -2,3 +2,6 @@ logs/*.txt
 desktop.ini
 Rubbish/*
 error_log
+vendor/*
+composer.json
+composer.lock

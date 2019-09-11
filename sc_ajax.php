@@ -8,31 +8,35 @@
  * @author SafeCharge
  */
 
-if (!session_id()) {
-    session_start();
-}
+require_once plugin_dir_path(__FILE__) . 'sc_config.php';
 
-require_once 'sc_config.php';
+global $session;
+
+$sc_request = isset($_REQUEST) ? $sc_request : [];
+$sc_post = isset($_POST) ? $_POST : [];
 
 // The following fileds are MANDATORY for success
 if (
     isset(
-        $_SERVER['HTTP_X_REQUESTED_WITH']
-        ,$_SESSION['SC_Variables']['merchantId']
-        ,$_SESSION['SC_Variables']['merchantSiteId']
-        ,$_SESSION['SC_Variables']['payment_api']
-        ,$_SESSION['SC_Variables']['test']
+        $sc_server['HTTP_X_REQUESTED_WITH']
+        ,$session['SC_Variables']['merchantId']
+        ,$session['SC_Variables']['merchantSiteId']
+        ,$session['SC_Variables']['payment_api']
+        ,$session['SC_Variables']['test']
     )
-    && $_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
-    && !empty($_SESSION['SC_Variables']['merchantId'])
-    && !empty($_SESSION['SC_Variables']['merchantSiteId'])
-    && in_array($_SESSION['SC_Variables']['payment_api'], array('cashier', 'rest'))
+    && $sc_server['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest'
+    && !empty($session['SC_Variables']['merchantId'])
+    && !empty($session['SC_Variables']['merchantSiteId'])
+    && in_array($session['SC_Variables']['payment_api'], array('cashier', 'rest'), true)
 ) {
     // when enable or disable SC Checkout
-    if (in_array(@$_POST['enableDisableSCCheckout'], array('enable', 'disable'))) {
+    if (
+        isset($sc_post['enableDisableSCCheckout'])
+        && in_array($sc_post['enableDisableSCCheckout'], array('enable', 'disable'), true)
+    ) {
         require dirname(dirname(dirname(dirname(__FILE__)))) . '/wp-includes/plugin.php';
         
-        if ($_POST['enableDisableSCCheckout'] == 'enable') {
+        if ($sc_post['enableDisableSCCheckout'] === 'enable') {
             add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
             add_action('woocommerce_checkout_process', 'sc_check_checkout_apm');
 
@@ -50,78 +54,44 @@ if (
         exit;
     }
     
-    require_once 'SC_REST_API.php';
+    require_once plugin_dir_path(__FILE__) . 'SC_REST_API.php';
     
     // if there is no webMasterId in the session get it from the post
     if (
-        !@$_SESSION['SC_Variables']['webMasterId']
-        && isset($_POST['woVersion'])
-        && $_POST['woVersion']
+        (!isset($session['SC_Variables']['webMasterId']) || !$session['SC_Variables']['webMasterId'])
+        && isset($sc_post['woVersion'])
+        && $sc_post['woVersion']
     ) {
-        $_SESSION['SC_Variables']['webMasterId'] = 'WoCommerce ' . $_POST['woVersion'];
+        $session['SC_Variables']['webMasterId'] = 'WoCommerce ' . $sc_post['woVersion'];
     }
     
     // when merchant cancel the order via Void button
-    if (isset($_POST['cancelOrder']) && $_POST['cancelOrder'] == 1) {
-        SC_REST_API::void_and_settle_order($_SESSION['SC_Variables'], 'void', true);
-        unset($_SESSION['SC_Variables']);
+    if (isset($sc_post['cancelOrder']) && $sc_post['cancelOrder'] === 1) {
+        SC_REST_API::void_and_settle_order($session['SC_Variables'], 'void', true);
+        unset($session['SC_Variables']);
         exit;
     }
-    
-    // When user want to delete logs.
-    if (isset($_POST['deleteLogs']) && $_POST['deleteLogs'] == 1) {
-        $logs = array();
-        $logs_dir = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR;
 
-        foreach (scandir($logs_dir) as $file) {
-            if ($file != '.' && $file != '..' && $file != '.htaccess') {
-                $logs[] = $file;
-            }
-        }
-
-        if (count($logs) > 30) {
-            sort($logs);
-
-            for ($cnt = 0; $cnt < 30; $cnt++) {
-                if (is_file($logs_dir . $logs[$cnt])) {
-                    if (!unlink($logs_dir . $logs[$cnt])) {
-                        echo json_encode(array(
-                            'status' => 0,
-                            'msg' => 'Error when try to delete file: ' . $logs[$cnt]
-                        ));
-                        exit;
-                    }
-                }
-            }
-
-            echo json_encode(array('status' => 1, 'msg' => ''));
-        } else {
-            echo json_encode(array('status' => 0, 'msg' => 'The log files are less than 30.'));
-        }
-
-        exit;
-    }
-    
     // when merchant settle the order via Settle button
-    if (isset($_POST['settleOrder']) && $_POST['settleOrder'] == 1) {
-        SC_REST_API::void_and_settle_order($_SESSION['SC_Variables'], 'settle', true);
-        unset($_SESSION['SC_Variables']);
+    if (isset($sc_post['settleOrder']) && $sc_post['settleOrder'] === 1) {
+        SC_REST_API::void_and_settle_order($session['SC_Variables'], 'settle', true);
+        unset($session['SC_Variables']);
         exit;
     }
     
-    if ($_SESSION['SC_Variables']['payment_api'] == 'rest') {
+    if ($session['SC_Variables']['payment_api'] === 'rest') {
         // when we want Session Token
-        if (isset($_POST['needST']) && $_POST['needST'] == 1) {
-            SC_REST_API::get_session_token($_SESSION['SC_Variables'], true);
+        if (isset($sc_post['needST']) && $sc_post['needST'] === 1) {
+            SC_REST_API::get_session_token($session['SC_Variables'], true);
         }
         // when we want APMs
-        elseif (isset($_POST['country']) && $_POST['country'] != '') {
+        elseif (isset($sc_post['country']) && $sc_post['country'] !== '') {
             // if the Country come as POST variable
-            if (empty($_SESSION['SC_Variables']['sc_country'])) {
-                $_SESSION['SC_Variables']['sc_country'] = $_POST['country'];
+            if (empty($session['SC_Variables']['sc_country'])) {
+                $session['SC_Variables']['sc_country'] = $sc_post['country'];
             }
 
-            SC_REST_API::get_rest_apms($_SESSION['SC_Variables'], true);
+            SC_REST_API::get_rest_apms($session['SC_Variables'], true);
         }
         
         exit;
@@ -130,19 +100,22 @@ if (
     else {
         echo json_encode(array(
             'status' => 2,
-            'msg' => $_SESSION['SC_Variables']['payment_api'] != 'rest'
-                ? 'You are using Cashier API. APMs are not available with it.' : 'Missing some of conditions to using REST API.'
+            'msg' => $session['SC_Variables']['payment_api'] !== 'rest'
+                ? 'You are using Cashier API. APMs are not available with it.'
+                    : 'Missing some of conditions to using REST API.'
         ));
         exit;
     }
 } elseif (
-    @$_SERVER['HTTP_X_REQUESTED_WITH'] == 'XMLHttpRequest'
+    isset($sc_server['HTTP_X_REQUESTED_WITH'])
+    && $sc_server['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest'
     // don't come here when try to refund!
-    && @$_REQUEST['action'] != 'woocommerce_refund_line_items'
+    && isset($sc_request['action'])
+    && $sc_request['action'] !== 'woocommerce_refund_line_items'
 ) {
     echo json_encode(array(
         'status' => 2,
-        'msg' => $_SESSION['SC_Variables']['payment_api'] != 'rest'
+        'msg' => $session['SC_Variables']['payment_api'] !== 'rest'
             ? 'You are using Cashier API. APMs are not available with it.' : 'Missing some of conditions to using REST API.'
     ));
     exit;
