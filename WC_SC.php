@@ -643,69 +643,6 @@ class WC_SC extends WC_Payment_Gateway
         exit;
     }
     
-    /**
-     * Function pay_with_d3d_p3d
-     * After we get the DMN form the issuer/bank call this process
-     * to continue the flow.
-     * 
-     * @param bool $use_js_redirect - js redirect or no
-     * @return bool
-     * 
-     * @deprecated since version 2.2
-     */
-    public function pay_with_d3d_p3d()
-    {
-        SC_HELPER::create_log('pay_with_d3d_p3d call to the REST API.');
-        
-        $p3d_resp   = false;
-        $order      = new WC_Order(@$_SESSION['SC_P3D_Params']['clientUniqueId']);
-        
-        if(!$order) {
-            return false;
-        }
-
-        // some corrections
-        $_SESSION['SC_P3D_Params']['transactionType'] = $this->transaction_type;
-    //    $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl'] = $_SESSION['SC_P3D_Params']['urlDetails']['notificationUrl']['notificationUrl'];
-        if(isset($_REQUEST['PaRes']) && $_REQUEST['PaRes']) {
-            $_SESSION['SC_P3D_Params']['paResponse'] = $_REQUEST['PaRes'];
-        }
-
-        $p3d_resp = SC_HELPER::call_rest_api(
-            @$_SESSION['SC_Variables']['test'] == 'yes' ? SC_TEST_P3D_URL : SC_LIVE_P3D_URL
-            ,@$_SESSION['SC_P3D_Params']
-        );
-        
-        if(!$p3d_resp) {
-            SC_HELPER::create_log($resp, 'REST API Payment 3D ERROR: ');
-            
-            if($order_status == 'pending') {
-                $order->set_status('failed');
-            }
-
-            $order->add_order_note(__('Payment 3D API response fails.', 'sc'));
-            $order->save();
-            
-            return false;
-        }
-        
-        if(@$p3d_resp['status'] == 'ERROR' || @$p3d_resp['transactionStatus'] == 'ERROR') {
-            SC_HELPER::create_log('status or transactionStatus ERROR');
-            
-            $order->set_status('failed');
-            $order->save();
-            
-            return false;
-        }
-        
-        // save the response type of transaction
-        if(isset($p3d_resp['transactionType']) && $p3d_resp['transactionType'] != '') {
-            $order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, $p3d_resp['transactionType']);
-        }
-        
-        return true;
-    }
-    
 	/**
       * Function process_payment
       * Process the payment and return the result. This is the place where site
@@ -715,13 +652,6 @@ class WC_SC extends WC_Payment_Gateway
      **/
     public function process_payment($order_id)
     {
-//        if(isset($_SESSION['SC_P3D_PaReq'])) {
-//            unset($_SESSION['SC_P3D_PaReq']);
-//        }
-//        if(isset($_SESSION['SC_P3D_acsUrl'])) {
-//            unset($_SESSION['SC_P3D_acsUrl']);
-//        }
-        
         $order = new WC_Order($order_id);
         $order_status = strtolower($order->get_status());
         
@@ -741,13 +671,21 @@ class WC_SC extends WC_Payment_Gateway
         
         # when use REST - call the API
         // when we have Approved from the SDK we complete the order here
-        if(@$_POST['sc_transaction_id'] && in_array(@$_POST['sc_payment_method'], array('cc_card', 'dc_card'))) {
+        if(
+            !empty($_POST['sc_transaction_id'])
+            && !empty($_POST['sc_payment_method'])
+            && in_array($_POST['sc_payment_method'], array('cc_card', 'dc_card'), true)
+        ) {
+            // If we get Transaction ID save it as meta-data
+            if(!empty($resp['transactionId'])) {
+                $order->update_meta_data(SC_GW_TRANS_ID_KEY, $resp['transactionId'], 0);
+            }
+            
             return array(
                 'result' 	=> 'success',
                 'redirect'	=> add_query_arg(array(), $this->get_return_url())
             );
         }
-        
         
         $time           = date('Ymdhis');
         $endpoint_url   = '';
@@ -756,7 +694,7 @@ class WC_SC extends WC_Payment_Gateway
         $params = array(
             'merchantId'        => $this->merchantId,
             'merchantSiteId'    => $this->merchantSiteId,
-            'userTokenId'       => @$_POST['billing_email'],
+            'userTokenId'       => isset($_POST['billing_email']) ? $_POST['billing_email'] : '',
             'clientUniqueId'    => $order_id,
             'clientRequestId'   => $time .'_'. uniqid(),
             'currency'          => $order->get_currency(),
@@ -1097,20 +1035,22 @@ class WC_SC extends WC_Payment_Gateway
         
         # Sale and Auth
         if(
-            isset($_REQUEST['transactionType'], $_REQUEST['invoice_id'])
+            isset($_REQUEST['transactionType'], $_REQUEST['invoice_id'], $_REQUEST['TransactionID'])
             && in_array($_REQUEST['transactionType'], array('Sale', 'Auth'))
             && $this->checkAdvancedCheckSum()
         ) {
             SC_HELPER::create_log('A sale/auth.');
-            $order_id = 0;
+            
             
             // Cashier
-            if(!empty($_REQUEST['invoice_id'])) {
+            if (!empty($_REQUEST['invoice_id'])) {
                 SC_HELPER::create_log('Cashier sale.');
                 
                 try {
                     $arr = explode("_", $_REQUEST['invoice_id']);
                     $order_id  = intval($arr[0]);
+                    
+                    $order = new WC_Order($order_id);
                 }
                 catch (Exception $ex) {
                     SC_HELPER::create_log($ex->getMessage(), 'Cashier DMN Exception when try to get Order ID: ');
@@ -1123,17 +1063,29 @@ class WC_SC extends WC_Payment_Gateway
                 SC_HELPER::create_log('REST sale.');
                 
                 try {
-                    $order_id = $_REQUEST['merchant_unique_id'];
+                    $order = current( wc_get_orders( array(
+                        'limit'     => 1,
+                        'orderby'   => 'date',
+                        'order'     => 'DESC',
+                        'meta_query' => array(
+                            array(
+                                'key' => SC_GW_TRANS_ID_KEY,
+                                'compare' => '=',
+                                'value'   => $_REQUEST['TransactionID'],
+                            )
+                        )
+                    )));
+                    
+                    $order_id = $order->get_id();
                 }
                 catch (Exception $ex) {
-                    SC_HELPER::create_log($ex->getMessage(), 'REST DMN Exception when try to get Order ID: ');
+                    SC_HELPER::create_log($ex->getMessage(), 'REST DMN Exception when try to get the Order: ');
                     echo 'DMN Exception: ' . $ex->getMessage();
                     exit;
                 }
             }
             
             try {
-                $order = new WC_Order($order_id);
                 $order_status = strtolower($order->get_status());
                 
                 $order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, $_REQUEST['transactionType']);
