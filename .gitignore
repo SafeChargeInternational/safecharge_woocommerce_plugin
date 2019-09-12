@@ -2,3 +2,5 @@ logs/*.txt
 desktop.ini
 Rubbish/*
 error_log
+vendor/*
+composer.*
