@@ -69,7 +69,8 @@ class WC_SC extends WC_Payment_Gateway
         $_SESSION['SC_Variables']['transactionType']    = $this->transaction_type;
         $_SESSION['SC_Variables']['test']               = $this->test;
         $_SESSION['SC_Variables']['rewrite_dmn']        = $this->rewrite_dmn;
-        $_SESSION['sc_create_logs']                     = $this->save_logs;
+        $_SESSION['SC_Variables']['sc_create_logs']                     = $this->save_logs;
+        $_SESSION['SC_Variables']['notify_url']                         = $this->set_notify_url();
         
         // prepare the data for the UPOs
         if(is_user_logged_in()) {
@@ -1741,6 +1742,14 @@ class WC_SC extends WC_Payment_Gateway
         return;
     }
     
+    /**
+     * Function checkout_open_order
+     * On Checkout page when the user use REST API, prepare
+     * and open an order.
+     * 
+     * @global type $woocommerce
+     * @return void
+     */
     public function checkout_open_order()
     {
         if($this->payment_api == 'cashier') {
@@ -1749,43 +1758,45 @@ class WC_SC extends WC_Payment_Gateway
         
         global $woocommerce;
         
-        $cart_totals        = @$woocommerce->cart->get_totals();
-        $st_endpoint_url    = $this->test == 'yes'
-            ? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
+        if(empty($woocommerce->cart->get_totals())) {
+            echo
+                '<script type="text/javascript">'
+                    . 'alert("Error with you Cart data. Please try again later!");'
+                . '</script>';
+            
+            return;
+        }
         
-        $params = array(
-            'merchantId'        => $this->merchantId,
-            'merchantSiteId'    => $this->merchantSiteId,
-            'clientRequestId'   => $_SESSION['SC_Variables']['cri1'],
-            'amount'            => $cart_totals['total'],
-            'currency'          => $_SESSION['SC_Variables']['currencyCode'],
-            'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri1'])),
-        );
+        $_SESSION['SC_Variables']['other_urls'] = $this->get_return_url(); // put this in _construct and site will crash :)
+        $cart_totals            = $woocommerce->cart->get_totals();
         
-        $params['checksum'] = hash(
-            $this->hash_type,
-            implode('', $params) . $this->secret
-        );
+//        $params = array(
+//            'merchantId'        => $this->merchantId,
+//            'merchantSiteId'    => $this->merchantSiteId,
+//            'clientRequestId'   => $_SESSION['SC_Variables']['cri1'],
+//            'amount'            => $cart_totals['total'],
+//            'currency'          => $_SESSION['SC_Variables']['currencyCode'],
+//            'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri1'])),
+//        );
+//        
+//        $params['checksum']     = hash(
+//            $this->hash_type,
+//            implode('', $params) . $this->secret
+//        );
         
-        $params['urlDetails'] = array(
-            'successUrl' => $this->get_return_url(),
-            'failureUrl' => $this->get_return_url(),
-        );
-        
-        $resp = SC_HELPER::call_rest_api($st_endpoint_url, $params);
-        
-        if($resp && @$resp['status'] == 'SUCCESS' && @$resp['sessionToken']) {
-            $_SESSION['SC_Variables']['lst'] = $resp['sessionToken'];
+            $checksum = hash(
+                $this->hash_type,
+                $this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['cri1']
+                    . $cart_totals['total'] . $_SESSION['SC_Variables']['currencyCode']
+                    . current(explode('_', $_SESSION['SC_Variables']['cri1']))
+                    . $this->secret
+            );
             
             echo
                 '<script type="text/javascript">'
-                    . 'var scOpenOrderToken = "' . $resp['sessionToken'] . '"; '
-                    . 'var scOrderAmount    = "' . $cart_totals['total'] . '"; '
-                    . 'var scOrderCurr      = "' . get_woocommerce_currency() . '"; '
-                    . 'var scMerchantId     = "' . $this->merchantId . '"; '
-                    . 'var scMerchantSiteId = "' . $this->merchantSiteId . '"; '
+                    . 'scOrderAmount    = "' . $cart_totals['total'] . '"; '
+                    . 'scOOChecksum     = "' . $checksum . '"; '
                 . '</script>';
-        }
     }
     
     /**

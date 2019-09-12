@@ -23,6 +23,7 @@ var elementClasses = {
     invalid: 'invalid',
 };
 var fieldsStyle = {};
+var scOrderAmount, scOOChecksum, scOrderCurr, scMerchantId, scMerchantSiteId, scOpenOrderToken;
 
  /**
   * Function validateScAPMsModal
@@ -37,7 +38,6 @@ function scValidateAPMFields() {
     
     if(typeof selectedPM != 'undefined' && selectedPM != '') {
         // use cards
-    //    if(selectedPM == 'cc_card' || selectedPM == 'dc_card' || selectedPM == 'paydotcom') {
         if(selectedPM == 'cc_card' || selectedPM == 'dc_card') {
             if(
                 typeof scOpenOrderToken == 'undefined'
@@ -58,34 +58,22 @@ function scValidateAPMFields() {
                 merchantSiteId  : scMerchantSiteId,
                 currency        : scOrderCurr,
                 amount          : scOrderAmount,
-            //    cardHolderName  : document.getElementById('sc_card_holder_name').value,
-            //    paymentOption   : scCard
-            
-                paymentOption   : {
-                    useInitPayment  : true,
-                    card            : {
-                        cardNumber: cardNumber,
-                        cardHolderName: document.getElementById('sc_card_holder_name').value,
-                        CVV: cardCvc,
-                        expirationMonth: cardExpiry,
-                        expirationYear: cardExpiry,
-                    }
-                }
-
+                cardHolderName  : document.getElementById('sc_card_holder_name').value,
+                paymentOption   : scCard
             }, function(resp){
                 console.log(resp);
 
                 if(typeof resp.result != 'undefined') {
+                    console.log(resp.result)
+                    
                     if(resp.result == 'APPROVED' && resp.transactionId != 'undefined') {
                         console.log(resp.dsTransID)
 
-                        jQuery('#sc_transaction_id').val(resp.dsTransID);
+                        jQuery('#sc_transaction_id').val(resp.transactionId);
                         jQuery('form.woocommerce-checkout').submit();
-                        return;
                     }
                     else if(resp.result == 'DECLINED') {
                         scFormFalse('Your Payment was DECLINED. Please try another payment method!');
-                        return;
                     }
                     else {
                         if(resp.errorDescription != 'undefined' && resp.errorDescription != '') {
@@ -94,8 +82,6 @@ function scValidateAPMFields() {
                         else {
                             scFormFalse('Error with your Payment. Please try again later!');
                         }
-
-                        return;
                     }
                 }
                 else {
@@ -104,43 +90,6 @@ function scValidateAPMFields() {
                     return;
                 }
             });
-                 
-            scFormFalse('Unexpected error, please try again later!');
-            return;
-                            
-            
-            /*
-            sfc.getToken(sfcFirstField).then(function(result) {
-                try {
-                //    console.log(result.isVerified)
-                    
-                    if (!result.status || result.status !== 'SUCCESS') {
-                        if(result.reason) {
-                            alert(result.reason);
-                        }
-                        else if(result.error.message) {
-                            alert(result.error.message);
-                        }
-
-                        scFormFalse();
-                    }
-                    else if(result.isVerified == false) {
-                         alert('The token verification faild.');
-                         scFormFalse();
-                    }
-                    else {
-                        jQuery('#' + selectedPM + '_ccTempToken').val(result.ccTempToken);
-                        jQuery('#sc_lst').val(result.sessionToken);
-                        jQuery('#custom_loader').hide();
-                        jQuery('form.woocommerce-checkout').submit();
-                    }
-                }
-                catch(exception) {
-                    console.error(exception);
-                    alert("Unexpected error, please try again later");
-                }
-            });
-            */
         }
         // use APM data
         else if(isNaN(parseInt(selectedPM))) {
@@ -215,7 +164,7 @@ function scValidateAPMFields() {
     );
 
     jQuery('#custom_loader').hide();
-    window.location.hash = '#main';
+    window.location.hash = '#masthead';
 }
  
  /**
@@ -252,18 +201,26 @@ function getAPMs() {
         jQuery.ajax({
             type: "POST",
             url: myAjax.ajaxurl,
-            data: { country: jQuery("#billing_country").val() },
+            data: {
+                country     : jQuery("#billing_country").val(),
+                amount      : scOrderAmount,
+                scCs        : scOOChecksum,
+                userMail    : jQuery("#billing_email").val(),
+            },
             dataType: 'json'
         })
-            .error(function(){
+            .fail(function(){
                 alert('Error when try to get the Payment Methods. Please try again later or use different Payment Option!');
                 return;
             })
             .done(function(resp) {
                 if(resp === null) {
+                    alert('Error when try to get the Payment Methods. Please try again later or use different Payment Option!');
                     return;
                 }
         
+                console.log('user country: ' + jQuery("#billing_country").val());
+                
                 // if resp.status == 2 the user use Cashier
                 if(
                     typeof resp != 'undefined'
@@ -272,8 +229,16 @@ function getAPMs() {
                     && resp.data['paymentMethods'].length > 0
                 ) {
                     try {
-                        scData.merchantSiteId = resp.merchantSiteId;
-                        scData.sessionToken = resp.sessionToken;
+                        console.log(resp);
+                        
+                        scOpenOrderToken    = resp.sessionToken;
+                        scOrderCurr         = resp.currency;
+                        scMerchantId        = resp.merchantId;
+                        scMerchantSiteId    = resp.merchantSiteId;
+                        
+                        scData.merchantSiteId   = resp.merchantSiteId;
+                        scData.merchantId       = resp.merchantId;
+                        scData.sessionToken     = resp.sessionToken;
                         
                         if(resp.testEnv == 'yes') {
                             scData.env = 'test';
@@ -387,17 +352,17 @@ function getAPMs() {
                                     +'</div>'
                             
                                     
-                                    +'<div class="apm_field">'
-                                        + '<div id="sc_card_number"></div>'
-                                    +'</div>'
-                            
-                                     +'<div class="apm_field">'
-                                        + '<div id="sc_card_expiry"></div>'
-                                    +'</div>'
-                                    
-                                    +'<div class="apm_field">'
-                                        + '<div id="sc_card_cvc"></div>'
-                                    +'</div>'
+//                                    +'<div class="apm_field">'
+//                                        + '<div id="sc_card_number"></div>'
+//                                    +'</div>'
+//                            
+//                                     +'<div class="apm_field">'
+//                                        + '<div id="sc_card_expiry"></div>'
+//                                    +'</div>'
+//                                    
+//                                    +'<div class="apm_field">'
+//                                        + '<div id="sc_card_cvc"></div>'
+//                                    +'</div>'
                             
                             
                                     
@@ -482,7 +447,7 @@ function getAPMs() {
                 else if(resp.status == 0) {
                     jQuery('form.woocommerce-checkout').prepend(
                         '<ul class="woocommerce-error" role="alert">'
-                            +'<li><strong>Error when try to get APMs. Please, try again later!</strong></li>'
+                            +'<li><strong>Error in the proccess. Please, try again later!</strong></li>'
                         +'</ul>'
                     );
             
@@ -532,50 +497,50 @@ function print_apms_options(upos, apms) {
         .promise()
         .done(function(){
             // create the Fields
-//            scCard = scFields.create('card', {
-//                iconStyle: 'solid',
-//                style: {
-//                    base: {
-//                        iconColor: "#c4f0ff",
-//                        color: "#000",
-//                        fontWeight: 500,
-//                        fontFamily: "Roboto, Open Sans, Segoe UI, sans-serif",
-//                        fontSize: '15px',
-//                        fontSmoothing: "antialiased",
-//                        ":-webkit-autofill": {
-//                            color: "#fce883"
-//                        },
-//                        "::placeholder": {
-//                            color: "grey" 
-//                        }
-//                    },
-//                    invalid: {
-//                        iconColor: "#FFC7EE",
-//                        color: "#FFC7EE"
-//                    }
-//                },
+            scCard = scFields.create('card', {
+                iconStyle: 'solid',
+                style: {
+                    base: {
+                        iconColor: "#c4f0ff",
+                        color: "#000",
+                        fontWeight: 500,
+                        fontFamily: "Roboto, Open Sans, Segoe UI, sans-serif",
+                        fontSize: '15px',
+                        fontSmoothing: "antialiased",
+                        ":-webkit-autofill": {
+                            color: "#fce883"
+                        },
+                        "::placeholder": {
+                            color: "grey" 
+                        }
+                    },
+                    invalid: {
+                        iconColor: "#FFC7EE",
+                        color: "#FFC7EE"
+                    }
+                },
+                classes: elementClasses
+            });
+
+            scCard.attach('#card-field-placeholder');
+
+//            cardNumber = sfcFirstField = scFields.create('ccNumber', {
 //                classes: elementClasses
+//                ,style: fieldsStyle
 //            });
+//            cardNumber.attach('#sc_card_number');
 //
-//            scCard.attach('#card-field-placeholder');
-
-            cardNumber = sfcFirstField = scFields.create('ccNumber', {
-                classes: elementClasses
-                ,style: fieldsStyle
-            });
-            cardNumber.attach('#sc_card_number');
-
-            cardExpiry = scFields.create('ccExpiration', {
-                classes: elementClasses
-                ,style: fieldsStyle
-            });
-            cardExpiry.attach('#sc_card_expiry');
-
-            cardCvc = scFields.create('ccCvc', {
-                classes: elementClasses
-                ,style: fieldsStyle
-            });
-            cardCvc.attach('#sc_card_cvc');
+//            cardExpiry = scFields.create('ccExpiration', {
+//                classes: elementClasses
+//                ,style: fieldsStyle
+//            });
+//            cardExpiry.attach('#sc_card_expiry');
+//
+//            cardCvc = scFields.create('ccCvc', {
+//                classes: elementClasses
+//                ,style: fieldsStyle
+//            });
+//            cardCvc.attach('#sc_card_cvc');
         });
 
     // change submit button type and behavior

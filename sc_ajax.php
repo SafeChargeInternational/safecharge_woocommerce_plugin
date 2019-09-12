@@ -140,39 +140,39 @@ if(
     }
     
     if($_SESSION['SC_Variables']['payment_api'] == 'rest') {
-        if(!isset($_SESSION['SC_Variables']['lst']) || empty($_SESSION['SC_Variables']['lst'])) {
-            // prepare Session Token
-            $st_endpoint_url = $_SESSION['SC_Variables']['test'] == 'yes'
-                ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL;
-
-            $st_params = array(
-                'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
-                'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
-                'clientRequestId'   => $_SESSION['SC_Variables']['cri1'],
-                'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri1'])),
-                'checksum'          => $_SESSION['SC_Variables']['cs1']
-            );
-
-            SC_HELPER::create_log('when payment_api == rest');
-            $session_data = SC_HELPER::call_rest_api($st_endpoint_url, $st_params);
-
-            if(
-                !$session_data || !is_array($session_data)
-                || !isset($session_data['status']) || $session_data['status'] != 'SUCCESS'
-            ) {
-                SC_HELPER::create_log($session_data, 'getting getSessionToken error: ');
-
-                echo json_encode(array('status' => 0));
-                exit;
-            }
-        }
-        else {
-            $session_data = array(
-                'sessionToken' => $_SESSION['SC_Variables']['lst'],
-                'merchantId' => $_SESSION['SC_Variables']['merchantId'],
-                'merchantSiteId' => $_SESSION['SC_Variables']['merchantSiteId'],
-            );
-        }
+//        if(!isset($_SESSION['SC_Variables']['lst']) || empty($_SESSION['SC_Variables']['lst'])) {
+//            // prepare Session Token
+//            $st_endpoint_url = $_SESSION['SC_Variables']['test'] == 'yes'
+//                ? SC_TEST_SESSION_TOKEN_URL : SC_LIVE_SESSION_TOKEN_URL;
+//
+//            $st_params = array(
+//                'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
+//                'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
+//                'clientRequestId'   => $_SESSION['SC_Variables']['cri1'],
+//                'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri1'])),
+//                'checksum'          => $_SESSION['SC_Variables']['cs1']
+//            );
+//
+//            SC_HELPER::create_log('when payment_api == rest');
+//            $session_data = SC_HELPER::call_rest_api($st_endpoint_url, $st_params);
+//
+//            if(
+//                !$session_data || !is_array($session_data)
+//                || !isset($session_data['status']) || $session_data['status'] != 'SUCCESS'
+//            ) {
+//                SC_HELPER::create_log($session_data, 'getting getSessionToken error: ');
+//
+//                echo json_encode(array('status' => 0));
+//                exit;
+//            }
+//        }
+//        else {
+//            $session_data = array(
+//                'sessionToken' => $_SESSION['SC_Variables']['lst'],
+//                'merchantId' => $_SESSION['SC_Variables']['merchantId'],
+//                'merchantSiteId' => $_SESSION['SC_Variables']['merchantSiteId'],
+//            );
+//        }
         
 
         // when we want Session Token only
@@ -184,13 +184,57 @@ if(
             exit;
         }
         
-        
         // when we want APMs and UPOs
-        if(isset($_POST['country']) && $_POST['country'] != '') {
+        if(
+            !empty($_POST['country'])
+            && !empty($_POST['amount'])
+            && !empty($_POST['scCs'])
+            && !empty($_POST['userMail'])
+        ) {
             // if the Country come as POST variable
             if(empty($_SESSION['SC_Variables']['sc_country'])) {
-                $_SESSION['SC_Variables']['sc_country'] = @$_POST['country'];
+                $_SESSION['SC_Variables']['sc_country'] = $_POST['country'];
             }
+            
+            # Open Order
+            $oo_endpoint_url    = $_SESSION['SC_Variables']['test'] == 'yes'
+                ? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
+            
+            $oo_params = array(
+                'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
+                'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
+                'clientRequestId'   => $_SESSION['SC_Variables']['cri1'],
+                'amount'            => $_POST['amount'],
+                'currency'          => $_SESSION['SC_Variables']['currencyCode'],
+                'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri1'])),
+                'checksum'          => $_POST['scCs'],
+                'urlDetails'        => array(
+                    'successUrl'        => $_SESSION['SC_Variables']['other_urls'],
+                    'failureUrl'        => $_SESSION['SC_Variables']['other_urls'],
+                    'pendingUrl'        => $_SESSION['SC_Variables']['other_urls'],
+                    'notificationUrl'   => $_SESSION['SC_Variables']['notify_url'],
+                ),
+                'deviceDetails'     => SC_HELPER::get_device_details(),
+                'userTokenId'       => $_POST['userMail'],
+                'billingAddress'    => array(
+                    'country' => $_POST['country'],
+                ),
+            );
+            
+            $resp = SC_HELPER::call_rest_api($oo_endpoint_url, $oo_params);
+            
+            if(
+                empty($resp['status'])
+                || $resp['status'] !== 'SUCCESS'
+                || empty($resp['sessionToken'])
+            ) {
+                echo json_encode(array(
+                    'status' => 0,
+                    'callResp' => $resp
+                ));
+                exit;
+            }
+            # Open Order END
 
             # get APMs
             $apms_params = array(
@@ -199,7 +243,7 @@ if(
                 'clientRequestId'   => $_SESSION['SC_Variables']['cri2'],
                 'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri2'])),
                 'checksum'          => $_SESSION['SC_Variables']['cs2'],
-                'sessionToken'      => $session_data['sessionToken'],
+                'sessionToken'      => $resp['sessionToken'],
                 'currencyCode'      => $_SESSION['SC_Variables']['currencyCode'],
                 'countryCode'       => $_SESSION['SC_Variables']['sc_country'],
                 'languageCode'      => $_SESSION['SC_Variables']['languageCode'],
@@ -213,7 +257,10 @@ if(
             if(!is_array($apms_data) || !isset($apms_data['paymentMethods']) || empty($apms_data['paymentMethods'])) {
                 SC_HELPER::create_log($apms_data, 'getting APMs error: ');
 
-                echo json_encode(array('status' => 0));
+                echo json_encode(array(
+                    'status' => 0,
+                    'apmsData' => $apms_data
+                ));
                 exit;
             }
             
@@ -285,8 +332,10 @@ if(
                 'status'            => 1,
                 'testEnv'           => $_SESSION['SC_Variables']['test'],
                 'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
+                'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
                 'langCode'          => $_SESSION['SC_Variables']['languageCode'],
-                'sessionToken'      => $apms_data['sessionToken'],
+                'sessionToken'      => $resp['sessionToken'],
+                'currency'          => $_SESSION['SC_Variables']['currencyCode'],
                 'data'              => array(
                     'upos'              => $upos,
                     'paymentMethods'    => $payment_methods,

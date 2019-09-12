@@ -20,6 +20,7 @@ class SC_HELPER
      */
     public static function call_rest_api($url, $params)
     {
+        self::create_log($url, 'REST API URL:');
         self::create_log($params, 'SC_REST_API, parameters for the REST API call:');
         
         if(empty($url)) {
@@ -56,8 +57,6 @@ class SC_HELPER
 
             $resp = curl_exec($ch);
             curl_close ($ch);
-            
-            self::create_log($url, 'REST API URL:');
             
             if($resp === false) {
                 return false;
@@ -172,13 +171,15 @@ class SC_HELPER
     {
         
         // path is different fore each plugin
-        if(!defined('SC_LOGS_DIR') && !is_dir(SC_LOGS_DIR)) {
+        if (!defined('SC_LOGS_DIR') && !is_dir(SC_LOGS_DIR)) {
             die('SC_LOGS_DIR is not set!');
         }
         
-        if(
-            @$_REQUEST['sc_create_logs'] == 'yes' || @$_REQUEST['sc_create_logs'] == 1
-            || @$_SESSION['sc_create_logs'] == 'yes' || @$_SESSION['sc_create_logs'] == 1
+        if (
+            @$_REQUEST['sc_create_logs'] == 'yes'
+            || @$_REQUEST['sc_create_logs'] == 1
+            || @$_SESSION['SC_Variables']['sc_create_logs'] == 'yes'
+            || @$_SESSION['SC_Variables']['sc_create_logs'] == 1
         ) {
             // same for all plugins
             $d = $data;
@@ -221,6 +222,9 @@ class SC_HELPER
             }
             elseif(is_bool($data)) {
                 $d = $data ? 'true' : 'false';
+            }
+            elseif(is_null($data)) {
+                $d = 'null';
             }
             else {
                 $d = $data . "\r\n";
