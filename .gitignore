@@ -4,3 +4,5 @@ Rubbish/*
 error_log
 vendor/*
 composer.*
+phpcs.xml
+*.7z
