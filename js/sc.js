@@ -200,7 +200,7 @@ function getAPMs() {
 
         jQuery.ajax({
             type: "POST",
-            url: myAjax.ajaxurl,
+            url: scAjax.ajaxurl,
             data: {
                 country     : jQuery("#billing_country").val(),
                 amount      : scOrderAmount,
@@ -567,7 +567,7 @@ function settleAndCancelOrder(question, action) {
         
         jQuery.ajax({
             type: "POST",
-            url: myAjax.ajaxurl,
+            url: scAjax.ajaxurl,
             data: data,
             dataType: 'json'
         })
@@ -601,40 +601,6 @@ function settleAndCancelOrder(question, action) {
  }
  
 /**
- * Function deleteOldestLogs
- * Delete the oldest logs in Logs directory.
- */
-function deleteOldestLogs() {
-    if(confirm('Are you sure you wanto to delete log files?')) {
-        jQuery('#custom_loader').show();
-        jQuery('form#mainform #message').remove();
-
-        jQuery.ajax({
-            type: "POST",
-            url: myAjax.ajaxurl,
-            data: { deleteLogs: 1 },
-            dataType: 'json'
-        })
-            .done(function(resp){
-                if(resp.status == 1) {
-                    jQuery('form#mainform h3').prepend(
-                        '<div id="message" class="updated inline"><p><strong>Success.</strong></p></div>');
-                }
-                else {
-                    jQuery('form#mainform h3').prepend(
-                            '<div id="message" class="error inline"><p><strong>Error: '
-                            + resp.msg +'</strong></p></div>'
-                    );
-                }
-
-                window.location.hash = '#wpbody';
-                window.location = window.location.hash;
-                jQuery('#custom_loader').hide();
-            })
-    }
-}
-
-/**
  * Function enableDisableSCCheckout
  * Enable or disable SC Checkout
  * 
@@ -653,7 +619,7 @@ function enableDisableSCCheckout(action) {
     
     jQuery.ajax({
         type: "POST",
-        url: myAjax.ajaxurl,
+        url: scAjax.ajaxurl,
         data: { enableDisableSCCheckout: action },
         dataType: 'json'
     })
