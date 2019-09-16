@@ -48,6 +48,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->payment_api      = @$this->settings['payment_api'] ? $this->settings['payment_api'] : 'cashier';
 		$this->transaction_type = @$this->settings['transaction_type'] ? $this->settings['transaction_type'] : 'sale';
 		$this->rewrite_dmn      = @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
+		$this->webMasterId     .= WOOCOMMERCE_VERSION;
 		
 		$this->use_wpml_thanks_page =
 			@$this->settings['use_wpml_thanks_page'] ? $this->settings['use_wpml_thanks_page'] : 'no';
@@ -59,66 +60,64 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->init_form_fields();
 		
 		# set session variables for REST API, according REST variables names
-		$_SESSION['SC_Variables']['webMasterId']     = $this->webMasterId .= WOOCOMMERCE_VERSION;
-		$_SESSION['SC_Variables']['merchantId']      = $this->merchantId;
-		$_SESSION['SC_Variables']['merchantSiteId']  = $this->merchantSiteId;
-		$_SESSION['SC_Variables']['currencyCode']    = get_woocommerce_currency();
-		$_SESSION['SC_Variables']['languageCode']    = $this->formatLocation(get_locale());
-		$_SESSION['SC_Variables']['payment_api']     = $this->payment_api;
-		$_SESSION['SC_Variables']['transactionType'] = $this->transaction_type;
-		$_SESSION['SC_Variables']['test']            = $this->test;
-		$_SESSION['SC_Variables']['rewrite_dmn']     = $this->rewrite_dmn;
-		$_SESSION['SC_Variables']['sc_create_logs']  = $this->save_logs;
-		$_SESSION['SC_Variables']['notify_url']      = $this->set_notify_url();
+		//      $_SESSION['SC_Variables']['merchantId']      = $this->merchantId;
+		//      $_SESSION['SC_Variables']['merchantSiteId']  = $this->merchantSiteId;
+		//      $_SESSION['SC_Variables']['currencyCode']    = get_woocommerce_currency();
+		//      $_SESSION['SC_Variables']['languageCode']    = $this->formatLocation(get_locale());
+		//      $_SESSION['SC_Variables']['transactionType'] = $this->transaction_type;
+		//      $_SESSION['SC_Variables']['test']            = $this->test;
+		//      $_SESSION['SC_Variables']['rewrite_dmn']     = $this->rewrite_dmn;
+		//      $_SESSION['SC_Variables']['sc_create_logs']  = $this->save_logs;
+		//      $_SESSION['SC_Variables']['notify_url']      = $this->set_notify_url();
 		
 		// prepare the data for the UPOs
-		if (is_user_logged_in()) {
-			$_SESSION['SC_Variables']['upos_data']['userTokenId'] =
-				@wp_get_current_user()->data->user_email;
-			
-			$_SESSION['SC_Variables']['upos_data']['clientRequestId'] = uniqid();
-			$_SESSION['SC_Variables']['upos_data']['timestamp']       = date('YmdHis', time());
-			
-			$_SESSION['SC_Variables']['upos_data']['checksum'] =
-				@hash(
-					$this->hash_type,
-					$this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['upos_data']['userTokenId']
-						. $_SESSION['SC_Variables']['upos_data']['clientRequestId']
-						. $_SESSION['SC_Variables']['upos_data']['timestamp']
-						. $this->secret
-				);
-		}
+		//      if (is_user_logged_in()) {
+		//          $_SESSION['SC_Variables']['upos_data']['userTokenId'] =
+		//              @wp_get_current_user()->data->user_email;
+		//          
+		//          $_SESSION['SC_Variables']['upos_data']['clientRequestId'] = uniqid();
+		//          $_SESSION['SC_Variables']['upos_data']['timestamp']       = date('YmdHis', time());
+		//          
+		//          $_SESSION['SC_Variables']['upos_data']['checksum'] =
+		//              @hash(
+		//                  $this->hash_type,
+		//                  $this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['upos_data']['userTokenId']
+		//                      . $_SESSION['SC_Variables']['upos_data']['clientRequestId']
+		//                      . $_SESSION['SC_Variables']['upos_data']['timestamp']
+		//                      . $this->secret
+		//              );
+		//      }
 		
-		$_SESSION['SC_Variables']['sc_country'] = SC_Versions_Resolver::get_client_country(new WC_Customer());
-		if (get_post('billing_country')) {
-			$_SESSION['SC_Variables']['sc_country'] = get_post('billing_country');
-		}
+		//      $_SESSION['SC_Variables']['sc_country'] = SC_Versions_Resolver::get_client_country(new WC_Customer());
+		//      if (get_post('billing_country')) {
+		//          $_SESSION['SC_Variables']['sc_country'] = get_post('billing_country');
+		//      }
 		
 		# Client Request ID 1 and Checksum 1 for Session Token 1
 		// client request id 1
-		$time                             = date('YmdHis', time());
-		$_SESSION['SC_Variables']['cri1'] = $time . '_' . uniqid();
+		//      $time                             = date('YmdHis', time());
+		//      $_SESSION['SC_Variables']['cri1'] = $time . '_' . uniqid();
 		
 		// checksum 1 - checksum for session token
-		$_SESSION['SC_Variables']['cs1'] = hash(
-			$this->hash_type,
-			$this->merchantId . $this->merchantSiteId
-				. $_SESSION['SC_Variables']['cri1'] . $time . $this->secret
-		);
+		//      $_SESSION['SC_Variables']['cs1'] = hash(
+		//          $this->hash_type,
+		//          $this->merchantId . $this->merchantSiteId
+		//              . $_SESSION['SC_Variables']['cri1'] . $time . $this->secret
+		//      );
 		# Client Request ID 1 and Checksum 1 END
 		
 		# Client Request ID 2 and Checksum 2 to get AMPs
 		// client request id 2
-		$time                             = date('YmdHis', time());
-		$_SESSION['SC_Variables']['cri2'] = $time . '_' . uniqid();
+		//      $time                             = date('YmdHis', time());
+		//      $_SESSION['SC_Variables']['cri2'] = $time . '_' . uniqid();
 		
 		// checksum 2 - checksum for get apms
-		$time                            = date('YmdHis', time());
-		$_SESSION['SC_Variables']['cs2'] = hash(
-			$this->hash_type,
-			$this->merchantId . $this->merchantSiteId
-				. $_SESSION['SC_Variables']['cri2'] . $time . $this->secret
-		);
+		$time = date('YmdHis', time());
+		//      $_SESSION['SC_Variables']['cs2'] = hash(
+		//          $this->hash_type,
+		//          $this->merchantId . $this->merchantSiteId
+		//              . $_SESSION['SC_Variables']['cri2'] . $time . $this->secret
+		//      );
 		# set session variables for future use END
 		
 		$this->msg['message'] = '';
@@ -578,7 +577,7 @@ class WC_SC extends WC_Payment_Gateway {
 
 		$_SESSION['SC_CASHIER_FORM_RENDED'] = true;
 
-		$i = 0;
+		$i        = 0;
 		$test_sum = 0; // use it for the last check of the total
 
 		# Items calculations
@@ -901,7 +900,7 @@ class WC_SC extends WC_Payment_Gateway {
 		} elseif (get_post('sc_payment_method')) {
 			// in case of APM
 			//elseif (@$_POST['sc_payment_method']) {
-			$is_apm_payment          = true;
+			$is_apm_payment = true;
 			//$params['paymentMethod'] = $_POST['sc_payment_method'];
 			$params['paymentMethod'] = get_post('sc_payment_method');
 			
@@ -1293,8 +1292,8 @@ class WC_SC extends WC_Payment_Gateway {
 				&& is_array(get_query_var('SC_P3D_Params', false))
 			) {
 				$_SESSION['SC_P3D_Params']['paResponse'] = get_query_var('PaRes', '');
-				$resp                                   = $this->pay_with_d3d_p3d();
-				$url                                    = $this->get_return_url();
+				$resp                                    = $this->pay_with_d3d_p3d();
+				$url                                     = $this->get_return_url();
 				
 				if (!$resp) {
 					$url .= '?Status=error';
@@ -1789,20 +1788,26 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		$_SESSION['SC_Variables']['other_urls'] = $this->get_return_url(); // put this in _construct and site will crash :)
-		$cart_totals                           = $woocommerce->cart->get_totals();
+		$cart_totals                            = $woocommerce->cart->get_totals();
 		
-		$checksum = hash(
-				$this->hash_type,
-				$this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['cri1']
-					. $cart_totals['total'] . $_SESSION['SC_Variables']['currencyCode']
-					. current(explode('_', $_SESSION['SC_Variables']['cri1']))
-					. $this->secret
-			);
+		//      $checksum = hash(
+		//              $this->hash_type,
+		//              $this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['cri1']
+		//                  . $cart_totals['total'] . $_SESSION['SC_Variables']['currencyCode']
+		//                  . current(explode('_', $_SESSION['SC_Variables']['cri1']))
+		//                  . $this->secret
+		//          );
+		
+		//          SC_HELPER::create_log($this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['cri1']
+		//                  . $cart_totals['total'] . $_SESSION['SC_Variables']['currencyCode']
+		//                  . current(explode('_', $_SESSION['SC_Variables']['cri1']))
+		//                  . $this->secret, 'cs string: ');
+		//          
+		//              SC_HELPER::create_log($checksum, 'the checksum: ');
 			
 		echo 
 			'<script type="text/javascript">'
 				. 'scOrderAmount    = "' . esc_html($cart_totals['total']) . '"; '
-				. 'scOOChecksum     = "' . esc_html($checksum) . '"; '
 			. '</script>'
 		;
 	}

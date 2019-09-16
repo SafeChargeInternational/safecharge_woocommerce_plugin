@@ -23,7 +23,7 @@ var elementClasses = {
     invalid: 'invalid',
 };
 var fieldsStyle = {};
-var scOrderAmount, scOOChecksum, scOrderCurr, scMerchantId, scMerchantSiteId, scOpenOrderToken;
+var scOrderAmount, scOrderCurr, scMerchantId, scMerchantSiteId, scOpenOrderToken;
 
  /**
   * Function validateScAPMsModal
@@ -206,7 +206,6 @@ function getAPMs() {
                 security    : scAjax.security,
                 country     : jQuery("#billing_country").val(),
                 amount      : scOrderAmount,
-                scCs        : scOOChecksum,
                 userMail    : jQuery("#billing_email").val(),
             },
             dataType: 'json'
@@ -554,12 +553,14 @@ function print_apms_options(upos, apms) {
 
 // when the admin select to Settle or Void the Order
 //function settleAndCancelOrder(question, action, orderId) {
-function settleAndCancelOrder(question, action) {
+function settleAndCancelOrder(question, action, orderId) {
     if(confirm(question)) {
         jQuery('#custom_loader').show();
         
         var data = {
-            action: 'sc-ajax-action',
+            action      : 'sc-ajax-action',
+            security    : scAjax.security,
+            orderId     : orderId
         };
         
         if(action == 'settle') {

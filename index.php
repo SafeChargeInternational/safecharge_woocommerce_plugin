@@ -48,16 +48,20 @@ function woocommerce_sc_init() {
 	// show custom final text
 	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
 	// if custom fields are empty stop checkout process displaying an error notice.
-	add_action('woocommerce_checkout_process', function () {
-		if (
-			isset($_SESSION['SC_Variables']['payment_api'])
-			&& 'rest' == $_SESSION['SC_Variables']['payment_api']
-			&& empty($payment_method_sc)
-		) {
-			$notice = __('Please select ' . SC_GATEWAY_TITLE . ' payment method to continue!', 'sc');
-			wc_add_notice('<strong>' . $notice . '</strong>', 'error');
-		}
-	});
+	//  add_action('woocommerce_checkout_process', function () {
+	//      $payment_method_sc = '';
+	//      if (!empty($_POST['payment_method_sc'])) {
+	//          $payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
+	//      }
+	//      
+	//      if (
+	//          'rest' == $wc_sc->payment_api
+	//          && empty($payment_method_sc)
+	//      ) {
+	//          $notice = __('Please select ' . SC_GATEWAY_TITLE . ' payment method to continue!', 'sc');
+	//          wc_add_notice('<strong>' . $notice . '</strong>', 'error');
+	//      }
+	//  });
 	// handle Ajax calls
 	add_action('wp_ajax_sc-ajax-action', 'sc_ajax_action');
 	add_action('wp_ajax_nopriv_sc-ajax-action', 'sc_ajax_action');
@@ -89,22 +93,13 @@ function sc_ajax_action() {
 		wp_die('Invalid security token sent');
 	}
 	
-	if(empty($_SESSION['SC_Variables']['payment_api']) || empty($_SESSION['SC_Variables']['test'])) {
+	global $wc_sc;
+	
+	if (empty($wc_sc->payment_api) || empty($wc_sc->test)) {
 		wp_send_json_error( 'Invalid payment api or/and site mode.' );
 		wp_die('Invalid payment api or/and site mode.');
 	}
 	
-		// post variables
-//		$enableDisableSCCheckout = '';
-//		if (isset($_POST['enableDisableSCCheckout'])) {
-//			$enableDisableSCCheckout = sanitize_text_field($_POST['enableDisableSCCheckout']);
-//		}
-		
-	$woVersion = '';
-	if (isset($_POST['woVersion'])) {
-		$woVersion = sanitize_text_field($_POST['woVersion']);
-	}
-
 	$country = '';
 	if (isset($_POST['country'])) {
 		$country = sanitize_text_field($_POST['country']);
@@ -113,11 +108,6 @@ function sc_ajax_action() {
 	$amount = '';
 	if (isset($_POST['amount'])) {
 		$amount = sanitize_text_field($_POST['amount']);
-	}
-
-	$scCs = '';
-	if (isset($_POST['scCs'])) {
-		$scCs = sanitize_text_field($_POST['scCs']);
 	}
 
 	$userMail = '';
@@ -130,30 +120,40 @@ function sc_ajax_action() {
 		$payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
 	}
 
-		// when enable or disable SC Checkout
-//		if (in_array($enableDisableSCCheckout, array('enable', 'disable'))) {
-//			if ('enable' == $enableDisableSCCheckout) {
-//				
-//
-//				echo json_encode(array('status' => 1));
-//				exit;
-//			}
-//
-//			echo json_encode(array('status' => 1, data => 'action error.'));
-//			exit;
-//		}
-
-	// if there is no webMasterId in the session get it from the post
-	if ( empty($_SESSION['SC_Variables']['webMasterId']) && $woVersion ) {
-		$_SESSION['SC_Variables']['webMasterId'] = 'WoCommerce ' . $woVersion;
-	}
-
+	$time = date('YmdHis');
+	
 	// Void, Cancel
-	if (isset($_POST['cancelOrder']) && 1 == sanitize_text_field($_POST['cancelOrder'])) {
+	if (
+		!empty($_POST['orderId'])
+		&& isset($_POST['cancelOrder'])
+		&& 1 == sanitize_text_field($_POST['cancelOrder'])
+	) {
 		$ord_status = 1;
-		$url        = 'no' == $_SESSION['SC_Variables']['test'] ? SC_LIVE_VOID_URL : SC_TEST_VOID_URL;
+		$url        = 'no' == $wc_sc->test ? SC_LIVE_VOID_URL : SC_TEST_VOID_URL;
 
-		$resp = SC_HELPER::call_rest_api($url, $_SESSION['SC_Variables']);
+		$params = array(
+			'merchantId'			=> $wc_sc->merchantId,
+			'merchantSiteId'		=> $wc_sc->merchantSiteId,
+			'clientRequestId'		=> $time . '_' . uniqid(),
+			'clientUniqueId'		=> sanitize_text_field($_POST['orderId']),
+			'amount'				=> '',
+			'currency'				=> '',
+			'relatedTransactionId'	=> '',
+			'authCode'				=> '',
+			'urlDetails'			=> array(
+				'notificationUrl'   => $wc_sc->set_notify_url(),
+			),
+			'timeStamp'				=> $time,
+			'checksum'				=> '',
+			'webMasterId'			=> $wc_sc->webMasterId,
+		);
+		
+		$resp = SC_HELPER::call_rest_api(
+			$url, 
+			array(
+				
+			)
+		);
 
 		if (
 			!$resp || !is_array($resp)
@@ -164,10 +164,8 @@ function sc_ajax_action() {
 			$ord_status = 0;
 		}
 
-		unset($_SESSION['SC_Variables']);
-
-		echo json_encode(array('status' => $ord_status, 'data' => $resp));
-		exit;
+		wp_send_json(json_encode(array('status' => $ord_status, 'data' => $resp)));
+		wp_die();
 	}
 
 	// Settle
@@ -192,7 +190,7 @@ function sc_ajax_action() {
 		exit;
 	}
 
-	if ('rest' == $_SESSION['SC_Variables']['payment_api']) {
+	if ('rest' == $wc_sc->payment_api) {
 		// when we want Session Token only
 		if (isset($_POST['needST']) && 1 == sanitize_text_field($_POST['needST'])) {
 			SC_HELPER::create_log('Ajax, get Session Token.');
@@ -203,7 +201,7 @@ function sc_ajax_action() {
 		}
 
 		// when we want APMs and UPOs
-		if (!empty($country) && !empty($amount) && !empty($scCs) && !empty($userMail)) {
+		if (!empty($country) && !empty($amount) && !empty($userMail)) {
 			// if the Country come as POST variable
 			if (empty($_SESSION['SC_Variables']['sc_country'])) {
 				$_SESSION['SC_Variables']['sc_country'] = $country;
@@ -213,6 +211,7 @@ function sc_ajax_action() {
 			$oo_endpoint_url = 'yes' == $_SESSION['SC_Variables']['test']
 				? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
 
+			
 			$oo_params = array(
 				'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
 				'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
@@ -220,7 +219,6 @@ function sc_ajax_action() {
 				'amount'            => $amount,
 				'currency'          => $_SESSION['SC_Variables']['currencyCode'],
 				'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri1'])),
-				'checksum'          => $scCs,
 				'urlDetails'        => array(
 					'successUrl'        => $_SESSION['SC_Variables']['other_urls'],
 					'failureUrl'        => $_SESSION['SC_Variables']['other_urls'],
@@ -232,6 +230,14 @@ function sc_ajax_action() {
 				'billingAddress'    => array(
 					'country' => $country,
 				),
+			);
+			
+			$params['checksum'] = hash(
+				$wc_sc->hash_type,
+				$wc_sc->merchantId . $wc_sc->merchantSiteId . $_SESSION['SC_Variables']['cri1']
+					. $cart_totals['total'] . $_SESSION['SC_Variables']['currencyCode']
+					. current(explode('_', $_SESSION['SC_Variables']['cri1']))
+					. $wc_sc->secret
 			);
 
 			$resp = SC_HELPER::call_rest_api($oo_endpoint_url, $oo_params);
@@ -375,23 +381,23 @@ function sc_ajax_action() {
 		));
 		exit;
 	}
-//	} elseif (
-//		// don't come here when try to refund!
-//		isset($_REQUEST['action'])
-//		&& 'woocommerce_refund_line_items' != sanitize_text_field($_REQUEST['action'])
-//	) {
-//		$msg = 'Missing some of conditions to using REST API.';
-//
-//		if ('rest' != @$_SESSION['SC_Variables']['payment_api']) {
-//			$msg = 'You are using Cashier API. APMs are not available with it.';
-//		}
-//
-//		echo json_encode(array(
-//			'status'    => 2,
-//			'msg'       =>$msg
-//		));
-//		exit;
-//	}
+	//  } elseif (
+	//      // don't come here when try to refund!
+	//      isset($_REQUEST['action'])
+	//      && 'woocommerce_refund_line_items' != sanitize_text_field($_REQUEST['action'])
+	//  ) {
+	//      $msg = 'Missing some of conditions to using REST API.';
+	//
+	//      if ('rest' != @$_SESSION['SC_Variables']['payment_api']) {
+	//          $msg = 'You are using Cashier API. APMs are not available with it.';
+	//      }
+	//
+	//      echo json_encode(array(
+	//          'status'    => 2,
+	//          'msg'       =>$msg
+	//      ));
+	//      exit;
+	//  }
 }
 
 /**
@@ -582,8 +588,14 @@ function sc_iframe_redirect() {
 }
 
 function sc_add_buttons() {
+	$order_id = false;
+	
+	if (!empty($_GET['post'])) {
+		$order_id = sanitize_text_field($_GET['post']);
+	}
+	
 	try {
-		$order                = new WC_Order(get_query_var('post'));
+		$order                = new WC_Order($order_id);
 		$order_status         = strtolower($order->get_status());
 		$order_payment_method = $order->get_meta('_paymentMethod');
 		
@@ -609,14 +621,13 @@ function sc_add_buttons() {
 		$order_tr_id      = $order->get_meta(SC_GW_TRANS_ID_KEY);
 		$order_has_refund = $order->get_meta('_scHasRefund');
 		$notify_url       = $wc_sc->set_notify_url();
-		$buttons_html     = '';
 		
 		// common data
 		$_SESSION['SC_Variables'] = array(
 			'merchantId'            => $wc_sc->settings['merchantId'],
 			'merchantSiteId'        => $wc_sc->settings['merchantSiteId'],
 			'clientRequestId'       => $time . '_' . $order_tr_id,
-			'clientUniqueId'        => get_query_var('post'),
+			'clientUniqueId'        => $order_id,
 			'amount'                => $wc_sc->get_order_data($order, 'order_total'),
 			'currency'              => get_woocommerce_currency(),
 			'relatedTransactionId'  => $order_tr_id,
@@ -627,17 +638,17 @@ function sc_add_buttons() {
 			'payment_api'           => 'rest',
 			'save_logs'             => $wc_sc->settings['save_logs'],
 			'urlDetails'            => array(
-				'notificationUrl'       => $notify_url . '&clientRequestId=' . get_query_var('post')
+				'notificationUrl'       => $notify_url . '&clientRequestId=' . $order_id
 			),
 		);
 		
 		// Show VOID button
 		if ('1' != $order_has_refund && in_array($order_payment_method, array('cc_card', 'dc_card'))) {
-			$buttons_html .=
-				' <button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
-				. __('Are you sure, you want to Cancel Order #' . get_query_var('post') . '?', 'sc') . '\', '
-				. '\'void\', \'' . WOOCOMMERCE_VERSION . '\')" class="button generate-items">'
-				. __('Void', 'sc') . '</button>';
+			echo 
+				'<button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
+				. esc_html__('Are you sure, you want to Cancel Order #' . $order_id . '?', 'sc') . '\', '
+				. '\'void\', ' . esc_html($order_id) . ')" class="button generate-items">'
+				. esc_html__('Void', 'sc') . '</button>';
 		}
 		
 		// show SETTLE button ONLY if setting transaction_type IS Auth AND P3D resonse transaction_type IS Auth
@@ -646,11 +657,11 @@ function sc_add_buttons() {
 			&& 'Auth' == $order->get_meta(SC_GW_P3D_RESP_TR_TYPE)
 			&& 'Auth' == $wc_sc->settings['transaction_type']
 		) {
-			$buttons_html .=
-				' <button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
-				. __('Are you sure, you want to Settle Order #' . get_query_var('post') . '?', 'sc') . '\', '
-				. '\'settle\', \'' . WOOCOMMERCE_VERSION . '\')" class="button generate-items">'
-				. __('Settle', 'sc') . '</button>';
+			echo 
+				'<button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
+				. esc_html__('Are you sure, you want to Settle Order #' . $order_id . '?', 'sc') . '\', '
+				. '\'settle\', \'' . esc_html($order_id) . '\')" class="button generate-items">'
+				. esc_html__('Settle', 'sc') . '</button>';
 		}
 		
 		$checksum = hash(
@@ -671,7 +682,7 @@ function sc_add_buttons() {
 		$_SESSION['SC_Variables']['checksum'] = $checksum;
 
 		// add loading screen
-		echo esc_html($buttons_html) . '<div id="custom_loader" class="blockUI blockOverlay"></div>';
+		echo '<div id="custom_loader" class="blockUI blockOverlay"></div>';
 	}
 }
 
