@@ -168,11 +168,9 @@ class SC_HELPER {
 			die('SC_LOGS_DIR is not set!');
 		}
 		
-		global $session;
-		
 		if (
 			( isset($_REQUEST['sc_create_logs']) && in_array($_REQUEST['sc_create_logs'], array(1, 'yes'), true) )
-			|| in_array($session['SC_Variables']['sc_create_logs'], array(1, 'yes'), true)
+			|| in_array($_SESSION['SC_Variables']['sc_create_logs'], array(1, 'yes'), true)
 		) {
 			// same for all plugins
 			$d = $data;

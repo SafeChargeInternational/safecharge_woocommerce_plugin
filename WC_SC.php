@@ -719,13 +719,11 @@ class WC_SC extends WC_Payment_Gateway {
 	  * @param int $order_id
 	 **/
 	public function process_payment( $order_id) {
-		global $session;
-		
-		if (isset($session['SC_P3D_PaReq'])) {
-			unset($session['SC_P3D_PaReq']);
+		if (isset($_SESSION['SC_P3D_PaReq'])) {
+			unset($_SESSION['SC_P3D_PaReq']);
 		}
-		if (isset($session['SC_P3D_acsUrl'])) {
-			unset($session['SC_P3D_acsUrl']);
+		if (isset($_SESSION['SC_P3D_acsUrl'])) {
+			unset($_SESSION['SC_P3D_acsUrl']);
 		}
 		
 		$order        = new WC_Order($order_id);
@@ -826,14 +824,14 @@ class WC_SC extends WC_Payment_Gateway {
 			);
 
 			SC_HELPER::create_log('Try to get sessionToken.');
-			$session_token_data = SC_HELPER::call_rest_api($st_endpoint_url, $st_params);
+			$_SESSION_token_data = SC_HELPER::call_rest_api($st_endpoint_url, $st_params);
 
 			if (
-				!$session_token_data || !is_array($session_token_data)
-				|| !isset($session_token_data['status'])
-				|| 'SUCCESS' !== $session_token_data['status']
+				!$_SESSION_token_data || !is_array($_SESSION_token_data)
+				|| !isset($_SESSION_token_data['status'])
+				|| 'SUCCESS' !== $_SESSION_token_data['status']
 			) {
-				SC_HELPER::create_log($session_token_data, '$session_token_data problem:');
+				SC_HELPER::create_log($_SESSION_token_data, '$_SESSION_token_data problem:');
 
 				wc_add_notice(__('Payment failed, please try again later!', 'sc'), 'error');
 				return array(
@@ -845,7 +843,7 @@ class WC_SC extends WC_Payment_Gateway {
 				);
 			}
 
-			$params['sessionToken'] = $session_token_data['sessionToken'];
+			$params['sessionToken'] = $_SESSION_token_data['sessionToken'];
 		}
 		// for the session token END
 		
@@ -993,7 +991,7 @@ class WC_SC extends WC_Payment_Gateway {
 				$params_p3d['transactionType'] = isset($resp['transactionType']) ? $resp['transactionType'] : '';
 				$params_p3d['paResponse']      = '';
 				
-				$session['SC_P3D_Params'] = $params_p3d;
+				$_SESSION['SC_P3D_Params'] = $params_p3d;
 				
 				// case 1
 				if (
@@ -1002,8 +1000,8 @@ class WC_SC extends WC_Payment_Gateway {
 				) {
 					SC_HELPER::create_log('D3D case 1');
 					
-					$session['SC_P3D_PaReq']  = !empty($resp['paRequest']) ? $resp['paRequest'] : '';
-					$session['SC_P3D_acsUrl'] = $resp['acsUrl'];
+					$_SESSION['SC_P3D_PaReq']  = !empty($resp['paRequest']) ? $resp['paRequest'] : '';
+					$_SESSION['SC_P3D_acsUrl'] = $resp['acsUrl'];
 
 					// step 1 - go to acsUrl
 					return array(
@@ -1061,7 +1059,7 @@ class WC_SC extends WC_Payment_Gateway {
 					);
 				}
 				
-				$session['SC_P3D_acsUrl'] = $resp['redirectURL'];
+				$_SESSION['SC_P3D_acsUrl'] = $resp['redirectURL'];
 
 				return array(
 					'result'    => 'success',
@@ -1105,8 +1103,6 @@ class WC_SC extends WC_Payment_Gateway {
 	 * We call this method form index.php
 	 */
 	public function process_dmns( $do_not_call_api = false) {
-		global $session;
-		
 		SC_HELPER::create_log($_GET, 'Receive DMN with params: ');
 		
 		$req_status = $this->get_request_status();
@@ -1296,7 +1292,7 @@ class WC_SC extends WC_Payment_Gateway {
 				get_query_var('PaRes', false)
 				&& is_array(get_query_var('SC_P3D_Params', false))
 			) {
-				$session['SC_P3D_Params']['paResponse'] = get_query_var('PaRes', '');
+				$_SESSION['SC_P3D_Params']['paResponse'] = get_query_var('PaRes', '');
 				$resp                                   = $this->pay_with_d3d_p3d();
 				$url                                    = $this->get_return_url();
 				
@@ -1316,7 +1312,7 @@ class WC_SC extends WC_Payment_Gateway {
 				get_query_var('merchantId', false)
 				&& get_query_var('merchantSiteId', false)
 			) {
-				// here we must unset $session['SC_P3D_Params'] as last step
+				// here we must unset $_SESSION['SC_P3D_Params'] as last step
 				try {
 					$clientUniqueId = get_query_var('clientUniqueId', false);
 					$order          = new WC_Order($clientUniqueId);
@@ -1335,8 +1331,8 @@ class WC_SC extends WC_Payment_Gateway {
 				}
 			}
 			
-			if (isset($session['SC_P3D_Params'])) {
-				unset($session['SC_P3D_Params']);
+			if (isset($_SESSION['SC_P3D_Params'])) {
+				unset($_SESSION['SC_P3D_Params']);
 			}
 			
 			echo 'DMN received.';
@@ -1381,12 +1377,10 @@ class WC_SC extends WC_Payment_Gateway {
 	}
 	
 	public function sc_checkout_process() {
-		global $session;
-		
-		$session['sc_subpayment'] = '';
+		$_SESSION['sc_subpayment'] = '';
 		
 		if (get_query_var('sc_payment_method', false)) {
-			$session['sc_subpayment'] = get_query_var('sc_payment_method');
+			$_SESSION['sc_subpayment'] = get_query_var('sc_payment_method');
 		}
 		
 		return true;
@@ -1563,22 +1557,20 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		// get order refunds
 		try {
-			global $session;
-			
 			$refund_data                = $refund->get_data();
 			$refund_data['webMasterId'] = $this->webMasterId; // need this param for the API
 			
 			// the hooks calling this method, fired twice when change status
 			// to Refunded, but we do not want to try more than one SC Refunds
-			if (isset($session['sc_last_refund_id'])) {
-				if (intval($session['sc_last_refund_id']) === intval($refund_data['id'])) {
-					unset($session['sc_last_refund_id']);
+			if (isset($_SESSION['sc_last_refund_id'])) {
+				if (intval($_SESSION['sc_last_refund_id']) === intval($refund_data['id'])) {
+					unset($_SESSION['sc_last_refund_id']);
 					return;
 				} else {
-					$session['sc_last_refund_id'] = $refund_data['id'];
+					$_SESSION['sc_last_refund_id'] = $refund_data['id'];
 				}
 			} else {
-				$session['sc_last_refund_id'] = $refund_data['id'];
+				$_SESSION['sc_last_refund_id'] = $refund_data['id'];
 			}
 			
 			$order_id = get_query_var('order_id', 0);
@@ -1786,7 +1778,6 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		global $woocommerce;
-		global $session;
 		
 		if (empty($woocommerce->cart->get_totals())) {
 			echo
@@ -1797,23 +1788,23 @@ class WC_SC extends WC_Payment_Gateway {
 			return;
 		}
 		
-		$session['SC_Variables']['other_urls'] = $this->get_return_url(); // put this in _construct and site will crash :)
+		$_SESSION['SC_Variables']['other_urls'] = $this->get_return_url(); // put this in _construct and site will crash :)
 		$cart_totals                           = $woocommerce->cart->get_totals();
 		
 		$checksum = hash(
 				$this->hash_type,
-				$this->merchantId . $this->merchantSiteId . $session['SC_Variables']['cri1']
-					. $cart_totals['total'] . $session['SC_Variables']['currencyCode']
-					. current(explode('_', $session['SC_Variables']['cri1']))
+				$this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['cri1']
+					. $cart_totals['total'] . $_SESSION['SC_Variables']['currencyCode']
+					. current(explode('_', $_SESSION['SC_Variables']['cri1']))
 					. $this->secret
 			);
 			
-		echo esc_js(
+		echo 
 			'<script type="text/javascript">'
-				. 'scOrderAmount    = "' . $cart_totals['total'] . '"; '
-				. 'scOOChecksum     = "' . $checksum . '"; '
+				. 'scOrderAmount    = "' . esc_html($cart_totals['total']) . '"; '
+				. 'scOOChecksum     = "' . esc_html($checksum) . '"; '
 			. '</script>'
-		);
+		;
 	}
 	
 	/**

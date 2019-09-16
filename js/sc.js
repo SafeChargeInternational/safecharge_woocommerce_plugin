@@ -202,6 +202,7 @@ function getAPMs() {
             type: "POST",
             url: scAjax.ajaxurl,
             data: {
+                action      : 'sc-ajax-action',
                 country     : jQuery("#billing_country").val(),
                 amount      : scOrderAmount,
                 scCs        : scOOChecksum,
@@ -556,7 +557,9 @@ function settleAndCancelOrder(question, action) {
     if(confirm(question)) {
         jQuery('#custom_loader').show();
         
-        var data = {};
+        var data = {
+            action: 'sc-ajax-action',
+        };
         
         if(action == 'settle') {
             data.settleOrder = 1;
@@ -620,7 +623,11 @@ function enableDisableSCCheckout(action) {
     jQuery.ajax({
         type: "POST",
         url: scAjax.ajaxurl,
-        data: { enableDisableSCCheckout: action },
+        data: {
+            action                  : 'sc-ajax-action',
+            enableDisableSCCheckout : action,
+            security                : scAjax.security
+        },
         dataType: 'json'
     })
         .done(function(resp) {
