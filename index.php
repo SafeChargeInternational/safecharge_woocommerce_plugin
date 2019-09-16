@@ -45,6 +45,19 @@ function woocommerce_sc_init() {
 	add_action('woocommerce_receipt_' . $wc_sc->id, array($wc_sc, 'generate_sc_form'));
 	// on the checkout page get the order total amount
 	add_action('woocommerce_checkout_before_order_review', array($wc_sc, 'checkout_open_order'));
+	// show custom final text
+	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
+	// if custom fields are empty stop checkout process displaying an error notice.
+	add_action('woocommerce_checkout_process', function () {
+		if (
+			isset($_SESSION['SC_Variables']['payment_api'])
+			&& 'rest' == $_SESSION['SC_Variables']['payment_api']
+			&& empty($payment_method_sc)
+		) {
+			$notice = __('Please select ' . SC_GATEWAY_TITLE . ' payment method to continue!', 'sc');
+			wc_add_notice('<strong>' . $notice . '</strong>', 'error');
+		}
+	});
 	// handle Ajax calls
 	add_action('wp_ajax_sc-ajax-action', 'sc_ajax_action');
 	add_action('wp_ajax_nopriv_sc-ajax-action', 'sc_ajax_action');
@@ -76,327 +89,309 @@ function sc_ajax_action() {
 		wp_die('Invalid security token sent');
 	}
 	
-	if (
-		!empty($_SESSION['SC_Variables']['merchantId'])
-		&& !empty($_SESSION['SC_Variables']['merchantSiteId'])
-		&& isset(
-			$_SESSION['SC_Variables']['payment_api'],
-			$_SESSION['SC_Variables']['test']
-		)
-		&& in_array($_SESSION['SC_Variables']['payment_api'], array('cashier', 'rest'))
-	) {
+	if(empty($_SESSION['SC_Variables']['payment_api']) || empty($_SESSION['SC_Variables']['test'])) {
+		wp_send_json_error( 'Invalid payment api or/and site mode.' );
+		wp_die('Invalid payment api or/and site mode.');
+	}
+	
 		// post variables
-		$enableDisableSCCheckout = '';
-		if (isset($_POST['enableDisableSCCheckout'])) {
-			$enableDisableSCCheckout = sanitize_text_field($_POST['enableDisableSCCheckout']);
-		}
+//		$enableDisableSCCheckout = '';
+//		if (isset($_POST['enableDisableSCCheckout'])) {
+//			$enableDisableSCCheckout = sanitize_text_field($_POST['enableDisableSCCheckout']);
+//		}
 		
-		$woVersion = '';
-		if (isset($_POST['woVersion'])) {
-			$woVersion = sanitize_text_field($_POST['woVersion']);
-		}
-		
-		$country = '';
-		if (isset($_POST['country'])) {
-			$country = sanitize_text_field($_POST['country']);
-		}
-		
-		$amount = '';
-		if (isset($_POST['amount'])) {
-			$amount = sanitize_text_field($_POST['amount']);
-		}
-		
-		$scCs = '';
-		if (isset($_POST['scCs'])) {
-			$scCs = sanitize_text_field($_POST['scCs']);
-		}
-		
-		$userMail = '';
-		if (isset($_POST['userMail'])) {
-			$userMail = sanitize_text_field($_POST['userMail']);
-		}
-		
-		$payment_method_sc = '';
-		if (isset($_POST['payment_method_sc'])) {
-			$payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
-		}
+	$woVersion = '';
+	if (isset($_POST['woVersion'])) {
+		$woVersion = sanitize_text_field($_POST['woVersion']);
+	}
+
+	$country = '';
+	if (isset($_POST['country'])) {
+		$country = sanitize_text_field($_POST['country']);
+	}
+
+	$amount = '';
+	if (isset($_POST['amount'])) {
+		$amount = sanitize_text_field($_POST['amount']);
+	}
+
+	$scCs = '';
+	if (isset($_POST['scCs'])) {
+		$scCs = sanitize_text_field($_POST['scCs']);
+	}
+
+	$userMail = '';
+	if (isset($_POST['userMail'])) {
+		$userMail = sanitize_text_field($_POST['userMail']);
+	}
+
+	$payment_method_sc = '';
+	if (isset($_POST['payment_method_sc'])) {
+		$payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
+	}
 
 		// when enable or disable SC Checkout
-		if (in_array($enableDisableSCCheckout, array('enable', 'disable'))) {
-			if ('enable' == $enableDisableSCCheckout) {
-				add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
-				add_action('woocommerce_checkout_process', function () {
-					// if custom fields are empty stop checkout process displaying an error notice.
-					if (
-						isset($_SESSION['SC_Variables']['payment_api'])
-						&& 'rest' == $_SESSION['SC_Variables']['payment_api']
-						&& empty($payment_method_sc)
-					) {
-						$notice = __('Please select ' . SC_GATEWAY_TITLE . ' payment method to continue!', 'sc');
-						wc_add_notice('<strong>' . $notice . '</strong>', 'error');
-					}
-				});
+//		if (in_array($enableDisableSCCheckout, array('enable', 'disable'))) {
+//			if ('enable' == $enableDisableSCCheckout) {
+//				
+//
+//				echo json_encode(array('status' => 1));
+//				exit;
+//			}
+//
+//			echo json_encode(array('status' => 1, data => 'action error.'));
+//			exit;
+//		}
 
-				echo json_encode(array('status' => 1));
-				exit;
-			}
+	// if there is no webMasterId in the session get it from the post
+	if ( empty($_SESSION['SC_Variables']['webMasterId']) && $woVersion ) {
+		$_SESSION['SC_Variables']['webMasterId'] = 'WoCommerce ' . $woVersion;
+	}
 
-			echo json_encode(array('status' => 1, data => 'action error.'));
+	// Void, Cancel
+	if (isset($_POST['cancelOrder']) && 1 == sanitize_text_field($_POST['cancelOrder'])) {
+		$ord_status = 1;
+		$url        = 'no' == $_SESSION['SC_Variables']['test'] ? SC_LIVE_VOID_URL : SC_TEST_VOID_URL;
+
+		$resp = SC_HELPER::call_rest_api($url, $_SESSION['SC_Variables']);
+
+		if (
+			!$resp || !is_array($resp)
+			|| 'ERROR' == @$resp['status']
+			|| 'ERROR' == @$resp['transactionStatus']
+			|| 'DECLINED' == @$resp['transactionStatus']
+		) {
+			$ord_status = 0;
+		}
+
+		unset($_SESSION['SC_Variables']);
+
+		echo json_encode(array('status' => $ord_status, 'data' => $resp));
+		exit;
+	}
+
+	// Settle
+	if (isset($_POST['settleOrder']) && 1 == sanitize_text_field($_POST['settleOrder'])) {
+		$ord_status = 1;
+		$url        = 'no' == $_SESSION['SC_Variables']['test'] ? SC_LIVE_SETTLE_URL : SC_TEST_SETTLE_URL;
+
+		$resp = SC_HELPER::call_rest_api($url, $_SESSION['SC_Variables']);
+
+		if (
+			!$resp || !is_array($resp)
+			|| 'ERROR' == @$resp['status']
+			|| 'ERROR' == $resp['transactionStatus']
+			|| 'DECLINED' == @$resp['transactionStatus']
+		) {
+			$ord_status = 0;
+		}
+
+		unset($_SESSION['SC_Variables']);
+
+		echo json_encode(array('status' => $ord_status, 'data' => $resp));
+		exit;
+	}
+
+	if ('rest' == $_SESSION['SC_Variables']['payment_api']) {
+		// when we want Session Token only
+		if (isset($_POST['needST']) && 1 == sanitize_text_field($_POST['needST'])) {
+			SC_HELPER::create_log('Ajax, get Session Token.');
+
+			$session_data['test'] = @$_SESSION['SC_Variables']['test'];
+			echo json_encode(array('status' => 1, 'data' => $session_data));
 			exit;
 		}
 
-		// if there is no webMasterId in the session get it from the post
-		if ( empty($_SESSION['SC_Variables']['webMasterId']) && $woVersion ) {
-			$_SESSION['SC_Variables']['webMasterId'] = 'WoCommerce ' . $woVersion;
-		}
+		// when we want APMs and UPOs
+		if (!empty($country) && !empty($amount) && !empty($scCs) && !empty($userMail)) {
+			// if the Country come as POST variable
+			if (empty($_SESSION['SC_Variables']['sc_country'])) {
+				$_SESSION['SC_Variables']['sc_country'] = $country;
+			}
 
-		// Void, Cancel
-		if (isset($_POST['cancelOrder']) && 1 == sanitize_text_field($_POST['cancelOrder'])) {
-			$ord_status = 1;
-			$url        = 'no' == $_SESSION['SC_Variables']['test'] ? SC_LIVE_VOID_URL : SC_TEST_VOID_URL;
+			# Open Order
+			$oo_endpoint_url = 'yes' == $_SESSION['SC_Variables']['test']
+				? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
 
-			$resp = SC_HELPER::call_rest_api($url, $_SESSION['SC_Variables']);
+			$oo_params = array(
+				'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
+				'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
+				'clientRequestId'   => $_SESSION['SC_Variables']['cri1'],
+				'amount'            => $amount,
+				'currency'          => $_SESSION['SC_Variables']['currencyCode'],
+				'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri1'])),
+				'checksum'          => $scCs,
+				'urlDetails'        => array(
+					'successUrl'        => $_SESSION['SC_Variables']['other_urls'],
+					'failureUrl'        => $_SESSION['SC_Variables']['other_urls'],
+					'pendingUrl'        => $_SESSION['SC_Variables']['other_urls'],
+					'notificationUrl'   => $_SESSION['SC_Variables']['notify_url'],
+				),
+				'deviceDetails'     => SC_HELPER::get_device_details(),
+				'userTokenId'       => $userMail,
+				'billingAddress'    => array(
+					'country' => $country,
+				),
+			);
+
+			$resp = SC_HELPER::call_rest_api($oo_endpoint_url, $oo_params);
 
 			if (
-				!$resp || !is_array($resp)
-				|| 'ERROR' == @$resp['status']
-				|| 'ERROR' == @$resp['transactionStatus']
-				|| 'DECLINED' == @$resp['transactionStatus']
+				empty($resp['status'])
+				|| 'SUCCESS' != $resp['status']
+				|| empty($resp['sessionToken'])
 			) {
-				$ord_status = 0;
-			}
-
-			unset($_SESSION['SC_Variables']);
-
-			echo json_encode(array('status' => $ord_status, 'data' => $resp));
-			exit;
-		}
-
-		// Settle
-		if (isset($_POST['settleOrder']) && 1 == sanitize_text_field($_POST['settleOrder'])) {
-			$ord_status = 1;
-			$url        = 'no' == $_SESSION['SC_Variables']['test'] ? SC_LIVE_SETTLE_URL : SC_TEST_SETTLE_URL;
-
-			$resp = SC_HELPER::call_rest_api($url, $_SESSION['SC_Variables']);
-
-			if (
-				!$resp || !is_array($resp)
-				|| 'ERROR' == @$resp['status']
-				|| 'ERROR' == $resp['transactionStatus']
-				|| 'DECLINED' == @$resp['transactionStatus']
-			) {
-				$ord_status = 0;
-			}
-
-			unset($_SESSION['SC_Variables']);
-
-			echo json_encode(array('status' => $ord_status, 'data' => $resp));
-			exit;
-		}
-
-		if ('rest' == $_SESSION['SC_Variables']['payment_api']) {
-			// when we want Session Token only
-			if (isset($_POST['needST']) && 1 == sanitize_text_field($_POST['needST'])) {
-				SC_HELPER::create_log('Ajax, get Session Token.');
-
-				$session_data['test'] = @$_SESSION['SC_Variables']['test'];
-				echo json_encode(array('status' => 1, 'data' => $session_data));
+				echo json_encode(array(
+					'status' => 0,
+					'callResp' => $resp
+				));
 				exit;
 			}
+			# Open Order END
 
-			// when we want APMs and UPOs
-			if (!empty($country) && !empty($amount) && !empty($scCs) && !empty($userMail)) {
-				// if the Country come as POST variable
-				if (empty($_SESSION['SC_Variables']['sc_country'])) {
-					$_SESSION['SC_Variables']['sc_country'] = $country;
-				}
+			# get APMs
+			$apms_params = array(
+				'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
+				'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
+				'clientRequestId'   => $_SESSION['SC_Variables']['cri2'],
+				'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri2'])),
+				'checksum'          => $_SESSION['SC_Variables']['cs2'],
+				'sessionToken'      => $resp['sessionToken'],
+				'currencyCode'      => $_SESSION['SC_Variables']['currencyCode'],
+				'countryCode'       => $_SESSION['SC_Variables']['sc_country'],
+				'languageCode'      => $_SESSION['SC_Variables']['languageCode'],
+			);
 
-				# Open Order
-				$oo_endpoint_url = 'yes' == $_SESSION['SC_Variables']['test']
-					? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
+			$endpoint_url = 'yes' == $_SESSION['SC_Variables']['test']
+				? SC_TEST_REST_PAYMENT_METHODS_URL : SC_LIVE_REST_PAYMENT_METHODS_URL;
 
-				$oo_params = array(
-					'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
-					'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
-					'clientRequestId'   => $_SESSION['SC_Variables']['cri1'],
-					'amount'            => $amount,
-					'currency'          => $_SESSION['SC_Variables']['currencyCode'],
-					'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri1'])),
-					'checksum'          => $scCs,
-					'urlDetails'        => array(
-						'successUrl'        => $_SESSION['SC_Variables']['other_urls'],
-						'failureUrl'        => $_SESSION['SC_Variables']['other_urls'],
-						'pendingUrl'        => $_SESSION['SC_Variables']['other_urls'],
-						'notificationUrl'   => $_SESSION['SC_Variables']['notify_url'],
-					),
-					'deviceDetails'     => SC_HELPER::get_device_details(),
-					'userTokenId'       => $userMail,
-					'billingAddress'    => array(
-						'country' => $country,
-					),
-				);
+			$apms_data = SC_HELPER::call_rest_api($endpoint_url, $apms_params);
 
-				$resp = SC_HELPER::call_rest_api($oo_endpoint_url, $oo_params);
-
-				if (
-					empty($resp['status'])
-					|| 'SUCCESS' != $resp['status']
-					|| empty($resp['sessionToken'])
-				) {
-					echo json_encode(array(
-						'status' => 0,
-						'callResp' => $resp
-					));
-					exit;
-				}
-				# Open Order END
-
-				# get APMs
-				$apms_params = array(
-					'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
-					'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
-					'clientRequestId'   => $_SESSION['SC_Variables']['cri2'],
-					'timeStamp'         => current(explode('_', $_SESSION['SC_Variables']['cri2'])),
-					'checksum'          => $_SESSION['SC_Variables']['cs2'],
-					'sessionToken'      => $resp['sessionToken'],
-					'currencyCode'      => $_SESSION['SC_Variables']['currencyCode'],
-					'countryCode'       => $_SESSION['SC_Variables']['sc_country'],
-					'languageCode'      => $_SESSION['SC_Variables']['languageCode'],
-				);
-
-				$endpoint_url = 'yes' == $_SESSION['SC_Variables']['test']
-					? SC_TEST_REST_PAYMENT_METHODS_URL : SC_LIVE_REST_PAYMENT_METHODS_URL;
-
-				$apms_data = SC_HELPER::call_rest_api($endpoint_url, $apms_params);
-
-				if (!is_array($apms_data) || !isset($apms_data['paymentMethods']) || empty($apms_data['paymentMethods'])) {
-					SC_HELPER::create_log($apms_data, 'getting APMs error: ');
-
-					echo json_encode(array(
-						'status' => 0,
-						'apmsData' => $apms_data
-					));
-					exit;
-				}
-
-				// set template data with the payment methods
-				$payment_methods = $apms_data['paymentMethods'];
-				# get APMs END
-
-				# get UPOs
-				$upos  = array();
-				$icons = array();
-
-				if (isset($_SESSION['SC_Variables']['upos_data'])) {
-					$endpoint_url = 'yes' == $_SESSION['SC_Variables']['test']
-						? SC_TEST_USER_UPOS_URL : SC_LIVE_USER_UPOS_URL;
-
-					$upos_params = array(
-						'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
-						'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
-						'userTokenId'       => $_SESSION['SC_Variables']['upos_data']['userTokenId'],
-						'clientRequestId'   => $_SESSION['SC_Variables']['upos_data']['clientRequestId'],
-						'timeStamp'         => $_SESSION['SC_Variables']['upos_data']['timestamp'],
-						'checksum'          => $_SESSION['SC_Variables']['upos_data']['checksum'],
-					);
-
-					$upos_data = SC_HELPER::call_rest_api($endpoint_url, $upos_params);
-
-					if (isset($upos_data['paymentMethods']) && $upos_data['paymentMethods']) {
-						foreach ($upos_data['paymentMethods'] as $upo_key => $upo) {
-							if (
-								'enabled' != @$upo['upoStatus']
-								|| ( isset($upo['upoData']['ccCardNumber'])
-									&& empty($upo['upoData']['ccCardNumber']) )
-								|| ( isset($upo['expiryDate'])
-									&& strtotime($upo['expiryDate']) < strtotime(date('Ymd')) )
-							) {
-								continue;
-							}
-
-							// search in payment methods
-							foreach ($payment_methods as $pm) {
-								if (
-									isset($upo['paymentMethodName'], $pm['paymentMethod'])
-									&& $upo['paymentMethodName'] == $pm['paymentMethod']
-								) {
-									if (
-										in_array(@$upo['paymentMethodName'], array('cc_card', 'dc_card'))
-										&& @$upo['upoData']['brand'] && @$pm['logoURL']
-									) {
-										$icons[@$upo['upoData']['brand']] = str_replace(
-											'default_cc_card',
-											$upo['upoData']['brand'],
-											$pm['logoURL']
-										);
-									} elseif (@$pm['logoURL']) {
-										$icons[$pm['paymentMethod']] = $pm['logoURL'];
-									}
-
-									$upos[] = $upo;
-									break;
-								}
-							}
-						}
-					} else {
-						SC_HELPER::create_log($upos_data, '$upos_data:');
-					}
-				}
-				# get UPOs END
+			if (!is_array($apms_data) || !isset($apms_data['paymentMethods']) || empty($apms_data['paymentMethods'])) {
+				SC_HELPER::create_log($apms_data, 'getting APMs error: ');
 
 				echo json_encode(array(
-					'status'            => 1,
-					'testEnv'           => $_SESSION['SC_Variables']['test'],
-					'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
-					'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
-					'langCode'          => $_SESSION['SC_Variables']['languageCode'],
-					'sessionToken'      => $resp['sessionToken'],
-					'currency'          => $_SESSION['SC_Variables']['currencyCode'],
-					'data'              => array(
-						'upos'              => $upos,
-						'paymentMethods'    => $payment_methods,
-						'icons'             => $icons
-					)
+					'status' => 0,
+					'apmsData' => $apms_data
 				));
-
 				exit;
 			}
 
-			exit;
-		} else {
-			// here we no need APMs
-			$msg = 'Missing some of conditions to using REST API.';
+			// set template data with the payment methods
+			$payment_methods = $apms_data['paymentMethods'];
+			# get APMs END
 
-			if ('rest' != $_SESSION['SC_Variables']['payment_api']) {
-				$msg = 'You are using Cashier API. APMs are not available with it.';
+			# get UPOs
+			$upos  = array();
+			$icons = array();
+
+			if (isset($_SESSION['SC_Variables']['upos_data'])) {
+				$endpoint_url = 'yes' == $_SESSION['SC_Variables']['test']
+					? SC_TEST_USER_UPOS_URL : SC_LIVE_USER_UPOS_URL;
+
+				$upos_params = array(
+					'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
+					'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
+					'userTokenId'       => $_SESSION['SC_Variables']['upos_data']['userTokenId'],
+					'clientRequestId'   => $_SESSION['SC_Variables']['upos_data']['clientRequestId'],
+					'timeStamp'         => $_SESSION['SC_Variables']['upos_data']['timestamp'],
+					'checksum'          => $_SESSION['SC_Variables']['upos_data']['checksum'],
+				);
+
+				$upos_data = SC_HELPER::call_rest_api($endpoint_url, $upos_params);
+
+				if (isset($upos_data['paymentMethods']) && $upos_data['paymentMethods']) {
+					foreach ($upos_data['paymentMethods'] as $upo_key => $upo) {
+						if (
+							'enabled' != @$upo['upoStatus']
+							|| ( isset($upo['upoData']['ccCardNumber'])
+								&& empty($upo['upoData']['ccCardNumber']) )
+							|| ( isset($upo['expiryDate'])
+								&& strtotime($upo['expiryDate']) < strtotime(date('Ymd')) )
+						) {
+							continue;
+						}
+
+						// search in payment methods
+						foreach ($payment_methods as $pm) {
+							if (
+								isset($upo['paymentMethodName'], $pm['paymentMethod'])
+								&& $upo['paymentMethodName'] == $pm['paymentMethod']
+							) {
+								if (
+									in_array(@$upo['paymentMethodName'], array('cc_card', 'dc_card'))
+									&& @$upo['upoData']['brand'] && @$pm['logoURL']
+								) {
+									$icons[@$upo['upoData']['brand']] = str_replace(
+										'default_cc_card',
+										$upo['upoData']['brand'],
+										$pm['logoURL']
+									);
+								} elseif (@$pm['logoURL']) {
+									$icons[$pm['paymentMethod']] = $pm['logoURL'];
+								}
+
+								$upos[] = $upo;
+								break;
+							}
+						}
+					}
+				} else {
+					SC_HELPER::create_log($upos_data, '$upos_data:');
+				}
 			}
+			# get UPOs END
 
 			echo json_encode(array(
-				'status'    => 2,
-				'msg'       =>  $msg
+				'status'            => 1,
+				'testEnv'           => $_SESSION['SC_Variables']['test'],
+				'merchantSiteId'    => $_SESSION['SC_Variables']['merchantSiteId'],
+				'merchantId'        => $_SESSION['SC_Variables']['merchantId'],
+				'langCode'          => $_SESSION['SC_Variables']['languageCode'],
+				'sessionToken'      => $resp['sessionToken'],
+				'currency'          => $_SESSION['SC_Variables']['currencyCode'],
+				'data'              => array(
+					'upos'              => $upos,
+					'paymentMethods'    => $payment_methods,
+					'icons'             => $icons
+				)
 			));
+
 			exit;
 		}
-	} elseif (
-		( isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 'XMLHttpRequest' === sanitize_text_field($_SERVER['HTTP_X_REQUESTED_WITH']) )
-		// don't come here when try to refund!
-		&& ( isset($_REQUEST['action']) && 'woocommerce_refund_line_items' !== sanitize_text_field($_REQUEST['action']) )
-	) {
+
+		exit;
+	} else {
+		// here we no need APMs
 		$msg = 'Missing some of conditions to using REST API.';
 
-		if ('rest' != @$_SESSION['SC_Variables']['payment_api']) {
+		if ('rest' != $_SESSION['SC_Variables']['payment_api']) {
 			$msg = 'You are using Cashier API. APMs are not available with it.';
 		}
 
 		echo json_encode(array(
 			'status'    => 2,
-			'msg'       =>$msg
+			'msg'       =>  $msg
 		));
 		exit;
 	}
-
-	echo json_encode(array('status' => 0));
-	exit;
+//	} elseif (
+//		// don't come here when try to refund!
+//		isset($_REQUEST['action'])
+//		&& 'woocommerce_refund_line_items' != sanitize_text_field($_REQUEST['action'])
+//	) {
+//		$msg = 'Missing some of conditions to using REST API.';
+//
+//		if ('rest' != @$_SESSION['SC_Variables']['payment_api']) {
+//			$msg = 'You are using Cashier API. APMs are not available with it.';
+//		}
+//
+//		echo json_encode(array(
+//			'status'    => 2,
+//			'msg'       =>$msg
+//		));
+//		exit;
+//	}
 }
 
 /**

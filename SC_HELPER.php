@@ -221,11 +221,10 @@ class SC_HELPER {
 			// same for all plugins
 
 			try {
-				global $wp_filesystem;
-				
-				$wp_filesystem->put_contents(
+				file_put_contents(
 					SC_LOGS_DIR . date('Y-m-d', time()) . '.txt',
-					date('H:i:s', time()) . ': ' . $d . "\r\n\r\n"
+					date('H:i:s', time()) . ': ' . $d . "\r\n",
+					FILE_APPEND
 				);
 			} catch (Exception $exc) {
 				echo esc_html($exc->getMessage());

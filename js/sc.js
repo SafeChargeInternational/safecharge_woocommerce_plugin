@@ -203,6 +203,7 @@ function getAPMs() {
             url: scAjax.ajaxurl,
             data: {
                 action      : 'sc-ajax-action',
+                security    : scAjax.security,
                 country     : jQuery("#billing_country").val(),
                 amount      : scOrderAmount,
                 scCs        : scOOChecksum,
@@ -620,30 +621,30 @@ function enableDisableSCCheckout(action) {
         jQuery('#custom_loader_2').parent('div').show();
     }
     
-    jQuery.ajax({
-        type: "POST",
-        url: scAjax.ajaxurl,
-        data: {
-            action                  : 'sc-ajax-action',
-            enableDisableSCCheckout : action,
-            security                : scAjax.security
-        },
-        dataType: 'json'
-    })
-        .done(function(resp) {
-            // go to DMN page to change order status
-            if(typeof resp != 'undefined' && typeof resp.status != 'undefined' && resp.status == 1) {
+//    jQuery.ajax({
+//        type: "POST",
+//        url: scAjax.ajaxurl,
+//        data: {
+//            action                  : 'sc-ajax-action',
+//            enableDisableSCCheckout : action,
+//            security                : scAjax.security
+//        },
+//        dataType: 'json'
+//    })
+//        .done(function(resp) {
+//            // go to DMN page to change order status
+//            if(typeof resp != 'undefined' && typeof resp.status != 'undefined' && resp.status == 1) {
                 if(jQuery('#sc_apms_list').length == 0) {
                     jQuery('#place_order').prop('disabled', true);
                     getAPMs();
                 }
-            }
-            else {
-                alert('Error try to get a response.');
-            }
+//            }
+//            else {
+//                alert('Error try to get a response.');
+//            }
             
             jQuery('#custom_loader_2').parent('div').hide();
-        });
+//        });
 }
 
 /**
@@ -695,6 +696,11 @@ jQuery(function() {
         enableDisableSCCheckout(jQuery('input[name="payment_method"]:checked').val() == 'sc' ? 'enable' : 'disable');
     }
     
+    // when we change selected paymenth method (the radio buttons)
+    jQuery('form.woocommerce-checkout').on('change', 'input[name="payment_method"]', function(){
+        enableDisableSCCheckout(jQuery(this).val() == 'sc' ? 'enable' : 'disable');
+    });
+    
     // when click on APM payment method
     jQuery('form.woocommerce-checkout').on('click', '.apm_title', function() {
         // hide all check marks 
@@ -727,11 +733,6 @@ jQuery(function() {
         
         // hide errors
         jQuery('.apm_error').hide();
-    });
-    
-    // when we change selected paymenth method (the radio buttons)
-    jQuery('form.woocommerce-checkout').on('change', 'input[name="payment_method"]', function(){
-        enableDisableSCCheckout(jQuery(this).val() == 'sc' ? 'enable' : 'disable');
     });
     
     // in the settings when user change 'Cashier in IFrame' or 'Payment API' option
