@@ -282,10 +282,10 @@ class WC_SC extends WC_Payment_Gateway {
 		$loading_table_html =
 			'<table id="sc_pay_msg" style="border: 3px solid #aaa; cursor: wait; line-height: 32px;"><tr>'
 				. '<td style="padding: 0px; border: 0px; width: 100px;">'
-					. '<img src="' . $this->plugin_url . 'icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
+					. '<img src="' . esc_attr($this->plugin_url) . 'icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
 				. '</td>'
 				. '<td style="text-align: left; border: 0px;">'
-					. '<span>' . __('Thank you for your order. We are now redirecting you to ' . SC_GATEWAY_TITLE . ' Payment Gateway to make payment.', 'sc') . '</span>'
+					. '<span>' . __('Thank you for your order. We are now redirecting you to ' . esc_html(SC_GATEWAY_TITLE) . ' Payment Gateway to make payment.', 'sc') . '</span>'
 				. '</td>'
 			. '</tr></table>';
 		
@@ -297,7 +297,7 @@ class WC_SC extends WC_Payment_Gateway {
 			. '<noscript>' . wp_kses_post($loading_table_html) . '</noscript>';
 		
 		// Order error
-		if (isset($_REQUEST['status']) && 'error' === $_REQUEST['status']) {
+		if (isset($_REQUEST['status']) && 'error' == $_REQUEST['status']) {
 			echo
 				'<script type="text/javascript">'
 					. 'window.location.href = "' . esc_url($url) . '?Status=error"'
@@ -321,7 +321,7 @@ class WC_SC extends WC_Payment_Gateway {
 						. 'wc-api=sc_listener&action=p3d">'
 					. '<noscript>'
 						. '<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'
-							. esc_html__('Pay via ' . SC_GATEWAY_TITLE, 'sc') . '" />'
+							. esc_attr(__('Pay via ' . SC_GATEWAY_TITLE, 'sc')) . '" />'
 						. '<a class="button cancel" href="' . esc_url($order->get_cancel_order_url()) . '">'
 							. esc_html__('Cancel order &amp; restore cart', 'sc') . '</a>'
 					. '</noscript>'
@@ -332,7 +332,7 @@ class WC_SC extends WC_Payment_Gateway {
 					. '</script>'
 				. '</form>';
 			
-			exit;
+			wp_die();
 		}
 		
 		// when we will pay with the Cashier
@@ -526,7 +526,6 @@ class WC_SC extends WC_Payment_Gateway {
 
 			// this is the real price
 			$item_qty = intval($item['qty']);
-			//    $item_price = ($item['line_subtotal'] + $item['line_subtotal_tax']) / $item_qty;
 			$item_price = $item['line_total'] / $item_qty;
 
 			$params['item_amount_' . $i] = number_format($item_price, 2, '.', '');
@@ -547,13 +546,6 @@ class WC_SC extends WC_Payment_Gateway {
 		// be sure there are no array elements in $params !!!
 		$params['checksum'] = hash($this->hash_type, stripslashes($this->secret . implode('', $params)));
 
-		$params_array = array();
-		foreach ($params as $key => $value) {
-			if (!is_array($value)) {
-				$params_array[] = "<input type='hidden' name='$key' value='$value'/>";
-			}
-		}
-		
 		$url = 'yes' === $this->test ? SC_TEST_CASHIER_URL : SC_LIVE_CASHIER_URL;
 
 		SC_HELPER::create_log($url, 'Endpoint URL: ');
@@ -564,32 +556,34 @@ class WC_SC extends WC_Payment_Gateway {
 		} else {
 			echo '<form action="' . esc_url($url) . '" method="post" id="sc_payment_form">';
 		}
-
+		
+		foreach ($params as $key => $value) {
+			if (!is_array($value)) {
+				echo '<input type="hidden" name="' . esc_attr($key) . '" value="' . esc_attr($value) . '" />';
+			}
+		}
+		
 		echo
-				wp_kses_post(implode('', $params_array))
-				. '<noscript>'
-					. '<input type="submit" class="button-alt" id="submit_sc_payment_form" value="' 
-						. esc_html__('Pay via ' . SC_GATEWAY_TITLE, 'sc') . '" /><a class="button cancel" href="'
-						. esc_url($order->get_cancel_order_url()) . '">'
-						. esc_html__('Cancel order &amp; restore cart', 'sc') . '</a>'
-				. '</noscript>'
-				. '<script type="text/javascript">'
-					. 'jQuery(function(){'
-						. 'jQuery("#sc_payment_form").submit();'
+			'<noscript>'
+				. '<input type="submit" class="button-alt" id="submit_sc_payment_form" value="' 
+					. esc_html__('Pay via ' . SC_GATEWAY_TITLE, 'sc') . '" /><a class="button cancel" href="'
+					. esc_url($order->get_cancel_order_url()) . '">'
+					. esc_html__('Cancel order &amp; restore cart', 'sc') . '</a>'
+			. '</noscript>'
+			. '<script type="text/javascript">'
+				. 'jQuery(function(){'
+					. 'jQuery("#sc_payment_form").submit();'
 
-						. 'if(jQuery("#i_frame").length > 0) {'
-							. 'jQuery("#i_frame")[0].scrollIntoView();'
-						. '}'
-					. '});'
-				. '</script>'
-			. '</form>';
+					. 'if(jQuery("#i_frame").length > 0) {'
+						. 'jQuery("#i_frame")[0].scrollIntoView();'
+					. '}'
+				. '});'
+			. '</script>'
+		. '</form>';
 
 		if ('yes' === $this->cashier_in_iframe) {
 			echo '<iframe id="i_frame" name="i_frame" onLoad=""; style="width: 100%; height: 1000px;"></iframe>';
 		}
-
-		//	echo wp_kses_post($html);
-		wp_die();
 	}
 	
 		/**
@@ -676,7 +670,7 @@ class WC_SC extends WC_Payment_Gateway {
 						'order-pay' => $order_id,
 						'key' => $this->get_order_data($order, 'order_key')
 					),
-					wc_get_page_permalink('pay')
+					$order->get_checkout_order_received_url()
 				)
 			);
 		}
@@ -950,7 +944,7 @@ class WC_SC extends WC_Payment_Gateway {
 								'key' => $this->get_order_data($order, 'order_key'),
 								'redirectUrl' => 1
 							),
-							wc_get_page_permalink('pay')
+							$order->get_checkout_order_received_url()
 						)
 					);
 
@@ -1007,7 +1001,7 @@ class WC_SC extends WC_Payment_Gateway {
 							'key' => $this->get_order_data($order, 'order_key'),
 							'redirectURL' => 1,
 						),
-						wc_get_page_permalink('pay')
+						$order->get_checkout_order_received_url()
 					)
 				);
 			}

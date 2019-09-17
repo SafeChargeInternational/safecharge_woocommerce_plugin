@@ -119,38 +119,6 @@ class SC_Versions_Resolver {
 	}
 	
 	/**
-	 * Function get_page_id
-	 * Get permalink, by page name
-	 *
-	 * @param string $page
-	 * @return string|false
-	 *
-	 * @deprecated
-	 */
-	public static function get_page_id( $page) {
-		return wc_get_page_permalink($page);
-	}
-	
-	/**
-	 * Function get_redirect_url
-	 * Get the redirect url for an order
-	 *
-	 * @param WC_Order $order
-	 * @return string
-	 *
-	 * @deprecated
-	 */
-	public static function get_redirect_url( $order) {
-		return add_query_arg(
-			array(
-				'order-pay' => self::get_order_data($order, 'id'),
-				'key' => self::get_order_data($order, 'order_key')
-			),
-			self::get_page_id('pay')
-		);
-	}
-	
-	/**
 	 * Function get_client_country
 	 *
 	 * @param WC_Customer $client
