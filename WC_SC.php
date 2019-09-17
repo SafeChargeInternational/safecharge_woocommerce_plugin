@@ -50,6 +50,8 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->rewrite_dmn      = @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
 		$this->webMasterId     .= WOOCOMMERCE_VERSION;
 		
+		$_SESSION['SC_Variables']['sc_create_logs'] = $this->save_logs;
+		
 		$this->use_wpml_thanks_page =
 			@$this->settings['use_wpml_thanks_page'] ? $this->settings['use_wpml_thanks_page'] : 'no';
 		$this->cashier_in_iframe    =
@@ -1786,10 +1788,10 @@ class WC_SC extends WC_Payment_Gateway {
 		} catch (Exception $ex) {
 			SC_HELPER::create_log($ex->getMessage(), 'Create void exception:');
 			
-			wp_send_json( json_encode(array(
+			wp_send_json( array(
 				'status' => 0,
 				'msg' => __('Unexpexted error during the ' . $action . ':', 'sc'
-			))) );
+			)) );
 			wp_die();
 		}
 		
@@ -1802,7 +1804,7 @@ class WC_SC extends WC_Payment_Gateway {
 			$ord_status = 0;
 		}
 
-		wp_send_json(json_encode(array('status' => $ord_status, 'data' => $resp)));
+		wp_send_json(array('status' => $ord_status, 'data' => $resp));
 		wp_die();
 	}
 	
@@ -1842,7 +1844,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$oo_params['checksum'] = hash(
 			$this->hash_type,
 			$this->merchantId . $this->merchantSiteId . $oo_params['clientRequestId']
-				. $amount . $oo_params['currency'] . $time . $wc_sc->secret
+				. $amount . $oo_params['currency'] . $time . $this->secret
 		);
 
 		$resp = SC_HELPER::call_rest_api($oo_endpoint_url, $oo_params);
@@ -1851,10 +1853,10 @@ class WC_SC extends WC_Payment_Gateway {
 			empty($resp['status']) || empty($resp['sessionToken'])
 			|| 'SUCCESS' != $resp['status']
 		) {
-			wp_send_json(json_encode(array(
+			wp_send_json(array(
 				'status' => 0,
 				'callResp' => $resp
-			)));
+			));
 			wp_die();
 		}
 		# Open Order END
@@ -1874,7 +1876,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$apms_params['checksum'] = hash(
 			$this->hash_type,
 			$this->merchantId . $this->merchantSiteId . $apms_params['clientRequestId']
-				. $time . $wc_sc->secret
+				. $time . $this->secret
 		);
 
 		$endpoint_url = 'yes' == $this->test
@@ -1883,12 +1885,10 @@ class WC_SC extends WC_Payment_Gateway {
 		$apms_data = SC_HELPER::call_rest_api($endpoint_url, $apms_params);
 
 		if (!is_array($apms_data) || empty($apms_data['paymentMethods'])) {
-			SC_HELPER::create_log($apms_data, 'getting APMs error: ');
-
-			wp_send_json(json_encode(array(
+			wp_send_json(array(
 				'status' => 0,
 				'apmsData' => $apms_data
-			)));
+			));
 			wp_die();
 		}
 
@@ -1963,7 +1963,7 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		# get UPOs END
 
-		wp_send_json(json_encode(array(
+		wp_send_json(array(
 			'status'            => 1,
 			'testEnv'           => $this->test,
 			'merchantSiteId'    => $this->merchantSiteId,
@@ -1976,7 +1976,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'paymentMethods'    => $payment_methods,
 				'icons'             => $icons
 			)
-		)));
+		));
 
 		wp_die();
 	}

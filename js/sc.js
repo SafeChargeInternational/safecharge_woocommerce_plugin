@@ -220,8 +220,9 @@ function getAPMs() {
                     return;
                 }
         
-                console.log('user country: ' + jQuery("#billing_country").val());
-                
+                console.log(resp)
+                console.log(resp.status)
+        
                 // if resp.status == 2 the user use Cashier
                 if(
                     typeof resp != 'undefined'

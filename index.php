@@ -142,10 +142,10 @@ function sc_ajax_action() {
 			$msg = 'You are using Cashier API. APMs are not available with it.';
 		}
 
-		wp_send_json(json_encode(array(
+		wp_send_json(array(
 			'status'    => 2,
 			'msg'       =>  $msg
-		)));
+		));
 		wp_die();
 	}
 }
