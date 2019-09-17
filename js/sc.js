@@ -30,6 +30,11 @@ var scOrderAmount, scOrderCurr, scMerchantId, scMerchantSiteId, scOpenOrderToken
   * When click save on modal, check for mandatory fields and validate them.
   */
 function scValidateAPMFields() {
+    if('sc' != jQuery('input[name="payment_method"]:checked').val()) {
+        jQuery('form.woocommerce-checkout').submit();
+        return;
+    }
+    
     jQuery('#payment').append('<div id="custom_loader" class="blockUI"></div>');
     jQuery('#custom_loader').show();
     
@@ -219,9 +224,6 @@ function getAPMs() {
                     alert('Error when try to get the Payment Methods. Please try again later or use different Payment Option!');
                     return;
                 }
-        
-                console.log(resp)
-                console.log(resp.status)
         
                 // if resp.status == 2 the user use Cashier
                 if(
@@ -607,49 +609,6 @@ function settleAndCancelOrder(question, action, orderId) {
  }
  
 /**
- * Function enableDisableSCCheckout
- * Enable or disable SC Checkout
- * 
- * @param {string} action - disable|enable
- */
-function enableDisableSCCheckout(action) {
-    // add another loader
-    if(jQuery('#custom_loader_2').length == 0) {
-        jQuery('.wc_payment_methods ').append(
-            '<div style="width: 100%; height: 100%;position: absolute; top: 0px;opacity:'
-            +' 0.7; z-index: 3; background: white;"><div id="custom_loader_2" class="blockUI blockOverlay"></div></div>');
-    }
-    else {
-        jQuery('#custom_loader_2').parent('div').show();
-    }
-    
-//    jQuery.ajax({
-//        type: "POST",
-//        url: scAjax.ajaxurl,
-//        data: {
-//            action                  : 'sc-ajax-action',
-//            enableDisableSCCheckout : action,
-//            security                : scAjax.security
-//        },
-//        dataType: 'json'
-//    })
-//        .done(function(resp) {
-//            // go to DMN page to change order status
-//            if(typeof resp != 'undefined' && typeof resp.status != 'undefined' && resp.status == 1) {
-                if(jQuery('#sc_apms_list').length == 0) {
-                    jQuery('#place_order').prop('disabled', true);
-                    getAPMs();
-                }
-//            }
-//            else {
-//                alert('Error try to get a response.');
-//            }
-            
-            jQuery('#custom_loader_2').parent('div').hide();
-//        });
-}
-
-/**
  * Function returnSCSettleBtn
  * Returns the SC Settle button
  */
@@ -677,6 +636,24 @@ jQuery(function() {
         }
     };
     
+    // Prepare REST payment
+    if(jQuery('#custom_loader_2').length == 0) {
+        jQuery('.wc_payment_methods ').append(
+            '<div style="width: 100%; height: 100%;position: absolute; top: 0px;opacity:'
+            +' 0.7; z-index: 3; background: white;"><div id="custom_loader_2" class="blockUI blockOverlay"></div></div>');
+    }
+    else {
+        jQuery('#custom_loader_2').parent('div').show();
+    }
+    
+    if(jQuery('#sc_apms_list').length == 0) {
+        jQuery('#place_order').prop('disabled', true);
+        getAPMs();
+    }
+
+    jQuery('#custom_loader_2').parent('div').hide();
+    // Prepare REST payment END
+    
     // listener for the iFrane
     window.addEventListener('message', function(event) {
         if(window.location.origin === event.origin && event.data.scAction === 'scRedirect') {
@@ -690,17 +667,8 @@ jQuery(function() {
     
     // if user change the billing country get new payment methods
     jQuery("#billing_country").on('change', function() {
+        console.log('on billing_country on change')
         getAPMs();
-    });
-    
-    // enable or disable SC checkout
-    if(jQuery('input[name="payment_method"]').length > 0) {
-        enableDisableSCCheckout(jQuery('input[name="payment_method"]:checked').val() == 'sc' ? 'enable' : 'disable');
-    }
-    
-    // when we change selected paymenth method (the radio buttons)
-    jQuery('form.woocommerce-checkout').on('change', 'input[name="payment_method"]', function(){
-        enableDisableSCCheckout(jQuery(this).val() == 'sc' ? 'enable' : 'disable');
     });
     
     // when click on APM payment method

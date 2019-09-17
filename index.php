@@ -333,7 +333,8 @@ function sc_iframe_redirect() {
 					. 'scUrl: scNewUrl'
 				. '}, window.location.origin);'
 			. '</script>';
-		exit;
+		
+		wp_die();
 	}
 }
 
