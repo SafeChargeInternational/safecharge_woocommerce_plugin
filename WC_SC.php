@@ -59,75 +59,10 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		$this->init_form_fields();
 		
-		# set session variables for REST API, according REST variables names
-		//      $_SESSION['SC_Variables']['merchantId']      = $this->merchantId;
-		//      $_SESSION['SC_Variables']['merchantSiteId']  = $this->merchantSiteId;
-		//      $_SESSION['SC_Variables']['currencyCode']    = get_woocommerce_currency();
-		//      $_SESSION['SC_Variables']['languageCode']    = $this->formatLocation(get_locale());
-		//      $_SESSION['SC_Variables']['transactionType'] = $this->transaction_type;
-		//      $_SESSION['SC_Variables']['test']            = $this->test;
-		//      $_SESSION['SC_Variables']['rewrite_dmn']     = $this->rewrite_dmn;
-		//      $_SESSION['SC_Variables']['sc_create_logs']  = $this->save_logs;
-		//      $_SESSION['SC_Variables']['notify_url']      = $this->set_notify_url();
-		
-		// prepare the data for the UPOs
-		//      if (is_user_logged_in()) {
-		//          $_SESSION['SC_Variables']['upos_data']['userTokenId'] =
-		//              @wp_get_current_user()->data->user_email;
-		//          
-		//          $_SESSION['SC_Variables']['upos_data']['clientRequestId'] = uniqid();
-		//          $_SESSION['SC_Variables']['upos_data']['timestamp']       = date('YmdHis', time());
-		//          
-		//          $_SESSION['SC_Variables']['upos_data']['checksum'] =
-		//              @hash(
-		//                  $this->hash_type,
-		//                  $this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['upos_data']['userTokenId']
-		//                      . $_SESSION['SC_Variables']['upos_data']['clientRequestId']
-		//                      . $_SESSION['SC_Variables']['upos_data']['timestamp']
-		//                      . $this->secret
-		//              );
-		//      }
-		
-		//      $_SESSION['SC_Variables']['sc_country'] = SC_Versions_Resolver::get_client_country(new WC_Customer());
-		//      if (get_post('billing_country')) {
-		//          $_SESSION['SC_Variables']['sc_country'] = get_post('billing_country');
-		//      }
-		
-		# Client Request ID 1 and Checksum 1 for Session Token 1
-		// client request id 1
-		//      $time                             = date('YmdHis', time());
-		//      $_SESSION['SC_Variables']['cri1'] = $time . '_' . uniqid();
-		
-		// checksum 1 - checksum for session token
-		//      $_SESSION['SC_Variables']['cs1'] = hash(
-		//          $this->hash_type,
-		//          $this->merchantId . $this->merchantSiteId
-		//              . $_SESSION['SC_Variables']['cri1'] . $time . $this->secret
-		//      );
-		# Client Request ID 1 and Checksum 1 END
-		
-		# Client Request ID 2 and Checksum 2 to get AMPs
-		// client request id 2
-		//      $time                             = date('YmdHis', time());
-		//      $_SESSION['SC_Variables']['cri2'] = $time . '_' . uniqid();
-		
-		// checksum 2 - checksum for get apms
-		$time = date('YmdHis', time());
-		//      $_SESSION['SC_Variables']['cs2'] = hash(
-		//          $this->hash_type,
-		//          $this->merchantId . $this->merchantSiteId
-		//              . $_SESSION['SC_Variables']['cri2'] . $time . $this->secret
-		//      );
-		# set session variables for future use END
-		
 		$this->msg['message'] = '';
 		$this->msg['class']   = '';
 		
-		//    echo '<pre>' . print_r($this, true) . '</pre>';
-
 		SC_Versions_Resolver::process_admin_options($this);
-		
-		//	add_action('woocommerce_checkout_process', array($this, 'sc_checkout_process'));
 		
 		/* Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
 		we check in the method is this order made via SC paygate */
@@ -1787,29 +1722,263 @@ class WC_SC extends WC_Payment_Gateway {
 			return;
 		}
 		
-		$_SESSION['SC_Variables']['other_urls'] = $this->get_return_url(); // put this in _construct and site will crash :)
-		$cart_totals                            = $woocommerce->cart->get_totals();
+		$cart_totals = $woocommerce->cart->get_totals();
 		
-		//      $checksum = hash(
-		//              $this->hash_type,
-		//              $this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['cri1']
-		//                  . $cart_totals['total'] . $_SESSION['SC_Variables']['currencyCode']
-		//                  . current(explode('_', $_SESSION['SC_Variables']['cri1']))
-		//                  . $this->secret
-		//          );
-		
-		//          SC_HELPER::create_log($this->merchantId . $this->merchantSiteId . $_SESSION['SC_Variables']['cri1']
-		//                  . $cart_totals['total'] . $_SESSION['SC_Variables']['currencyCode']
-		//                  . current(explode('_', $_SESSION['SC_Variables']['cri1']))
-		//                  . $this->secret, 'cs string: ');
-		//          
-		//              SC_HELPER::create_log($checksum, 'the checksum: ');
-			
 		echo 
 			'<script type="text/javascript">'
 				. 'scOrderAmount    = "' . esc_html($cart_totals['total']) . '"; '
 			. '</script>'
 		;
+	}
+	
+	/**
+	 * Function create_void
+	 * 
+	 * @param int $order_id
+	 * @param string $amount
+	 * @param string $action
+	 */
+	public function create_settle_void( $order_id, $amount, $action) {
+		$ord_status = 1;
+		$time		= date('YmdHis');
+		
+		if ('settle' == $action) {
+			$url = 'no' == $_SESSION['SC_Variables']['test'] ? SC_LIVE_SETTLE_URL : SC_TEST_SETTLE_URL;
+		} else {
+			$url = 'no' == $this->test ? SC_LIVE_VOID_URL : SC_TEST_VOID_URL;
+		}
+		
+		try {
+			$order = new WC_Order($order_id);
+			
+			$order_meta_data = array(
+				'order_tr_id'   => $order->get_meta(SC_GW_TRANS_ID_KEY),
+				'auth_code'     => $order->get_meta(SC_AUTH_CODE_KEY),
+			);
+			
+			$params = array(
+				'merchantId'			=> $this->merchantId,
+				'merchantSiteId'		=> $this->merchantSiteId,
+				'clientRequestId'		=> $time . '_' . uniqid(),
+				'clientUniqueId'		=> $order_id,
+				'amount'				=> $amount,
+				'currency'				=> get_woocommerce_currency(),
+				'relatedTransactionId'	=> $order_meta_data['order_tr_id'],
+				'authCode'				=> $order_meta_data['auth_code'],
+				'urlDetails'			=> array(
+					'notificationUrl'   => $this->set_notify_url(),
+				),
+				'timeStamp'				=> $time,
+				'checksum'				=> '',
+				'webMasterId'			=> $this->webMasterId,
+			);
+
+			$params['checksum'] = hash(
+				$this->hash_type,
+				$params['merchantId'] . $params['merchantSiteId'] . $params['clientRequestId']
+					. $params['clientUniqueId'] . $params['amount'] . $params['currency']
+					. $params['relatedTransactionId'] . $params['authCode']
+					. $params['urlDetails']['notificationUrl'] . $params['timeStamp']
+					. $this->secret
+			);
+
+			$resp = SC_HELPER::call_rest_api($url, $params);
+		} catch (Exception $ex) {
+			SC_HELPER::create_log($ex->getMessage(), 'Create void exception:');
+			
+			wp_send_json( json_encode(array(
+				'status' => 0,
+				'msg' => __('Unexpexted error during the ' . $action . ':', 'sc'
+			))) );
+			wp_die();
+		}
+		
+		if (
+			!$resp || !is_array($resp)
+			|| 'ERROR' == @$resp['status']
+			|| 'ERROR' == @$resp['transactionStatus']
+			|| 'DECLINED' == @$resp['transactionStatus']
+		) {
+			$ord_status = 0;
+		}
+
+		wp_send_json(json_encode(array('status' => $ord_status, 'data' => $resp)));
+		wp_die();
+	}
+	
+	/**
+	 * Function prepare_rest_payment
+	 * 
+	 * @param string $amount
+	 * @param string $user_mail
+	 * @param string $country
+	 */
+	public function prepare_rest_payment( $amount, $user_mail, $country) {
+		$time = date('YmdHis');
+		
+		$oo_endpoint_url = 'yes' == $this->test
+			? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
+
+		$oo_params = array(
+			'merchantId'        => $this->merchantId,
+			'merchantSiteId'    => $this->merchantSiteId,
+			'clientRequestId'   => $time . '_' . uniqid(),
+			'amount'            => $amount,
+			'currency'          => get_woocommerce_currency(),
+			'timeStamp'         => $time,
+			'urlDetails'        => array(
+				'successUrl'        => $this->get_return_url(),
+				'failureUrl'        => $this->get_return_url(),
+				'pendingUrl'        => $this->get_return_url(),
+				'notificationUrl'   => $this->set_notify_url(),
+			),
+			'deviceDetails'     => SC_HELPER::get_device_details(),
+			'userTokenId'       => $user_mail,
+			'billingAddress'    => array(
+				'country' => $country,
+			),
+		);
+
+		$oo_params['checksum'] = hash(
+			$this->hash_type,
+			$this->merchantId . $this->merchantSiteId . $oo_params['clientRequestId']
+				. $amount . $oo_params['currency'] . $time . $wc_sc->secret
+		);
+
+		$resp = SC_HELPER::call_rest_api($oo_endpoint_url, $oo_params);
+
+		if (
+			empty($resp['status']) || empty($resp['sessionToken'])
+			|| 'SUCCESS' != $resp['status']
+		) {
+			wp_send_json(json_encode(array(
+				'status' => 0,
+				'callResp' => $resp
+			)));
+			wp_die();
+		}
+		# Open Order END
+
+		# get APMs
+		$apms_params = array(
+			'merchantId'        => $this->merchantId,
+			'merchantSiteId'    => $this->merchantSiteId,
+			'clientRequestId'   => $time . '_' . uniqid(),
+			'timeStamp'         => $time,
+			'sessionToken'      => $resp['sessionToken'],
+			'currencyCode'      => get_woocommerce_currency(),
+			'countryCode'       => $country,
+			'languageCode'      => $this->formatLocation(get_locale()),
+		);
+		
+		$apms_params['checksum'] = hash(
+			$this->hash_type,
+			$this->merchantId . $this->merchantSiteId . $apms_params['clientRequestId']
+				. $time . $wc_sc->secret
+		);
+
+		$endpoint_url = 'yes' == $this->test
+			? SC_TEST_REST_PAYMENT_METHODS_URL : SC_LIVE_REST_PAYMENT_METHODS_URL;
+
+		$apms_data = SC_HELPER::call_rest_api($endpoint_url, $apms_params);
+
+		if (!is_array($apms_data) || empty($apms_data['paymentMethods'])) {
+			SC_HELPER::create_log($apms_data, 'getting APMs error: ');
+
+			wp_send_json(json_encode(array(
+				'status' => 0,
+				'apmsData' => $apms_data
+			)));
+			wp_die();
+		}
+
+		// set template data with the payment methods
+		$payment_methods = $apms_data['paymentMethods'];
+		# get APMs END
+
+		# get UPOs
+		$upos  = array();
+		$icons = array();
+		
+		if (is_user_logged_in()) {
+			$endpoint_url = 'yes' == $this->test
+				? SC_TEST_USER_UPOS_URL : SC_LIVE_USER_UPOS_URL;
+
+			$upos_params = array(
+				'merchantId'        => $this->merchantId,
+				'merchantSiteId'    => $this->merchantSiteId,
+				'userTokenId'       => @wp_get_current_user()->data->user_email,
+				'clientRequestId'   => uniqid(),
+				'timeStamp'         => $time,
+			);
+			
+			$upos_params['checksum'] =
+				hash(
+					$this->hash_type,
+					$this->merchantId . $this->merchantSiteId . $upos_params['userTokenId']
+						. $upos_params['clientRequestId'] . $time . $this->secret
+				);
+
+			$upos_data = SC_HELPER::call_rest_api($endpoint_url, $upos_params);
+
+			if (!empty($upos_data['paymentMethods'])) {
+				foreach ($upos_data['paymentMethods'] as $upo_key => $upo) {
+					if (
+						'enabled' != @$upo['upoStatus']
+						|| ( isset($upo['upoData']['ccCardNumber'])
+							&& empty($upo['upoData']['ccCardNumber']) )
+						|| ( isset($upo['expiryDate'])
+							&& strtotime($upo['expiryDate']) < strtotime(date('Ymd')) )
+					) {
+						continue;
+					}
+
+					// search in payment methods
+					foreach ($payment_methods as $pm) {
+						if (
+							isset($upo['paymentMethodName'], $pm['paymentMethod'])
+							&& $upo['paymentMethodName'] == $pm['paymentMethod']
+						) {
+							if (
+								in_array(@$upo['paymentMethodName'], array('cc_card', 'dc_card'))
+								&& @$upo['upoData']['brand'] && @$pm['logoURL']
+							) {
+								$icons[@$upo['upoData']['brand']] = str_replace(
+									'default_cc_card',
+									$upo['upoData']['brand'],
+									$pm['logoURL']
+								);
+							} elseif (@$pm['logoURL']) {
+								$icons[$pm['paymentMethod']] = $pm['logoURL'];
+							}
+
+							$upos[] = $upo;
+							break;
+						}
+					}
+				}
+			} else {
+				SC_HELPER::create_log($upos_data, '$upos_data:');
+			}
+		}
+		# get UPOs END
+
+		wp_send_json(json_encode(array(
+			'status'            => 1,
+			'testEnv'           => $this->test,
+			'merchantSiteId'    => $this->merchantSiteId,
+			'merchantId'        => $this->merchantId,
+			'langCode'          => $this->formatLocation(get_locale()),
+			'sessionToken'      => $resp['sessionToken'],
+			'currency'          => get_woocommerce_currency(),
+			'data'              => array(
+				'upos'              => $upos,
+				'paymentMethods'    => $payment_methods,
+				'icons'             => $icons
+			)
+		)));
+
+		wp_die();
 	}
 	
 	/**
