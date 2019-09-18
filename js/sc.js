@@ -501,6 +501,15 @@ function print_apms_options(upos, apms) {
         .promise()
         .done(function(){
             // create the Fields
+    
+//            fontSize: '15px'
+//            ,fontFamily: 'sans-serif'
+//            ,color: '#43454b'
+//            ,fontSmoothing: 'antialiased'
+//            ,'::placeholder': {
+//                color: '#52545A'
+//            }
+    
             scCard = scFields.create('card', {
                 iconStyle: 'solid',
                 style: {
@@ -508,14 +517,14 @@ function print_apms_options(upos, apms) {
                         iconColor: "#c4f0ff",
                         color: "#000",
                         fontWeight: 500,
-                        fontFamily: "Roboto, Open Sans, Segoe UI, sans-serif",
-                        fontSize: '15px',
+                        fontFamily: "sans-serif, Roboto, Open Sans, Segoe UI",
+                        fontSize: '16px',
                         fontSmoothing: "antialiased",
                         ":-webkit-autofill": {
                             color: "#fce883"
                         },
                         "::placeholder": {
-                            color: "grey" 
+                            color: "#52545A" 
                         }
                     },
                     invalid: {

@@ -677,11 +677,10 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		# when use REST - call the API
 		// when we have Approved from the SDK we complete the order here
-		if (in_array($this->get_param('sc_transaction_id'), array('cc_card', 'dc_card'), true)) {
-			// If we get Transaction ID save it as meta-data
-			if (!empty($resp['transactionId'])) {
-				$order->update_meta_data(SC_GW_TRANS_ID_KEY, $resp['transactionId'], 0);
-			}
+		$sc_transaction_id = filter_input(INPUT_POST, 'sc_transaction_id', FILTER_SANITIZE_STRING);
+		
+		if ($sc_transaction_id) {
+			$order->update_meta_data(SC_GW_TRANS_ID_KEY, sanitize_text_field($sc_transaction_id, 0));
 			
 			return array(
 				'result'    => 'success',
@@ -689,6 +688,7 @@ class WC_SC extends WC_Payment_Gateway {
 			);
 		}
 		
+		// if we use UPO or APM
 		$time           = date('Ymdhis');
 		$endpoint_url   = '';
 		$is_apm_payment = false;

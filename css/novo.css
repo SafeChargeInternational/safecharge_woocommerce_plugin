@@ -171,3 +171,10 @@ form.woocommerce-checkout #payment.woocommerce-checkout-payment {
     bottom: 1.3rem;
     top: 5px;
 }
+
+/* for the 3DS modal */
+.sfcModal-dialog {
+    width: 50%;
+    margin: 0 auto;
+    margin-top: 10%;
+}
