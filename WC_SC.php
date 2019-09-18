@@ -606,11 +606,13 @@ class WC_SC extends WC_Payment_Gateway {
 		// some corrections
 		$_SESSION['SC_P3D_Params']['transactionType'] = $this->transaction_type;
 		
-		if (isset($_REQUEST['PaRes']) && sanitize_text_field($_REQUEST['PaRes'])) {
-			$_SESSION['SC_P3D_Params']['paResponse'] = sanitize_text_field($_REQUEST['PaRes']);
+		$PaRes = $this->get_param('PaRes');
+		
+		if ($PaRes) {
+			$_SESSION['SC_P3D_Params']['paResponse'] = $PaRes;
 		}
 		$p3d_resp = SC_HELPER::call_rest_api(
-			'yes' == @$_SESSION['SC_Variables']['test'] ? SC_TEST_P3D_URL : SC_LIVE_P3D_URL
+			'yes' == $this->test ? SC_TEST_P3D_URL : SC_LIVE_P3D_URL
 			, @$_SESSION['SC_P3D_Params']
 		);
 		
@@ -731,14 +733,20 @@ class WC_SC extends WC_Payment_Gateway {
 				'totalTax'          => '0.00',
 			),
 			'shippingAddress'   => array(
-				'firstName'         => urlencode(preg_replace('/[[:punct:]]/', '', get_post('shipping_first_name'))),
-				'lastName'          => urlencode(preg_replace('/[[:punct:]]/', '', get_post('shipping_last_name'))),
-				'address'           => urlencode(preg_replace('/[[:punct:]]/', '', get_post('shipping_address_1'))),
+				'firstName'         => urlencode(preg_replace('/[[:punct:]]/', '', 
+					filter_input(INPUT_POST, 'shipping_first_name', FILTER_SANITIZE_STRING))),
+				'lastName'          => urlencode(preg_replace('/[[:punct:]]/', '', 
+					filter_input(INPUT_POST, 'shipping_last_name', FILTER_SANITIZE_STRING))),
+				'address'           => urlencode(preg_replace('/[[:punct:]]/', '', 
+					filter_input(INPUT_POST, 'shipping_address_1', FILTER_SANITIZE_STRING))),
 				'cell'              => '',
 				'phone'             => '',
-				'zip'               => urlencode(preg_replace('/[[:punct:]]/', '', get_post('shipping_postcode'))),
-				'city'              => urlencode(preg_replace('/[[:punct:]]/', '', get_post('shipping_city'))),
-				'country'           => urlencode(preg_replace('/[[:punct:]]/', '', get_post('shipping_country'))),
+				'zip'               => urlencode(preg_replace('/[[:punct:]]/', '', 
+					filter_input(INPUT_POST, 'shipping_postcode', FILTER_SANITIZE_STRING))),
+				'city'              => urlencode(preg_replace('/[[:punct:]]/', '', 
+					filter_input(INPUT_POST, 'shipping_city', FILTER_SANITIZE_STRING))),
+				'country'           => urlencode(preg_replace('/[[:punct:]]/', '', 
+					filter_input(INPUT_POST, 'shipping_country', FILTER_SANITIZE_STRING))),
 				'state'             => '',
 				'email'             => '',
 				'shippingCounty'    => '',
@@ -756,7 +764,7 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		// for the session token
-		if (!$params['sessionToken']) {
+		if (empty($params['sessionToken'])) {
 			$st_endpoint_url = SC_TEST_SESSION_TOKEN_URL;
 			
 			if ('yes' !== $this->test) {
@@ -800,15 +808,22 @@ class WC_SC extends WC_Payment_Gateway {
 		// for the session token END
 		
 		$params['userDetails'] = array(
-			'firstName'         => urlencode(preg_replace('/[[:punct:]]/', '', get_post('billing_first_name'))),
-			'lastName'          => urlencode(preg_replace('/[[:punct:]]/', '', get_post('billing_last_name'))),
-			'address'           => urlencode(preg_replace('/[[:punct:]]/', '', get_post('billing_address_1'))),
-			'phone'             => urlencode(preg_replace('/[[:punct:]]/', '', get_post('billing_phone'))),
-			'zip'               => urlencode(preg_replace('/[[:punct:]]/', '', get_post('billing_postcode'))),
-			'city'              => urlencode(preg_replace('/[[:punct:]]/', '', get_post('billing_city'))),
-			'country'           => urlencode(preg_replace('/[[:punct:]]/', '', get_post('billing_country'))),
+			'firstName'         => urlencode(preg_replace('/[[:punct:]]/', '', 
+				filter_input(INPUT_POST, 'billing_first_name', FILTER_SANITIZE_STRING))),
+			'lastName'          => urlencode(preg_replace('/[[:punct:]]/', '', 
+				filter_input(INPUT_POST, 'billing_last_name', FILTER_SANITIZE_STRING))),
+			'address'           => urlencode(preg_replace('/[[:punct:]]/', '', 
+				filter_input(INPUT_POST, 'billing_address_1', FILTER_SANITIZE_STRING))),
+			'phone'             => urlencode(preg_replace('/[[:punct:]]/', '', 
+				filter_input(INPUT_POST, 'billing_phone', FILTER_SANITIZE_STRING))),
+			'zip'               => urlencode(preg_replace('/[[:punct:]]/', '', 
+				filter_input(INPUT_POST, 'billing_postcode', FILTER_SANITIZE_STRING))),
+			'city'              => urlencode(preg_replace('/[[:punct:]]/', '', 
+				filter_input(INPUT_POST, 'billing_city', FILTER_SANITIZE_STRING))),
+			'country'           => urlencode(preg_replace('/[[:punct:]]/', '', 
+				filter_input(INPUT_POST, 'billing_country', FILTER_SANITIZE_STRING))),
 			'state'             => '',
-			'email'             => get_post('billing_email'),
+			'email'             => filter_input(INPUT_POST, 'billing_email', FILTER_SANITIZE_STRING),
 			'county'            => '',
 		);
 		
@@ -841,11 +856,11 @@ class WC_SC extends WC_Payment_Gateway {
 		// in case of UPO
 		$sc_payment_method      = filter_input(INPUT_POST, 'sc_payment_method', FILTER_SANITIZE_STRING);
 		$upo_cvv_field          = filter_input(INPUT_POST, 'upo_cvv_field_' . $sc_payment_method, FILTER_SANITIZE_STRING);
-		$post_sc_payment_method = filter_input(INPUT_POST, $sc_payment_method, FILTER_SANITIZE_STRING);
+		$post_sc_payment_fields = filter_input(INPUT_POST, $sc_payment_method, FILTER_DEFAULT, FILTER_REQUIRE_ARRAY);
 		
 		SC_HELPER::create_log($sc_payment_method, '$sc_payment_method:');
 		SC_HELPER::create_log($upo_cvv_field, '$upo_cvv_field:');
-		SC_HELPER::create_log($post_sc_payment_method, '$post_sc_payment_method:');
+		SC_HELPER::create_log($post_sc_payment_fields, '$post_sc_payment_fields:');
 		
 		if (is_numeric($sc_payment_method) && $upo_cvv_field) {
 			$params['userPaymentOption'] = array(
@@ -854,22 +869,21 @@ class WC_SC extends WC_Payment_Gateway {
 			);
 			
 			$params['isDynamic3D'] = 1;
-			$endpoint_url          = 'no' === $this->test ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
+			$endpoint_url          = 'no' == $this->test ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
 		} elseif ($sc_payment_method) {
 			// in case of APM
 			$is_apm_payment          = true;
 			$params['paymentMethod'] = $sc_payment_method;
 			
 			//if (isset($_POST[$_POST['sc_payment_method']])) {
-			if ($post_sc_payment_method) {
+			if ($post_sc_payment_fields) {
 				//	$params['userAccountDetails'] = $_POST[$_POST['sc_payment_method']];
-				$params['userAccountDetails'] = $post_sc_payment_method;
+				$params['userAccountDetails'] = $post_sc_payment_fields;
 			}
 			
 			$endpoint_url = 'no' === $this->test ? SC_LIVE_PAYMENT_URL : SC_TEST_PAYMENT_URL;
 		}
 		
-		SC_HELPER::create_log('Try to create a payment with Payment Method:');
 		$resp = SC_HELPER::call_rest_api($endpoint_url, $params);
 		
 		if (!$resp) {
@@ -957,6 +971,9 @@ class WC_SC extends WC_Payment_Gateway {
 					
 					$_SESSION['SC_P3D_PaReq']  = !empty($resp['paRequest']) ? $resp['paRequest'] : '';
 					$_SESSION['SC_P3D_acsUrl'] = $resp['acsUrl'];
+					
+//					$params_p3d['SC_P3D_PaReq'] = !empty($resp['paRequest']) ? $resp['paRequest'] : '';
+//					$params_p3d['SC_P3D_acsUrl'] = $resp['acsUrl'];
 
 					// step 1 - go to acsUrl
 					return array(

@@ -73,7 +73,9 @@ function scValidateAPMFields() {
                     
                     if(resp.result == 'APPROVED' && resp.transactionId != 'undefined') {
                         jQuery('#sc_transaction_id').val(resp.transactionId);
-                        jQuery('form.woocommerce-checkout').submit();
+                        jQuery('#lst').val(resp.transactionId);
+                        
+                    jQuery('form.woocommerce-checkout').submit();
                     }
                     else if(resp.result == 'DECLINED') {
                         scFormFalse('Your Payment was DECLINED. Please try another payment method!');
@@ -436,6 +438,7 @@ function getAPMs() {
                     }
                     
                     html_apms += '<input type="hidden" name="sc_transaction_id" id="sc_transaction_id" value="" />';
+                    html_apms += '<input type="hidden" name="lst" id="lst" value="'+ resp.sessionToken +'" />';
                     
                     print_apms_options(html_upos, html_apms);
                     
