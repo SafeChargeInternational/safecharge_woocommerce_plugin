@@ -688,7 +688,7 @@ class WC_SC extends WC_Payment_Gateway {
 			//SC_HELPER::create_log($cache, 'cache file');
 			
 			if (file_exists($cache)) {
-				$params = json_decode(file_get_contents($cache), true);
+				$params                   = json_decode(file_get_contents($cache), true);
 				$params['clientUniqueId'] = $order_id;
 				
 				if (isset($params['wc-api'])) {
@@ -839,8 +839,8 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		// in case of UPO
-		$sc_payment_method	= filter_input(INPUT_POST, 'sc_payment_method', FILTER_SANITIZE_STRING);
-		$upo_cvv_field		= filter_input(INPUT_POST, 'upo_cvv_field_' . $sc_payment_method, FILTER_SANITIZE_STRING);
+		$sc_payment_method      = filter_input(INPUT_POST, 'sc_payment_method', FILTER_SANITIZE_STRING);
+		$upo_cvv_field          = filter_input(INPUT_POST, 'upo_cvv_field_' . $sc_payment_method, FILTER_SANITIZE_STRING);
 		$post_sc_payment_method = filter_input(INPUT_POST, $sc_payment_method, FILTER_SANITIZE_STRING);
 		
 		SC_HELPER::create_log($sc_payment_method, '$sc_payment_method:');
@@ -857,7 +857,7 @@ class WC_SC extends WC_Payment_Gateway {
 			$endpoint_url          = 'no' === $this->test ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
 		} elseif ($sc_payment_method) {
 			// in case of APM
-			$is_apm_payment = true;
+			$is_apm_payment          = true;
 			$params['paymentMethod'] = $sc_payment_method;
 			
 			//if (isset($_POST[$_POST['sc_payment_method']])) {
@@ -1063,18 +1063,18 @@ class WC_SC extends WC_Payment_Gateway {
 		$req_status = $this->get_request_status();
 		
 		// santitized get variables
-		$invoice_id        = $this->get_param('invoice_id');
-		$clientUniqueId    = $this->get_param('clientUniqueId');
-		$transactionType   = $this->get_param('transactionType');
-		$Reason            = $this->get_param('Reason');
-		$action            = $this->get_param('action');
-		$order_id          = $this->get_param('order_id');
-		$gwErrorReason     = $this->get_param('gwErrorReason');
-		$PaRes             = $this->get_param('PaRes');
-		$AuthCode          = $this->get_param('AuthCode');
-		$TransactionID     = $this->get_param('TransactionID');
+		$invoice_id      = $this->get_param('invoice_id');
+		$clientUniqueId  = $this->get_param('clientUniqueId');
+		$transactionType = $this->get_param('transactionType');
+		$Reason          = $this->get_param('Reason');
+		$action          = $this->get_param('action');
+		$order_id        = $this->get_param('order_id');
+		$gwErrorReason   = $this->get_param('gwErrorReason');
+		$PaRes           = $this->get_param('PaRes');
+		$AuthCode        = $this->get_param('AuthCode');
+		$TransactionID   = $this->get_param('TransactionID');
 		
-		if(empty($TransactionID)) {
+		if (empty($TransactionID)) {
 			SC_HELPER::create_log('The TransactionID is empty, stops here');
 			echo esc_html('DMN error - The TransactionID is empty!');
 			exit;
@@ -1113,8 +1113,7 @@ class WC_SC extends WC_Payment_Gateway {
 					SC_HELPER::create_log('DMN was saved to a cache file.');
 					exit;
 				}
-			}
-			else {
+			} else {
 				$order = new WC_Order($clientUniqueId);
 			}
 			
@@ -1516,8 +1515,8 @@ class WC_SC extends WC_Payment_Gateway {
 	 * @param object $refund_data
 	 */
 	public function create_refund_in_wc( $refund) {
-		$order_id	= $this->get_param('order_id');
-		$post_ID	= $this->get_param('post_ID');
+		$order_id = $this->get_param('order_id');
+		$post_ID  = $this->get_param('post_ID');
 		
 		if ('false' == $this->get_param('api_refund') || !$refund) {
 			return false;

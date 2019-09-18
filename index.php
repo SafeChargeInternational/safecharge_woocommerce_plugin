@@ -106,7 +106,7 @@ function sc_ajax_action() {
 	}
 
 	// Void (Cancel)
-	if (isset($_POST['cancelOrder'], $_POST['orderId']) && $_POST['cancelOrder']) {
+	if (!empty($_POST['cancelOrder']) && !empty($_POST['orderId'])) {
 		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'void');
 	}
 
@@ -363,26 +363,6 @@ function sc_add_buttons() {
 		$order_has_refund = $order->get_meta('_scHasRefund');
 		$notify_url       = $wc_sc->set_notify_url();
 		
-		// common data
-//		$_SESSION['SC_Variables'] = array(
-//			'merchantId'            => $wc_sc->settings['merchantId'],
-//			'merchantSiteId'        => $wc_sc->settings['merchantSiteId'],
-//			'clientRequestId'       => $time . '_' . $order_tr_id,
-//			'clientUniqueId'        => $order_id,
-//			'amount'                => $wc_sc->get_order_data($order, 'order_total'),
-//			'currency'              => get_woocommerce_currency(),
-//			'relatedTransactionId'  => $order_tr_id,
-//			'authCode'              => $order->get_meta(SC_AUTH_CODE_KEY),
-//			'timeStamp'             => $time,
-//			// optional fields for sc_ajax.php
-//			'test'                  => $wc_sc->settings['test'],
-//			'payment_api'           => 'rest',
-//			'save_logs'             => $wc_sc->settings['save_logs'],
-//			'urlDetails'            => array(
-//				'notificationUrl'       => $notify_url . '&clientRequestId=' . $order_id
-//			),
-//		);
-		
 		// Show VOID button
 		if ('1' != $order_has_refund && in_array($order_payment_method, array('cc_card', 'dc_card'))) {
 			echo 
@@ -405,23 +385,6 @@ function sc_add_buttons() {
 				. esc_html__('Settle', 'sc') . '</button>';
 		}
 		
-//		$checksum = hash(
-//			$wc_sc->settings['hash_type'],
-//			$wc_sc->settings['merchantId']
-//				. $wc_sc->settings['merchantSiteId']
-//				. $_SESSION['SC_Variables']['clientRequestId']
-//				. $_SESSION['SC_Variables']['clientUniqueId']
-//				. $_SESSION['SC_Variables']['amount']
-//				. $_SESSION['SC_Variables']['currency']
-//				. $_SESSION['SC_Variables']['relatedTransactionId']
-//				. $_SESSION['SC_Variables']['authCode']
-//				. $_SESSION['SC_Variables']['urlDetails']['notificationUrl']
-//				. $time
-//				. $wc_sc->settings['secret']
-//		);
-//
-//		$_SESSION['SC_Variables']['checksum'] = $checksum;
-
 		// add loading screen
 		echo '<div id="custom_loader" class="blockUI blockOverlay"></div>';
 	}
