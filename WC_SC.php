@@ -1286,7 +1286,7 @@ class WC_SC extends WC_Payment_Gateway {
 					$url .= '?Status=error';
 				}
 				
-				echo 
+				echo
 					'<script>'
 						. 'window.location.href = "' . esc_url($url) . '";'
 					. '</script>';
