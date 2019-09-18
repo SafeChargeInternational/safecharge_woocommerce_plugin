@@ -680,7 +680,30 @@ class WC_SC extends WC_Payment_Gateway {
 		$sc_transaction_id = filter_input(INPUT_POST, 'sc_transaction_id', FILTER_SANITIZE_STRING);
 		
 		if ($sc_transaction_id) {
-			$order->update_meta_data(SC_GW_TRANS_ID_KEY, sanitize_text_field($sc_transaction_id, 0));
+			$order->update_meta_data(SC_GW_TRANS_ID_KEY, $sc_transaction_id);
+			
+			$cache = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'tmp'
+				. DIRECTORY_SEPARATOR . $sc_transaction_id . '.txt';
+			
+			//SC_HELPER::create_log($cache, 'cache file');
+			
+			if (file_exists($cache)) {
+				$params = json_decode(file_get_contents($cache), true);
+				$params['clientUniqueId'] = $order_id;
+				
+				if (isset($params['wc-api'])) {
+					unset($params['wc-api']);
+				}
+				
+				$url = $this->set_notify_url() . '&' . http_build_query($params);
+				
+				SC_HELPER::create_log(
+					//$url,
+					'Internal DMN call'
+				);
+				
+				file_get_contents($url);
+			}
 			
 			return array(
 				'result'    => 'success',
@@ -816,28 +839,31 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		// in case of UPO
-		//if (isset($_POST['sc_payment_method']) && is_numeric($_POST['sc_payment_method'])) {
-		if (is_numeric(get_post('sc_payment_method'))) {
+		$sc_payment_method	= filter_input(INPUT_POST, 'sc_payment_method', FILTER_SANITIZE_STRING);
+		$upo_cvv_field		= filter_input(INPUT_POST, 'upo_cvv_field_' . $sc_payment_method, FILTER_SANITIZE_STRING);
+		$post_sc_payment_method = filter_input(INPUT_POST, $sc_payment_method, FILTER_SANITIZE_STRING);
+		
+		SC_HELPER::create_log($sc_payment_method, '$sc_payment_method:');
+		SC_HELPER::create_log($upo_cvv_field, '$upo_cvv_field:');
+		SC_HELPER::create_log($post_sc_payment_method, '$post_sc_payment_method:');
+		
+		if (is_numeric($sc_payment_method) && $upo_cvv_field) {
 			$params['userPaymentOption'] = array(
-				//'userPaymentOptionId'   => $_POST['sc_payment_method'],
-				'userPaymentOptionId'   => get_post('sc_payment_method'),
-				//'CVV'                   => @$_POST['upo_cvv_field_' . $_POST['sc_payment_method']],
-				'CVV'                   => get_post('upo_cvv_field_' . get_post('sc_payment_method')),
+				'userPaymentOptionId'   => $sc_payment_method,
+				'CVV'                   => $upo_cvv_field,
 			);
 			
 			$params['isDynamic3D'] = 1;
 			$endpoint_url          = 'no' === $this->test ? SC_LIVE_D3D_URL : SC_TEST_D3D_URL;
-		} elseif (get_post('sc_payment_method')) {
+		} elseif ($sc_payment_method) {
 			// in case of APM
-			//elseif (@$_POST['sc_payment_method']) {
 			$is_apm_payment = true;
-			//$params['paymentMethod'] = $_POST['sc_payment_method'];
-			$params['paymentMethod'] = get_post('sc_payment_method');
+			$params['paymentMethod'] = $sc_payment_method;
 			
 			//if (isset($_POST[$_POST['sc_payment_method']])) {
-			if (get_post(get_post('sc_payment_method'))) {
+			if ($post_sc_payment_method) {
 				//	$params['userAccountDetails'] = $_POST[$_POST['sc_payment_method']];
-				$params['userAccountDetails'] = get_post(get_post('sc_payment_method'));
+				$params['userAccountDetails'] = $post_sc_payment_method;
 			}
 			
 			$endpoint_url = 'no' === $this->test ? SC_LIVE_PAYMENT_URL : SC_TEST_PAYMENT_URL;
@@ -1031,7 +1057,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 * Process information from the DMNs.
 	 * We call this method form index.php
 	 */
-	public function process_dmns( $do_not_call_api = false) {
+	public function process_dmns( $params = array() ) {
 		SC_HELPER::create_log($_REQUEST, 'Receive DMN with params: ');
 		
 		$req_status = $this->get_request_status();
@@ -1045,6 +1071,14 @@ class WC_SC extends WC_Payment_Gateway {
 		$order_id          = $this->get_param('order_id');
 		$gwErrorReason     = $this->get_param('gwErrorReason');
 		$PaRes             = $this->get_param('PaRes');
+		$AuthCode          = $this->get_param('AuthCode');
+		$TransactionID     = $this->get_param('TransactionID');
+		
+		if(empty($TransactionID)) {
+			SC_HELPER::create_log('The TransactionID is empty, stops here');
+			echo esc_html('DMN error - The TransactionID is empty!');
+			exit;
+		}
 		
 		# Sale and Auth
 		if (
@@ -1052,7 +1086,6 @@ class WC_SC extends WC_Payment_Gateway {
 			&& $this->checkAdvancedCheckSum()
 		) {
 			SC_HELPER::create_log('A sale/auth.');
-			
 			
 			// Cashier
 			if (!empty($invoice_id)) {
@@ -1068,31 +1101,21 @@ class WC_SC extends WC_Payment_Gateway {
 					echo esc_html('DMN Exception: ' . $ex->getMessage());
 					exit;
 				}
-			} else {
 				// REST
-				SC_HELPER::create_log('REST sale.');
+			} elseif (empty($clientUniqueId) && empty($this->get_param('merchant_unique_id'))) {
+				// save cache file
+				$cache = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'tmp'
+					. DIRECTORY_SEPARATOR . $TransactionID . '.txt';
 				
-				try {
-					$order = current(wc_get_orders(array(
-						'limit'     => 1,
-						'orderby'   => 'date',
-						'order'     => 'DESC',
-						'meta_query' => array(
-							array(
-								'key' => SC_GW_TRANS_ID_KEY,
-								'compare' => '=',
-								'value'   => !empty($_REQUEST['TransactionID'])
-									? sanitize_text_field($_REQUEST['TransactionID']) : 'empty',
-							)
-						)
-					)));
-					
-					$order_id = $order->get_id();
-				} catch (Exception $ex) {
-					SC_HELPER::create_log($ex->getMessage(), 'REST DMN Exception when try to get the Order: ');
-					echo esc_html('DMN Exception: ' . $ex->getMessage());
+				if (!file_exists($cache)) {
+					file_put_contents($cache, json_encode($_REQUEST));
+
+					SC_HELPER::create_log('DMN was saved to a cache file.');
 					exit;
 				}
+			}
+			else {
+				$order = new WC_Order($clientUniqueId);
 			}
 			
 			try {
@@ -1102,6 +1125,14 @@ class WC_SC extends WC_Payment_Gateway {
 					SC_GW_P3D_RESP_TR_TYPE,
 					$transactionType
 				);
+				
+				// in case of WebSDK Chalenge
+				if (!$order->get_meta(SC_AUTH_CODE_KEY) && '' != $AuthCode) {
+					$order->update_meta_data(
+						SC_AUTH_CODE_KEY,
+						$AuthCode
+					);
+				}
 				
 				$this->save_update_order_numbers($order);
 				

@@ -72,8 +72,6 @@ function scValidateAPMFields() {
                     console.log(resp.result)
                     
                     if(resp.result == 'APPROVED' && resp.transactionId != 'undefined') {
-                        console.log(resp.dsTransID)
-
                         jQuery('#sc_transaction_id').val(resp.transactionId);
                         jQuery('form.woocommerce-checkout').submit();
                     }
@@ -501,15 +499,6 @@ function print_apms_options(upos, apms) {
         .promise()
         .done(function(){
             // create the Fields
-    
-//            fontSize: '15px'
-//            ,fontFamily: 'sans-serif'
-//            ,color: '#43454b'
-//            ,fontSmoothing: 'antialiased'
-//            ,'::placeholder': {
-//                color: '#52545A'
-//            }
-    
             scCard = scFields.create('card', {
                 iconStyle: 'solid',
                 style: {
