@@ -1286,11 +1286,10 @@ class WC_SC extends WC_Payment_Gateway {
 					$url .= '?Status=error';
 				}
 				
-				echo esc_js(
+				echo 
 					'<script>'
-						. 'window.location.href = "' . $url . '";'
-					. '</script>'
-				);
+						. 'window.location.href = "' . esc_url($url) . '";'
+					. '</script>';
 				
 				exit;
 			} elseif ( !empty($_REQUEST['merchantId']) && !empty($_REQUEST['merchantSiteId']) ) {
