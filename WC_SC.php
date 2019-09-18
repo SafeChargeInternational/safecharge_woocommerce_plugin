@@ -525,7 +525,7 @@ class WC_SC extends WC_Payment_Gateway {
 			$params['item_quantity_' . $i] = $item['qty'];
 
 			// this is the real price
-			$item_qty = intval($item['qty']);
+			$item_qty   = intval($item['qty']);
 			$item_price = $item['line_total'] / $item_qty;
 
 			$params['item_amount_' . $i] = number_format($item_price, 2, '.', '');
@@ -677,10 +677,7 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		# when use REST - call the API
 		// when we have Approved from the SDK we complete the order here
-		if (
-			!empty(get_query_var('sc_transaction_id', ''))
-			&& in_array(get_query_var('sc_payment_method', ''), array('cc_card', 'dc_card'), true)
-		) {
+		if (in_array($this->get_param('sc_transaction_id'), array('cc_card', 'dc_card'), true)) {
 			// If we get Transaction ID save it as meta-data
 			if (!empty($resp['transactionId'])) {
 				$order->update_meta_data(SC_GW_TRANS_ID_KEY, $resp['transactionId'], 0);
@@ -688,7 +685,7 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			return array(
 				'result'    => 'success',
-				'redirect'    => add_query_arg(array(), $this->get_return_url())
+				'redirect'  => add_query_arg(array(), $this->get_return_url())
 			);
 		}
 		
@@ -699,7 +696,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$params = array(
 			'merchantId'        => $this->merchantId,
 			'merchantSiteId'    => $this->merchantSiteId,
-			'userTokenId'       => get_query_var('billing_email', ''),
+			'userTokenId'       => $this->get_param('billing_email'),
 			'clientUniqueId'    => $order_id,
 			'clientRequestId'   => $time . '_' . uniqid(),
 			'currency'          => $order->get_currency(),
@@ -1035,14 +1032,23 @@ class WC_SC extends WC_Payment_Gateway {
 	 * We call this method form index.php
 	 */
 	public function process_dmns( $do_not_call_api = false) {
-		SC_HELPER::create_log($_GET, 'Receive DMN with params: ');
+		SC_HELPER::create_log($_REQUEST, 'Receive DMN with params: ');
 		
 		$req_status = $this->get_request_status();
-		$invoice_id = get_query_var('invoice_id', '');
+		
+		// santitized get variables
+		$invoice_id        = $this->get_param('invoice_id');
+		$clientUniqueId    = $this->get_param('clientUniqueId');
+		$transactionType   = $this->get_param('transactionType');
+		$Reason            = $this->get_param('Reason');
+		$action            = $this->get_param('action');
+		$order_id          = $this->get_param('order_id');
+		$gwErrorReason     = $this->get_param('gwErrorReason');
+		$PaRes             = $this->get_param('PaRes');
 		
 		# Sale and Auth
 		if (
-			in_array(get_query_var('transactionType', ''), array('Sale', 'Auth'), true)
+			in_array($transactionType, array('Sale', 'Auth'), true)
 			&& $this->checkAdvancedCheckSum()
 		) {
 			SC_HELPER::create_log('A sale/auth.');
@@ -1075,7 +1081,8 @@ class WC_SC extends WC_Payment_Gateway {
 							array(
 								'key' => SC_GW_TRANS_ID_KEY,
 								'compare' => '=',
-								'value'   => get_query_var('TransactionID', 'empty'),
+								'value'   => !empty($_REQUEST['TransactionID'])
+									? sanitize_text_field($_REQUEST['TransactionID']) : 'empty',
 							)
 						)
 					)));
@@ -1091,7 +1098,11 @@ class WC_SC extends WC_Payment_Gateway {
 			try {
 				$order_status = strtolower($order->get_status());
 				
-				$order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, get_query_var('transactionType', ''));
+				$order->update_meta_data(
+					SC_GW_P3D_RESP_TR_TYPE,
+					$transactionType
+				);
+				
 				$this->save_update_order_numbers($order);
 				
 				if ('completed' !== $order_status) {
@@ -1099,7 +1110,7 @@ class WC_SC extends WC_Payment_Gateway {
 						$order,
 						$arr[0],
 						$req_status,
-						get_query_var('transactionType', '')
+						$transactionType
 					);
 				}
 			} catch (Exception $ex) {
@@ -1119,17 +1130,17 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		# Void, Settle
 		if (
-			get_query_var('clientUniqueId', '') !== ''
-			&& ( in_array(get_query_var('transactionType', ''), array('Void', 'Settle'), true) )
+			'' != $clientUniqueId
+			&& ( in_array($transactionType, array('Void', 'Settle'), true) )
 			&& $this->checkAdvancedCheckSum()
 		) {
-			SC_HELPER::create_log(get_query_var('transactionType'));
+			SC_HELPER::create_log($transactionType);
 			
 			try {
-				$order_id = get_query_var('clientUniqueId');
+				$order_id = $clientUniqueId;
 				$order    = new WC_Order($order_id);
 				
-				if (get_query_var('transactionType', '') === 'Settle') {
+				if ('Settle' == $transactionType) {
 					$this->save_update_order_numbers($order);
 				}
 				
@@ -1137,7 +1148,7 @@ class WC_SC extends WC_Payment_Gateway {
 					$order,
 					$order_id,
 					$req_status,
-					get_query_var('transactionType', '')
+					$transactionType
 				);
 				
 			} catch (Exception $ex) {
@@ -1149,7 +1160,6 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			$msg = __('DMN for Order #' . $order_id . ', was received.', 'sc');
 			
-			$Reason = get_query_var('Reason', '');
 			if (!empty($Reason)) {
 				$msg .= ' ' . __($Reason . '.', 'sc');
 			}
@@ -1166,15 +1176,15 @@ class WC_SC extends WC_Payment_Gateway {
 		// when we refund form CPanel we get transactionType = Credit and Status = 'APPROVED'
 		if (
 			(
-				get_query_var('action', '') === 'refund'
-				|| in_array(get_query_var('transactionType', ''), array('Credit', 'Refund'), true)
+				'refund' == $action
+				|| in_array($transactionType, array('Credit', 'Refund'), true)
 			)
 			&& !empty($req_status)
 			&& $this->checkAdvancedCheckSum()
 		) {
 			SC_HELPER::create_log('Refund DMN.');
 			
-			$order = new WC_Order(get_query_var('order_id', null));
+			$order = new WC_Order($order_id);
 
 			if (!is_a($order, 'WC_Order')) {
 				SC_HELPER::create_log('DMN meassage: there is no Order!');
@@ -1191,19 +1201,19 @@ class WC_SC extends WC_Payment_Gateway {
 					'APPROVED',
 					'Credit',
 					array(
-						'resp_id'       => get_query_var('clientUniqueId', ''),
-						'totalAmount'   => get_query_var('totalAmount', '')
+						'resp_id'       => $clientUniqueId,
+						'totalAmount'   => $this->get_param('totalAmount')
 					)
 				);
-			} elseif (in_array (get_query_var('transactionStatus', ''), array('DECLINED', 'ERROR'), true)) {
-				$msg = 'DMN message: Your try to Refund #' . get_query_var('clientUniqueId', '')
+			} elseif (in_array ($this->get_param('transactionStatus'), array('DECLINED', 'ERROR'), true)) {
+				$msg = 'DMN message: Your try to Refund #' . $clientUniqueId
 					. ' faild with ERROR: "';
 
 				// in case DMN URL was rewrited all spaces were replaces with "_"
-				if (get_query_var('wc_sc_redirected', '') === 1) {
-					$msg .= str_replace('_', ' ', get_query_var('gwErrorReason', ''));
+				if (1 == $this->get_param('wc_sc_redirected')) {
+					$msg .= str_replace('_', ' ', $gwErrorReason);
 				} else {
-					$msg .= get_query_var('gwErrorReason', '');
+					$msg .= $gwErrorReason;
 				}
 
 				$msg .= '".';
@@ -1214,17 +1224,14 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			echo esc_html('DMN received - Refund.');
 			exit;
-		} elseif (get_query_var('action', '') === 'p3d') {
+		} elseif ('p3d' == $action) {
 			# D3D and P3D payment
 			// the idea here is to get $_REQUEST['paResponse'] and pass it to P3D
 			SC_HELPER::create_log('p3d.');
 			
 			// the DMN from case 1 - issuer/bank
-			if (
-				get_query_var('PaRes', false)
-				&& is_array(get_query_var('SC_P3D_Params', false))
-			) {
-				$_SESSION['SC_P3D_Params']['paResponse'] = get_query_var('PaRes', '');
+			if ( $PaRes && is_array($this->get_param('SC_P3D_Params')) ) {
+				$_SESSION['SC_P3D_Params']['paResponse'] = $PaRes;
 				$resp                                    = $this->pay_with_d3d_p3d();
 				$url                                     = $this->get_return_url();
 				
@@ -1239,21 +1246,17 @@ class WC_SC extends WC_Payment_Gateway {
 				);
 				
 				exit;
-			} elseif (
-				// the DMN from case 2 - p3d
-				get_query_var('merchantId', false)
-				&& get_query_var('merchantSiteId', false)
-			) {
+			} elseif ( !empty($_REQUEST['merchantId']) && !empty($_REQUEST['merchantSiteId']) ) {
+				 // the DMN from case 2 - p3d
 				// here we must unset $_SESSION['SC_P3D_Params'] as last step
 				try {
-					$clientUniqueId = get_query_var('clientUniqueId', false);
-					$order          = new WC_Order($clientUniqueId);
+					$order = new WC_Order($clientUniqueId);
 
 					$this->change_order_status(
 						$order,
 						$clientUniqueId,
 						$this->get_request_status(),
-						get_query_var('transactionType', false)
+						$transactionType
 					);
 				} catch (Exception $ex) {
 					SC_HELPER::create_log(
@@ -1272,18 +1275,17 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		# other cases
-		if (!get_query_var('action', false) && $this->checkAdvancedCheckSum()) {
+		if (!$action && $this->checkAdvancedCheckSum()) {
 			SC_HELPER::create_log('', 'Other cases.');
 			
 			try {
-				$clientUniqueId = get_query_var('clientUniqueId', false);
-				$order          = new WC_Order($clientUniqueId);
+				$order = new WC_Order($clientUniqueId);
 
 				$this->change_order_status(
 					$order,
 					$clientUniqueId,
 					$this->get_request_status(),
-					get_query_var('transactionType', '')
+					$transactionType
 				);
 			} catch (Exception $ex) {
 				SC_HELPER::create_log(
@@ -1310,9 +1312,10 @@ class WC_SC extends WC_Payment_Gateway {
 	
 	public function sc_checkout_process() {
 		$_SESSION['sc_subpayment'] = '';
+		$sc_payment_method         = $this->get_param('sc_payment_method');
 		
-		if (get_query_var('sc_payment_method', false)) {
-			$_SESSION['sc_subpayment'] = get_query_var('sc_payment_method');
+		if ('' != $sc_payment_method) {
+			$_SESSION['sc_subpayment'] = $sc_payment_method;
 		}
 		
 		return true;
@@ -1331,14 +1334,13 @@ class WC_SC extends WC_Payment_Gateway {
 	public function checkAdvancedCheckSum() {
 		$str = hash(
 			$this->hash_type,
-			$this->secret . get_query_var('totalAmount', '')
-				. get_query_var('currency', '') . get_query_var('responseTimeStamp', '')
-				. get_query_var('PPP_TransactionID', '')
-				. $this->get_request_status()
-				. get_query_var('productId', '')
+			$this->secret . $this->get_param('totalAmount')
+				. $this->get_param('currency') . $this->get_param('responseTimeStamp')
+				. $this->get_param('PPP_TransactionID') . $this->get_request_status()
+				. $this->get_param('productId')
 		);
-
-		if (get_query_var('advanceResponseChecksum', '') === $str) {
+		
+		if (strval($str) == $this->get_param('advanceResponseChecksum')) {
 			return true;
 		}
 		
@@ -1468,7 +1470,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 * @return boolean
 	 */
 	public function process_refund( $order_id, $amount = null, $reason = '') {
-		if (get_query_var('api_refund', false) === 'true') {
+		if ('true' == $this->get_param('api_refund')) {
 			return true;
 		}
 		
@@ -1483,7 +1485,10 @@ class WC_SC extends WC_Payment_Gateway {
 	 * @param object $refund_data
 	 */
 	public function create_refund_in_wc( $refund) {
-		if (get_query_var('api_refund', false) === 'false' || !$refund) {
+		$order_id	= $this->get_param('order_id');
+		$post_ID	= $this->get_param('post_ID');
+		
+		if ('false' == $this->get_param('api_refund') || !$refund) {
 			return false;
 		}
 		
@@ -1505,10 +1510,9 @@ class WC_SC extends WC_Payment_Gateway {
 				$_SESSION['sc_last_refund_id'] = $refund_data['id'];
 			}
 			
-			$order_id = get_query_var('order_id', 0);
 			// when we set status to Refunded
-			if (get_query_var('post_ID', false)) {
-				$order_id = get_query_var('post_ID');
+			if ('' != $post_ID) {
+				$order_id = $post_ID;
 			}
 			
 			$order = new WC_Order($order_id);
@@ -1667,7 +1671,7 @@ class WC_SC extends WC_Payment_Gateway {
 	
 	public function sc_return_sc_settle_btn( $args) {
 		// revert buttons on Recalculate
-		if (!get_query_var('refund_amount', false) && get_query_var('items', false)) {
+		if (!$this->get_param('refund_amount', false) && $this->get_param('items', false)) {
 			echo esc_js('<script type="text/javascript">returnSCBtns();</script>');
 		}
 	}
@@ -1733,10 +1737,9 @@ class WC_SC extends WC_Payment_Gateway {
 	 * Function create_void
 	 * 
 	 * @param int $order_id
-	 * @param string $amount
 	 * @param string $action
 	 */
-	public function create_settle_void( $order_id, $amount, $action) {
+	public function create_settle_void( $order_id, $action ) {
 		$ord_status = 1;
 		$time		= date('YmdHis');
 		
@@ -1759,7 +1762,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'merchantSiteId'		=> $this->merchantSiteId,
 				'clientRequestId'		=> $time . '_' . uniqid(),
 				'clientUniqueId'		=> $order_id,
-				'amount'				=> $amount,
+				'amount'				=> (string) $order->get_total(),
 				'currency'				=> get_woocommerce_currency(),
 				'relatedTransactionId'	=> $order_meta_data['order_tr_id'],
 				'authCode'				=> $order_meta_data['auth_code'],
@@ -1996,9 +1999,9 @@ class WC_SC extends WC_Payment_Gateway {
 		switch ($status) {
 			case 'CANCELED':
 				$message = 'Payment status changed to:' . $status
-					. '. PPP_TransactionID = ' . get_query_var('PPP_TransactionID', '')
+					. '. PPP_TransactionID = ' . $this->get_param('PPP_TransactionID')
 					. ', Status = ' . $status . ', GW_TransactionID = '
-					. get_query_var('TransactionID', '');
+					. $this->get_param('TransactionID');
 
 				$this->msg['message'] = $message;
 				$this->msg['class']   = 'woocommerce_message';
@@ -2010,7 +2013,7 @@ class WC_SC extends WC_Payment_Gateway {
 			case 'APPROVED':
 				if ('Void' === $transactionType) {
 					$order->add_order_note(__('DMN message: Your Void request was success, Order #'
-						. get_query_var('clientUniqueId', '') 
+						. $this->get_param('clientUniqueId')
 						. ' was canceld. Plsese check your stock!', 'sc'));
 
 					$order->update_status('cancelled');
@@ -2022,7 +2025,7 @@ class WC_SC extends WC_Payment_Gateway {
 					$order->add_order_note(
 						__('DMN message: Your Refund #' . $res_args['resp_id']
 							. ' was successful. Refund Transaction ID is: ', 'sc')
-							. get_query_var('TransactionID', '') . '.'
+							. $this->get_param('TransactionID') . '.'
 					);
 					
 					// set flag that order has some refunds
@@ -2040,14 +2043,14 @@ class WC_SC extends WC_Payment_Gateway {
 					$message = 'The amount has been captured by ' . SC_GATEWAY_TITLE . '. ';
 				}
 				
-				$message .= 'PPP_TransactionID = ' . get_query_var('PPP_TransactionID', '')
+				$message .= 'PPP_TransactionID = ' . $this->get_param('PPP_TransactionID')
 					. ', Status = ' . $status;
 
 				if ($transactionType) {
 					$message .= ', TransactionType = ' . $transactionType;
 				}
 
-				$message .= ', GW_TransactionID = ' . get_query_var('TransactionID', '');
+				$message .= ', GW_TransactionID = ' . $this->get_param('TransactionID');
 
 				$this->msg['message'] = $message;
 				$this->msg['class']   = 'woocommerce_message';
@@ -2064,7 +2067,7 @@ class WC_SC extends WC_Payment_Gateway {
 				
 				if ('Auth' !== $transactionType) {
 					$order->add_order_note(SC_GATEWAY_TITLE . ' payment is successful<br/>Unique Id: '
-						. get_query_var('PPP_TransactionID', ''));
+						. $this->get_param('PPP_TransactionID'));
 				}
 
 				$order->add_order_note($this->msg['message']);
@@ -2074,35 +2077,35 @@ class WC_SC extends WC_Payment_Gateway {
 			case 'DECLINED':
 			case 'FAIL':
 				$reason = ', Reason = ';
-				if (get_query_var('reason', '') !== '') {
-					$reason .= get_query_var('reason');
-				} elseif (get_query_var('Reason', '') !== '') {
-					$reason .= get_query_var('Reason');
+				if ('' != $this->get_param('reason')) {
+					$reason .= $this->get_param('reason');
+				} elseif ('' != $this->get_param('Reason')) {
+					$reason .= $this->get_param('Reason');
 				}
 				
-				$message = 'Payment failed. PPP_TransactionID = ' . get_query_var('PPP_TransactionID', '')
-					. ', Status = ' . $status . ', Error code = ' . get_query_var('ErrCode', '')
-					. ', Message = ' . get_query_var('message', '')
+				$message = 'Payment failed. PPP_TransactionID = ' . $this->get_param('PPP_TransactionID')
+					. ', Status = ' . $status . ', Error code = ' . $this->get_param('ErrCode')
+					. ', Message = ' . $this->get_param('message')
 					. $reason;
 				
 				if ($transactionType) {
 					$message .= ', TransactionType = ' . $transactionType;
 				}
 
-				$message .= ', GW_TransactionID = ' . get_query_var('TransactionID', '');
+				$message .= ', GW_TransactionID = ' . $this->get_param('TransactionID');
 				
 				// do not change status
 				if ('Void' === $transactionType) {
 					$message = 'DMN message: Your Void request fail with message: "';
 
 					// in case DMN URL was rewrited all spaces were replaces with "_"
-					if (get_query_var('wc_sc_redirected', 0) === 1) {
-						$message .= str_replace('_', ' ', get_query_var('message', ''));
+					if (1 == $this->get_param('wc_sc_redirected')) {
+						$message .= str_replace('_', ' ', $this->get_param('message'));
 					} else {
-						$message .= get_query_var('msg', '');
+						$message .= $this->get_param('msg');
 					}
 
-					$message .= '". Order #' . get_query_var('clientUniqueId', '')
+					$message .= '". Order #' . $this->get_param('clientUniqueId')
 						. ' was not canceld!';
 					
 					$order->add_order_note(__($message, 'sc'));
@@ -2125,20 +2128,20 @@ class WC_SC extends WC_Payment_Gateway {
 				}
 
 				$message ='Payment is still pending, PPP_TransactionID '
-					. get_query_var('PPP_TransactionID', '') . ', Status = ' . $status;
+					. $this->get_param('PPP_TransactionID') . ', Status = ' . $status;
 
 				if ($transactionType) {
 					$message .= ', TransactionType = ' . $transactionType;
 				}
 
-				$message .= ', GW_TransactionID = ' . get_query_var('TransactionID', '');
+				$message .= ', GW_TransactionID = ' . $this->get_param('TransactionID');
 
 				$this->msg['message'] = $message;
 				$this->msg['class']   = 'woocommerce_message woocommerce_message_info';
 				
 				$order->add_order_note(
 					SC_GATEWAY_TITLE . ' payment status is pending<br/>Unique Id: '
-						. get_query_var('PPP_TransactionID', '')
+						. $this->get_param('PPP_TransactionID')
 				);
 
 				$order->add_order_note($this->msg['message']);
@@ -2171,21 +2174,21 @@ class WC_SC extends WC_Payment_Gateway {
 	 */
 	private function save_update_order_numbers( $order) {
 		// save or update AuthCode and GW Transaction ID
-		$auth_code = get_query_var('AuthCode', '');
+		$auth_code = $this->get_param('AuthCode');
 		$saved_ac  = $order->get_meta(SC_AUTH_CODE_KEY);
 
 		if (!$saved_ac || empty($saved_ac) || $saved_ac !== $auth_code) {
 			$order->update_meta_data(SC_AUTH_CODE_KEY, $auth_code);
 		}
 
-		$gw_transaction_id = get_query_var('TransactionID', '');
+		$gw_transaction_id = $this->get_param('TransactionID');
 		$saved_tr_id       = $order->get_meta(SC_GW_TRANS_ID_KEY);
 
 		if (!$saved_tr_id || empty($saved_tr_id) || $saved_tr_id !== $gw_transaction_id) {
 			$order->update_meta_data(SC_GW_TRANS_ID_KEY, $gw_transaction_id);
 		}
 		
-		$order->update_meta_data('_paymentMethod', get_query_var('payment_method', ''));
+		$order->update_meta_data('_paymentMethod', $this->get_param('payment_method'));
 
 		$order->save();
 	}
@@ -2198,13 +2201,16 @@ class WC_SC extends WC_Payment_Gateway {
 	 * @return string
 	 */
 	private function get_request_status( $params = array()) {
+		$Status = $this->get_param('Status');
+		$status = $this->get_param('status');
+		
 		if (empty($params)) {
-			if (get_query_var('Status', false)) {
-				return get_query_var('Status');
+			if ('' != $Status) {
+				return $Status;
 			}
 			
-			if (get_query_var('status', false)) {
-				return get_query_var('status');
+			if ('' != $status) {
+				return $status;
 			}
 		} else {
 			if (isset($params['Status'])) {
@@ -2217,6 +2223,18 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		return '';
+	}
+	
+	/**
+	 * Function get_param
+	 * Get request parameter by key
+	 * 
+	 * @param mixed $key
+	 * @param mixed $default
+	 * @return mixed
+	 */
+	private function get_param( $key, $default = '') {
+		return !empty($_REQUEST[$key]) ? sanitize_text_field($_REQUEST[$key]) : $default;
 	}
 }
 

@@ -579,7 +579,7 @@ function settleAndCancelOrder(question, action, orderId) {
             data: data,
             dataType: 'json'
         })
-            .error(function(){
+            .fail(function(){
                 jQuery('#custom_loader').hide();
                 alert('Response error.');
             })

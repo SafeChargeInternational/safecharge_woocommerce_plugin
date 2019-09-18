@@ -105,26 +105,14 @@ function sc_ajax_action() {
 		$payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
 	}
 
-	// Void, Cancel
-	if (
-		!empty($_POST['orderId'])
-		&& isset($_POST['cancelOrder'])
-		&& 1 == sanitize_text_field($_POST['cancelOrder'])
-	) {
-		$wc_sc->create_settle_void(
-			sanitize_text_field($_POST['orderId']),
-			$amount,
-			'void'
-		);
+	// Void (Cancel)
+	if (isset($_POST['cancelOrder'], $_POST['orderId']) && $_POST['cancelOrder']) {
+		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'void');
 	}
 
 	// Settle
-	if (isset($_POST['settleOrder']) && 1 == sanitize_text_field($_POST['settleOrder'])) {
-		$wc_sc->create_settle_void(
-			sanitize_text_field($_POST['orderId']),
-			$amount,
-			'settle'
-		);
+	if (isset($_POST['settleOrder'], $_POST['orderId']) && 1 == $_POST['settleOrder']) {
+		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'settle');
 	}
 
 	if ('rest' == $wc_sc->payment_api) {
@@ -270,7 +258,9 @@ function sc_show_final_text() {
 		}
 	} else {
 		// REST API tahnk you page handler
-		if ('error' == get_query_var('Status')) {
+		if (
+			!empty($_REQUEST['Status'])
+			&& 'error' == sanitize_text_field($_REQUEST['Status'])) {
 			$msg = __('Your payment failed. Please, try again.', 'sc');
 		} else {
 			$woocommerce->cart->empty_cart();
@@ -352,7 +342,7 @@ function sc_add_buttons() {
 		
 		// hide Refund Button
 		if (!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))) {
-			echo '<script type="text/javascript">jQuery(\'.refund-items\').hide();</script>';
+			echo '<script type="text/javascript">jQuery(\'.refund-items\').prop("disabled", true);</script>';
 		}
 	} catch (Exception $ex) {
 		echo '<script type="text/javascript">console.error("'
