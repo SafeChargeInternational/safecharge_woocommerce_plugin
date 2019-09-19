@@ -216,12 +216,16 @@ class WC_SC extends WC_Payment_Gateway {
 		ob_start(); ?>
 		<tr valign="top">
 			<th scope="row" class="titledesc">
-				<label for="<?php echo esc_attr($field); ?>"><?php echo esc_html(wp_kses_post($data['title'])); ?></label>
+				<label for="<?php echo esc_attr($field); ?>"><?php echo esc_html($data['title']); ?></label>
 				<?php echo esc_html($this->get_tooltip_html($data)); ?>
 			</th>
+			
 			<td class="forminp" style="position: relative;">
 				<fieldset>
-					<legend class="screen-reader-text"><span><?php echo wp_kses_post($data['title']); ?></span></legend>
+					<legend class="screen-reader-text">
+						<span><?php echo wp_kses_post($data['title']); ?></span>
+					</legend>
+					
 					<button class="<?php echo esc_attr($data['class']); ?>" 
 							type="button" 
 							name="<?php echo esc_attr($field); ?>" 
@@ -229,10 +233,12 @@ class WC_SC extends WC_Payment_Gateway {
 							style="<?php echo esc_attr($data['css']); ?>" 
 							<?php echo esc_attr($this->get_custom_attribute_html($data)); ?>
 					>
-						<?php echo esc_html(wp_kses_post($data['title'])); ?>
+						<?php echo esc_html($data['title']); ?>
 					</button>
-					<?php echo esc_html($this->get_description_html($data)); ?>
+					
+						<?php echo esc_html($this->get_description_html($data)); ?>
 				</fieldset>
+				
 				<div id="custom_loader" class="blockUI blockOverlay" style="margin-left: -3.5em;"></div>
 			</td>
 		</tr>
@@ -240,14 +246,17 @@ class WC_SC extends WC_Payment_Gateway {
 		return ob_get_clean();
 	}
 
+	// Generate the HTML For the settings form.
 	public function admin_options() {
-		// Generate the HTML For the settings form.
 		echo
-			'<h3>' . esc_html__(SC_GATEWAY_TITLE . ' ', 'sc') . '</h3>'
-			. '<p>' . esc_html__('SC payment option') . '</p>'
-			. '<table class="form-table">';
-		$this->generate_settings_html();
-		echo '</table>';
+			'<h3>' . esc_html(SC_GATEWAY_TITLE . ' ', 'sc') . '</h3>'
+				. '<p>' . esc_html__('SC payment option') . '</p>'
+				. '<table class="form-table">';
+		
+					$this->generate_settings_html();
+		
+		echo
+				'</table>';
 	}
 
 	/**
@@ -258,7 +267,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 **/
 	public function payment_fields() {
 		if ($this->description) {
-			echo esc_html(wpautop(wptexturize($this->description)));
+			echo wp_kses_post(wpautop(wptexturize($this->description)));
 		}
 		
 		// echo here some html if needed
