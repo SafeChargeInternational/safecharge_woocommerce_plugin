@@ -2,7 +2,6 @@
 
 var isAjaxCalled                = false;
 var manualChangedCountry        = false;
-var tokAPMs                     = ['cc_card', 'paydotcom'];
 var selectedPM                  = '';
 var billing_country_first_val   = '';
 var scSettleBtn                 = null;
@@ -22,7 +21,18 @@ var elementClasses = {
     empty: 'empty',
     invalid: 'invalid',
 };
-var fieldsStyle = {};
+// styles for the fields
+var fieldsStyle = {
+    base: {
+        fontSize: 15.5
+        ,fontFamily: 'sans-serif'
+        ,color: '#43454b'
+        ,fontSmoothing: 'antialiased'
+        ,'::placeholder': {
+            color: '#52545A'
+        }
+    }
+};
 var scOrderAmount, scOrderCurr, scMerchantId, scMerchantSiteId, scOpenOrderToken;
 
  /**
@@ -64,7 +74,8 @@ function scValidateAPMFields() {
                 currency        : scOrderCurr,
                 amount          : scOrderAmount,
                 cardHolderName  : document.getElementById('sc_card_holder_name').value,
-                paymentOption   : scCard
+            //    paymentOption   : scCard
+                paymentOption   : sfcFirstField
             }, function(resp){
                 console.log(resp);
 
@@ -201,6 +212,11 @@ function getAPMs() {
     }
 
     if(isAjaxCalled === false || manualChangedCountry === true) {
+        if('' == jQuery("#billing_email").val() || '' == jQuery("#billing_country").val()) {
+            alert('Please fill all fields marked with * !');
+            return;
+        }
+        
         isAjaxCalled = true;
 
         jQuery.ajax({
@@ -351,29 +367,27 @@ function getAPMs() {
                         if(pMethods[i].paymentMethod == 'cc_card' || pMethods[i].paymentMethod == 'dc_card') {
                             html_apms +=
                                 '<div class="apm_fields" id="sc_'+ pMethods[i].paymentMethod +'">'
-                                    +'<div class="apm_field">'
-                                        + '<div id="card-field-placeholder"></div>'
-                                    +'</div>'
-                            
-                                    
 //                                    +'<div class="apm_field">'
-//                                        + '<div id="sc_card_number"></div>'
-//                                    +'</div>'
-//                            
-//                                     +'<div class="apm_field">'
-//                                        + '<div id="sc_card_expiry"></div>'
-//                                    +'</div>'
-//                                    
-//                                    +'<div class="apm_field">'
-//                                        + '<div id="sc_card_cvc"></div>'
+//                                        + '<div id="card-field-placeholder"></div>'
 //                                    +'</div>'
                             
-                            
-                                    
                                     + '<div class="apm_field">'
                                         + '<input type="text" id="sc_card_holder_name" name="'+ pMethods[i].paymentMethod
                                             +'[cardHolderName]" placeholder="Card holder name" />'
-                                    + '</div>';
+                                    + '</div>'
+                                    
+                                    
+                                    +'<div class="apm_field">'
+                                        + '<div id="sc_card_number"></div>'
+                                    +'</div>'
+                            
+                                     +'<div class="apm_field">'
+                                        + '<div id="sc_card_expiry"></div>'
+                                    +'</div>'
+                                    
+                                    +'<div class="apm_field">'
+                                        + '<div id="sc_card_cvc"></div>'
+                                    +'</div>';
                         }
                         else {
                             html_apms+=
@@ -502,50 +516,50 @@ function print_apms_options(upos, apms) {
         .promise()
         .done(function(){
             // create the Fields
-            scCard = scFields.create('card', {
-                iconStyle: 'solid',
-                style: {
-                    base: {
-                        iconColor: "#c4f0ff",
-                        color: "#000",
-                        fontWeight: 500,
-                        fontFamily: "sans-serif, Roboto, Open Sans, Segoe UI",
-                        fontSize: '16px',
-                        fontSmoothing: "antialiased",
-                        ":-webkit-autofill": {
-                            color: "#fce883"
-                        },
-                        "::placeholder": {
-                            color: "#52545A" 
-                        }
-                    },
-                    invalid: {
-                        iconColor: "#FFC7EE",
-                        color: "#FFC7EE"
-                    }
-                },
+//            scCard = scFields.create('card', {
+//                iconStyle: 'solid',
+//                style: {
+//                    base: {
+//                        iconColor: "#c4f0ff",
+//                        color: "#000",
+//                        fontWeight: 500,
+//                        fontFamily: "sans-serif, Roboto, Open Sans, Segoe UI",
+//                        fontSize: '16px',
+//                        fontSmoothing: "antialiased",
+//                        ":-webkit-autofill": {
+//                            color: "#fce883"
+//                        },
+//                        "::placeholder": {
+//                            color: "#52545A" 
+//                        }
+//                    },
+//                    invalid: {
+//                        iconColor: "#FFC7EE",
+//                        color: "#FFC7EE"
+//                    }
+//                },
+//                classes: elementClasses
+//            });
+//
+//            scCard.attach('#card-field-placeholder');
+
+            cardNumber = sfcFirstField = scFields.create('ccNumber', {
                 classes: elementClasses
+                ,style: fieldsStyle
             });
+            cardNumber.attach('#sc_card_number');
 
-            scCard.attach('#card-field-placeholder');
+            cardExpiry = scFields.create('ccExpiration', {
+                classes: elementClasses
+                ,style: fieldsStyle
+            });
+            cardExpiry.attach('#sc_card_expiry');
 
-//            cardNumber = sfcFirstField = scFields.create('ccNumber', {
-//                classes: elementClasses
-//                ,style: fieldsStyle
-//            });
-//            cardNumber.attach('#sc_card_number');
-//
-//            cardExpiry = scFields.create('ccExpiration', {
-//                classes: elementClasses
-//                ,style: fieldsStyle
-//            });
-//            cardExpiry.attach('#sc_card_expiry');
-//
-//            cardCvc = scFields.create('ccCvc', {
-//                classes: elementClasses
-//                ,style: fieldsStyle
-//            });
-//            cardCvc.attach('#sc_card_cvc');
+            cardCvc = scFields.create('ccCvc', {
+                classes: elementClasses
+                ,style: fieldsStyle
+            });
+            cardCvc.attach('#sc_card_cvc');
         });
 
     // change submit button type and behavior
@@ -625,18 +639,6 @@ function returnSCBtns() {
 }
 
 jQuery(function() {
-    fieldsStyle = {
-        base: {
-            fontSize: '15px'
-            ,fontFamily: 'sans-serif'
-            ,color: '#43454b'
-            ,fontSmoothing: 'antialiased'
-            ,'::placeholder': {
-                color: '#52545A'
-            }
-        }
-    };
-    
     // Prepare REST payment
     if(jQuery('#custom_loader_2').length == 0) {
         jQuery('.wc_payment_methods ').append(

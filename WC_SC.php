@@ -1293,7 +1293,7 @@ class WC_SC extends WC_Payment_Gateway {
 				
 				exit;
 			} elseif ( !empty($_REQUEST['merchantId']) && !empty($_REQUEST['merchantSiteId']) ) {
-				 // the DMN from case 2 - p3d
+				// the DMN from case 2 - p3d
 				// here we must unset $_SESSION['SC_P3D_Params'] as last step
 				try {
 					$order = new WC_Order($clientUniqueId);
@@ -1945,7 +1945,8 @@ class WC_SC extends WC_Payment_Gateway {
 		$upos  = array();
 		$icons = array();
 		
-		if (is_user_logged_in()) {
+		/* TODO UPOs are stopped for the moment */
+		if (false && is_user_logged_in()) {
 			$endpoint_url = 'yes' == $this->test
 				? SC_TEST_USER_UPOS_URL : SC_LIVE_USER_UPOS_URL;
 
