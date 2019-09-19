@@ -713,6 +713,8 @@ class WC_SC extends WC_Payment_Gateway {
 					'Internal DMN call'
 				);
 				
+				@unlink($cache);
+				
 				file_get_contents($url);
 			}
 			
