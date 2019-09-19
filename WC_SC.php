@@ -981,8 +981,8 @@ class WC_SC extends WC_Payment_Gateway {
 					$_SESSION['SC_P3D_PaReq']  = !empty($resp['paRequest']) ? $resp['paRequest'] : '';
 					$_SESSION['SC_P3D_acsUrl'] = $resp['acsUrl'];
 					
-//					$params_p3d['SC_P3D_PaReq'] = !empty($resp['paRequest']) ? $resp['paRequest'] : '';
-//					$params_p3d['SC_P3D_acsUrl'] = $resp['acsUrl'];
+					//                  $params_p3d['SC_P3D_PaReq'] = !empty($resp['paRequest']) ? $resp['paRequest'] : '';
+					//                  $params_p3d['SC_P3D_acsUrl'] = $resp['acsUrl'];
 
 					// step 1 - go to acsUrl
 					return array(
