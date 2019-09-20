@@ -1130,16 +1130,36 @@ class WC_SC extends WC_Payment_Gateway {
 					exit;
 				}
 				// REST
-			} elseif (empty($clientUniqueId) && empty($this->get_param('merchant_unique_id'))) {
-				// save cache file
-				$cache = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'tmp'
-					. DIRECTORY_SEPARATOR . $TransactionID . '.txt';
+			} elseif (
+				empty($clientUniqueId)
+				&& empty($this->get_param('merchant_unique_id'))
+				&& !empty($this->get_param('TransactionID'))
+			) {
+				// try to get Order ID by its meta key
+				global $wpdb; 
 				
-				if (!file_exists($cache)) {
-					file_put_contents($cache, json_encode($_REQUEST));
+				$res = $wpdb->get_results(
+					$wpdb->prepare(
+						"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value LIKE %s;",
+						SC_GW_TRANS_ID_KEY,
+						$order->get_meta(SC_GW_TRANS_ID_KEY)
+					)
+				);
+				
+				// the Order was saved before the DMN
+				if (!empty($res) && !empty($res[0]->post_id)) {
+					$order_id = $res[0]->post_id;
+				} else {
+					// the Order is not saved yet, save cache file
+					$cache = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'tmp'
+						. DIRECTORY_SEPARATOR . $TransactionID . '.txt';
 
-					SC_HELPER::create_log('DMN was saved to a cache file.');
-					exit;
+					if (!file_exists($cache)) {
+						file_put_contents($cache, json_encode($_REQUEST));
+
+						SC_HELPER::create_log('DMN was saved to a cache file.');
+						exit;
+					}
 				}
 			} else {
 				$order = new WC_Order($clientUniqueId);
