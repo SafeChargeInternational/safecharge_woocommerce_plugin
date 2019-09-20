@@ -236,6 +236,8 @@ function getAPMs() {
                 return;
             })
             .done(function(resp) {
+                console.log(resp)
+                
                 if(resp === null) {
                     alert('Error when try to get the Payment Methods. Please try again later or use different Payment Option!');
                     return;
@@ -430,9 +432,16 @@ function getAPMs() {
 
                                     html_apms +=
                                             '<div class="apm_field">'
-                                                +'<input id="'+ pMethods[i].paymentMethod +'_'+ pMethods[i].fields[j].name +'" name="'+ pMethods[i].paymentMethod +'['+ pMethods[i].fields[j].name +']" type="'+ pMethods[i].fields[j].type +'" pattern="'+ pattern + '" placeholder="'+ placeholder +'" autocomplete="new-password" />';
+                                                +'<input id="'+ pMethods[i].paymentMethod +'_'+ pMethods[i].fields[j].name 
+                                                    +'" name="'+ pMethods[i].paymentMethod +'['+ pMethods[i].fields[j].name 
+                                                    +']" type="'+ pMethods[i].fields[j].type 
+                                                    +'" pattern="'+ pattern 
+                                                    + '" placeholder="'+ placeholder 
+                                                    +'" autocomplete="new-password" '
+                                                    + ('' == fieldErrorMsg ? 'style="width: 100%;"' : '')
+                                                    +' />';
 
-                                    if(pattern != '') {
+                                    if('' != fieldErrorMsg) {
                                         html_apms +=
                                                 '<span class="question_mark" onclick="showErrorLikeInfo(\'sc_'+ pMethods[i].fields[j].name +'\')"><span class="tooltip-icon"></span></span>'
                                                 +'<div class="apm_error" id="error_sc_'+ pMethods[i].fields[j].name +'">'
