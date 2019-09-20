@@ -84,9 +84,8 @@ function scValidateAPMFields() {
                     
                     if(resp.result == 'APPROVED' && resp.transactionId != 'undefined') {
                         jQuery('#sc_transaction_id').val(resp.transactionId);
-                        jQuery('#lst').val(resp.transactionId);
                         
-                    jQuery('form.woocommerce-checkout').submit();
+                        jQuery('form.woocommerce-checkout').submit();
                     }
                     else if(resp.result == 'DECLINED') {
                         scFormFalse('Your Payment was DECLINED. Please try another payment method!');
