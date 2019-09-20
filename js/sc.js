@@ -200,6 +200,15 @@ function showErrorLikeInfo(elemId) {
  }
  
 function getAPMs() {
+    // you are not on checkout page
+    if (
+        typeof scOrderAmount == 'undefined'
+        || typeof jQuery("#billing_email").val() == 'undefined'
+        || typeof jQuery("#billing_country").val() == 'undefined'
+    ) {
+        return;
+    }
+    
     if(jQuery("#billing_country").val() != billing_country_first_val) {
         manualChangedCountry = true;
         billing_country_first_val = jQuery("#billing_country").val();
@@ -675,7 +684,6 @@ jQuery(function() {
     
     // if user change the billing country get new payment methods
     jQuery("#billing_country").on('change', function() {
-        console.log('on billing_country on change')
         getAPMs();
     });
     
