@@ -200,11 +200,6 @@ function showErrorLikeInfo(elemId) {
  }
  
 function getAPMs() {
-    // do not get SC APMs if user do not use SC paygate
-    if(jQuery('input[name="payment_method"]:checked').val() != 'sc') {
-        return;
-    }
-    
     if(jQuery("#billing_country").val() != billing_country_first_val) {
         manualChangedCountry = true;
         billing_country_first_val = jQuery("#billing_country").val();
@@ -657,7 +652,9 @@ jQuery(function() {
         jQuery('#custom_loader_2').parent('div').show();
     }
     
+    console.log(jQuery('#sc_apms_list').length)
     if(jQuery('#sc_apms_list').length == 0) {
+        console.log('test 1');
         jQuery('#place_order').prop('disabled', true);
         getAPMs();
     }
