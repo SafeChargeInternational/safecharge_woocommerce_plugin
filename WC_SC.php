@@ -1919,6 +1919,7 @@ class WC_SC extends WC_Payment_Gateway {
 			'billingAddress'    => array(
 				'country' => $country,
 			),
+			'webMasterId'       => $this->webMasterId,
 		);
 
 		$oo_params['checksum'] = hash(
