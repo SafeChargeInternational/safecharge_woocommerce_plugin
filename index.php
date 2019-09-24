@@ -203,7 +203,7 @@ function sc_enqueue_wo_files() {
 			'paymentDeclined'	=> __('Your Payment was DECLINED. Please try another payment method!'),
 			'paymentError'		=> __('Error with your Payment. Please try again later!'),
 			'unexpectedError'	=> __('Unexpected error, please try again later!'),
-			'choosePM'			=> __("Please, choose payment method, and fill all fields!"),
+			'choosePM'			=> __('Please, choose payment method, and fill all fields!'),
 			'fillFields'		=> __('Please fill all fields marked with * !'),
 			'errorWithPMs'		=> __('Error when try to get the Payment Methods. Please try again later or use different Payment Option!'),
 			'missData'			=> __('Mandatory data is missing, please try again later!'),
@@ -240,7 +240,7 @@ function sc_enqueue( $hook) {
 	}
 	
 	// load admin JS file
-	if(is_admin()) {
+	if (is_admin()) {
 		// main JS
 		wp_register_script(
 			'sc_js_admin',
