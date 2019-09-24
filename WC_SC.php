@@ -382,7 +382,7 @@ class WC_SC extends WC_Payment_Gateway {
 			$params['merchant_id']      = $this->merchantId;
 			$params['merchant_site_id'] = $this->merchantSiteId;
 			$params['time_stamp']       = $TimeStamp;
-			$params['encoding']         ='utf-8';
+			$params['encoding']         = 'utf-8';
 			$params['version']          = '4.0.0';
 
 			$payment_page = wc_get_cart_url();
@@ -1135,6 +1135,8 @@ class WC_SC extends WC_Payment_Gateway {
 				&& empty($this->get_param('merchant_unique_id'))
 				&& !empty($this->get_param('TransactionID'))
 			) {
+				SC_HELPER::create_log('REST Sale, DMN came before order save.');
+				
 				// try to get Order ID by its meta key
 				global $wpdb; 
 				
@@ -1142,7 +1144,8 @@ class WC_SC extends WC_Payment_Gateway {
 					$wpdb->prepare(
 						"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value LIKE %s;",
 						SC_GW_TRANS_ID_KEY,
-						$order->get_meta(SC_GW_TRANS_ID_KEY)
+					//	$order->get_meta(SC_GW_TRANS_ID_KEY)
+						$TransactionID
 					)
 				);
 				
@@ -1162,6 +1165,7 @@ class WC_SC extends WC_Payment_Gateway {
 					}
 				}
 			} else {
+				SC_HELPER::create_log('REST Sale.');
 				$order = new WC_Order($clientUniqueId);
 			}
 			

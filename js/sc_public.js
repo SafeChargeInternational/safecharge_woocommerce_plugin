@@ -4,8 +4,6 @@ var isAjaxCalled                = false;
 var manualChangedCountry        = false;
 var selectedPM                  = '';
 var billing_country_first_val   = '';
-var scSettleBtn                 = null;
-var scVoidBtn                   = null;
 // for the fields
 var sfc                         = null;
 var scFields                    = null;
@@ -88,19 +86,19 @@ function scValidateAPMFields() {
                         jQuery('form.woocommerce-checkout').submit();
                     }
                     else if(resp.result == 'DECLINED') {
-                        scFormFalse('Your Payment was DECLINED. Please try another payment method!');
+                        scFormFalse(scTrans.paymentDeclined);
                     }
                     else {
                         if(resp.errorDescription != 'undefined' && resp.errorDescription != '') {
                             scFormFalse(resp.errorDescription);
                         }
                         else {
-                            scFormFalse('Error with your Payment. Please try again later!');
+                            scFormFalse(scTrans.paymentError);
                         }
                     }
                 }
                 else {
-                    scFormFalse('Unexpected error, please try again later!');
+                    scFormFalse(scTrans.unexpectedError);
                     console.error('Error with SDK response: ' + resp);
                     return;
                 }
@@ -169,7 +167,7 @@ function scValidateAPMFields() {
     jQuery('.woocommerce-error').remove();
     
     if(typeof text == 'undefined') {
-        text = "Please, choose payment method, and fill all fields!";
+        text = scTrans.choosePM;
     }
     
     jQuery('form.woocommerce-checkout').prepend(
@@ -216,7 +214,7 @@ function getAPMs() {
 
     if(isAjaxCalled === false || manualChangedCountry === true) {
         if('' == jQuery("#billing_email").val() || '' == jQuery("#billing_country").val()) {
-            alert('Please fill all fields marked with * !');
+            alert(scTrans.fillFields);
             return;
         }
         
@@ -224,10 +222,10 @@ function getAPMs() {
 
         jQuery.ajax({
             type: "POST",
-            url: scAjax.ajaxurl,
+            url: scTrans.ajaxurl,
             data: {
                 action      : 'sc-ajax-action',
-                security    : scAjax.security,
+                security    : scTrans.security,
                 country     : jQuery("#billing_country").val(),
                 amount      : scOrderAmount,
                 userMail    : jQuery("#billing_email").val(),
@@ -235,14 +233,14 @@ function getAPMs() {
             dataType: 'json'
         })
             .fail(function(){
-                alert('Error when try to get the Payment Methods. Please try again later or use different Payment Option!');
+                alert(scTrans.errorWithPMs);
                 return;
             })
             .done(function(resp) {
                 console.log(resp)
                 
                 if(resp === null) {
-                    alert('Error when try to get the Payment Methods. Please try again later or use different Payment Option!');
+                    alert(scTrans.errorWithPMs);
                     return;
                 }
         
@@ -277,7 +275,7 @@ function getAPMs() {
                         });
                     }
                     catch (exception) {
-                        alert('Mandatory data is missing, please try again later!');
+                        alert(scTrans.missData);
                         console.error(exception);
                         return;
                     }
@@ -478,7 +476,7 @@ function getAPMs() {
                 else if(resp.status == 0) {
                     jQuery('form.woocommerce-checkout').prepend(
                         '<ul class="woocommerce-error" role="alert">'
-                            +'<li><strong>Error in the proccess. Please, try again later!</strong></li>'
+                            +'<li><strong>'+ scTrans.proccessError +'</strong></li>'
                         +'</ul>'
                     );
             
@@ -500,7 +498,7 @@ function print_apms_options(upos, apms) {
     if(upos != '') {
         if(jQuery('form.woocommerce-checkout').find('#sc_upos_list').length == 0) {
             jQuery('div.payment_method_sc').append(
-                '<b>Choose from you prefered payment methods:</b><ul id="sc_upos_list"></div>');
+                '<b>'+ scTrans.chooseUPO +':</b><ul id="sc_upos_list"></div>');
         }
         else {
             // remove old upos
@@ -515,7 +513,7 @@ function print_apms_options(upos, apms) {
     // apend APMs holder
     if(jQuery('form.woocommerce-checkout').find('#sc_apms_list').length == 0) {
         jQuery('div.payment_method_sc').append(
-            '<b>Choose from the other payment methods:</b><ul id="sc_apms_list"></div>');
+            '<b>'+ scTrans.chooseAPM +':</b><ul id="sc_apms_list"></div>');
     }
     else {
         // remove old apms
@@ -581,75 +579,6 @@ function print_apms_options(upos, apms) {
         .prop('disabled', false);
 }
 
-// when the admin select to Settle or Void the Order
-//function settleAndCancelOrder(question, action, orderId) {
-function settleAndCancelOrder(question, action, orderId) {
-    if(confirm(question)) {
-        jQuery('#custom_loader').show();
-        
-        var data = {
-            action      : 'sc-ajax-action',
-            security    : scAjax.security,
-            orderId     : orderId
-        };
-        
-        if(action == 'settle') {
-            data.settleOrder = 1;
-        }
-        else if(action == 'void') {
-            data.cancelOrder = 1;
-        }
-        
-        jQuery.ajax({
-            type: "POST",
-            url: scAjax.ajaxurl,
-            data: data,
-            dataType: 'json'
-        })
-            .fail(function(){
-                jQuery('#custom_loader').hide();
-                alert('Response error.');
-            })
-            .done(function(resp) {
-                if(resp && typeof resp.status != 'undefined' && resp.data != 'undefined') {
-                    if(resp.status == 1) {
-                        var urlParts = window.location.toString().split('post.php');
-                        window.location = urlParts[0] + 'edit.php?post_type=shop_order';
-                    }
-                    else if(resp.data.reason != 'undefined' && resp.data.reason != '') {
-                        alert(resp.data.reason);
-                    }
-                    else if(resp.data.gwErrorReason != 'undefined' && resp.data.gwErrorReason != '') {
-                        alert(resp.data.gwErrorReason);
-                    }
-                    else {
-                        alert('Response error.');
-                    }
-                }
-                else {
-                    alert('Response error.');
-                }
-                
-                jQuery('#custom_loader').hide();
-            });
-    }
- }
- 
-/**
- * Function returnSCSettleBtn
- * Returns the SC Settle button
- */
-function returnSCBtns() {
-    if(scVoidBtn !== null) {
-        jQuery('.wc-order-bulk-actions p').append(scVoidBtn);
-        scVoidBtn = null;
-    }
-    if(scSettleBtn !== null) {
-        jQuery('.wc-order-bulk-actions p').append(scSettleBtn);
-        scSettleBtn = null;
-    }
-}
-
 jQuery(function() {
     // Prepare REST payment
     if(jQuery('#custom_loader_2').length == 0) {
@@ -661,15 +590,27 @@ jQuery(function() {
         jQuery('#custom_loader_2').parent('div').show();
     }
     
-    console.log(jQuery('#sc_apms_list').length)
     if(jQuery('#sc_apms_list').length == 0) {
-        console.log('test 1');
         jQuery('#place_order').prop('disabled', true);
         getAPMs();
     }
 
     jQuery('#custom_loader_2').parent('div').hide();
     // Prepare REST payment END
+    
+    // in the settings when user change 'Cashier in IFrame' or 'Payment API' option
+    jQuery('#woocommerce_sc_cashier_in_iframe').on('change', function(){
+        jQuery('#woocommerce_sc_payment_api option').prop('selected', false);
+        jQuery('#woocommerce_sc_payment_api option:first').prop('selected', true);
+    });
+    
+    jQuery('#woocommerce_sc_payment_api').on('change', function() {
+        if(jQuery(this).val() == 'rest') {
+            jQuery('#woocommerce_sc_cashier_in_iframe').prop('checked', false);
+            jQuery('#woocommerce_sc_cashier_in_iframe').val(0);
+        }
+    });
+    // in the settings when user change 'Cashier in IFrame' or 'Payment API' option END
     
     // listener for the iFrane
     window.addEventListener('message', function(event) {
@@ -721,45 +662,9 @@ jQuery(function() {
         jQuery('.apm_error').hide();
     });
     
-    // in the settings when user change 'Cashier in IFrame' or 'Payment API' option
-    jQuery('#woocommerce_sc_cashier_in_iframe').on('change', function(){
-        jQuery('#woocommerce_sc_payment_api option').prop('selected', false);
-        jQuery('#woocommerce_sc_payment_api option:first').prop('selected', true);
-    });
-    
-    jQuery('#woocommerce_sc_payment_api').on('change', function() {
-        if(jQuery(this).val() == 'rest') {
-            jQuery('#woocommerce_sc_cashier_in_iframe').prop('checked', false);
-            jQuery('#woocommerce_sc_cashier_in_iframe').val(0);
-        }
-    });
-    // in the settings when user change 'Cashier in IFrame' or 'Payment API' option END
-    
     jQuery('#i_frame').on('load', function(){
         jQuery('#sc_pay_msg').hide();
     });
     
-    // set the flags
-    if(jQuery('#sc_settle_btn').length == 1) {
-       scSettleBtn = jQuery('#sc_settle_btn');
-    }
-    
-    if(jQuery('#sc_void_btn').length == 1) {
-       scVoidBtn = jQuery('#sc_void_btn');
-    }
-    // set the flags END
-    
-    // hide Refund button if the status is refunded
-    if(
-        jQuery('#order_status').val() == 'wc-refunded'
-        || jQuery('#order_status').val() == 'wc-cancelled'
-        || jQuery('#order_status').val() == 'wc-pending'
-        || jQuery('#order_status').val() == 'wc-on-hold'
-        || jQuery('#order_status').val() == 'wc-failed'
-    ) {
-        jQuery('.refund-items').prop('disabled', true);
-    }
-    
-    jQuery('#refund_amount').prop('readonly', false);
 });
 // document ready function END

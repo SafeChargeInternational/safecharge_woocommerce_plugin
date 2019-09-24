@@ -35,6 +35,8 @@ function woocommerce_sc_init() {
 	$wc_sc = new WC_SC();
 	
 	add_action('init', 'sc_enqueue');
+	// load WC styles
+	add_filter( 'woocommerce_enqueue_styles', 'sc_enqueue_wo_files' );
 	// replace the text at thank you page
 	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
 	// eliminates the problem with different permalinks
@@ -74,14 +76,14 @@ function woocommerce_sc_init() {
  */
 function sc_ajax_action() {
 	if (!check_ajax_referer('sc-security-nonce', 'security')) {
-		wp_send_json_error( 'Invalid security token sent.' );
+		wp_send_json_error( __('Invalid security token sent.') );
 		wp_die('Invalid security token sent');
 	}
 	
 	global $wc_sc;
 	
 	if (empty($wc_sc->payment_api) || empty($wc_sc->test)) {
-		wp_send_json_error( 'Invalid payment api or/and site mode.' );
+		wp_send_json_error( __('Invalid payment api or/and site mode.') );
 		wp_die('Invalid payment api or/and site mode.');
 	}
 	
@@ -146,6 +148,75 @@ function woocommerce_add_sc_gateway( $methods) {
 	return $methods;
 }
 
+function sc_enqueue_wo_files() {
+	global $wc_sc;
+	
+	$plugin_dir = basename(dirname(__FILE__));
+	$plugin_url = WP_PLUGIN_URL;
+	
+	if (
+		( isset($_SERVER['HTTPS']) && 'on' == $_SERVER['HTTPS'] )
+		&& ( isset($_SERVER['REQUEST_SCHEME']) && 'https' == $_SERVER['REQUEST_SCHEME'] )
+	) {
+		if (strpos($plugin_url, 'https') === false) {
+			$plugin_url = str_replace('http:', 'https:', $plugin_url);
+		}
+	}
+		
+	// novo style
+	wp_register_style(
+		'novo_style',
+		$plugin_url . '/' . $plugin_dir . '/css/novo.css',
+		'',
+		'2.2',
+		'all'
+	);
+	wp_enqueue_style('novo_style');
+	
+	// WebSDK URL for integration and production
+	wp_register_script(
+		'sc_websdk',
+		'yes' == $wc_sc->test
+			? 'https://dev-mobile.safecharge.com/cdn/WebSdk/dist/safecharge.js'
+				: 'https://cdn-int.safecharge.com/safecharge_resources/v1/websdk/safecharge.js',
+		array('jquery'),
+		'1'
+	);
+	wp_enqueue_script('sc_websdk');
+
+	// main JS
+	wp_register_script(
+		'sc_js_public',
+		$plugin_url . '/' . $plugin_dir . '/js/sc_public.js',
+		array('jquery'),
+		'1'
+	);
+
+	// put translations here into the array
+	wp_localize_script(
+		'sc_js_public',
+		'scTrans',
+		array(
+			'ajaxurl'	=> admin_url('admin-ajax.php'),
+			'security'	=> wp_create_nonce('sc-security-nonce'),
+			
+			'paymentDeclined'	=> __('Your Payment was DECLINED. Please try another payment method!'),
+			'paymentError'		=> __('Error with your Payment. Please try again later!'),
+			'unexpectedError'	=> __('Unexpected error, please try again later!'),
+			'choosePM'			=> __("Please, choose payment method, and fill all fields!"),
+			'fillFields'		=> __('Please fill all fields marked with * !'),
+			'errorWithPMs'		=> __('Error when try to get the Payment Methods. Please try again later or use different Payment Option!'),
+			'missData'			=> __('Mandatory data is missing, please try again later!'),
+			'proccessError'		=> __('Error in the proccess. Please, try again later!'),
+			'chooseUPO'			=> __('Choose from you prefered payment methods'),
+			'chooseAPM'			=> __('Choose from the other payment methods'),
+		)
+	);
+
+	// connect the translations with some of the JS files
+	wp_enqueue_script('sc_js_public');
+}
+
 // first method we come in
 function sc_enqueue( $hook) {
 	global $wc_sc;
@@ -168,45 +239,28 @@ function sc_enqueue( $hook) {
 		}
 	}
 	
-	// main JS
-	wp_register_script(
-		'sc_js_script',
-		$plugin_url . '/' . $plugin_dir . '/js/sc.js',
-		array('jquery'),
-		'2.2'
-	);
-	
-	wp_localize_script(
-		'sc_js_script',
-		'scAjax',
-		array(
-			'ajaxurl' => admin_url('admin-ajax.php'),
-			'security' => wp_create_nonce('sc-security-nonce')
-		)
-	);
-	wp_enqueue_script('sc_js_script');
-	// main JS END
-	
-	// novo style
-	wp_register_style(
-		'novo_style',
-		$plugin_url . '/' . $plugin_dir . '/css/novo.css',
-		'',
-		'2.2',
-		'all'
-	);
-	wp_enqueue_style('novo_style');
-	
-	// WebSDK URL for integration and production
-	wp_register_script(
-		'sc_websdk',
-		'yes' == $wc_sc->test
-			? 'https://dev-mobile.safecharge.com/cdn/WebSdk/dist/safecharge.js'
-				: 'https://cdn-int.safecharge.com/safecharge_resources/v1/websdk/safecharge.js',
-		array('jquery'),
-		'1'
-	);
-	wp_enqueue_script('sc_websdk');
+	// load admin JS file
+	if(is_admin()) {
+		// main JS
+		wp_register_script(
+			'sc_js_admin',
+			$plugin_url . '/' . $plugin_dir . '/js/sc_admin.js',
+			array('jquery'),
+			'1'
+		);
+		
+		// put translations here into the array
+		wp_localize_script(
+			'sc_js_admin',
+			'scTrans',
+			array(
+				'ajaxurl'	=> admin_url('admin-ajax.php'),
+				'security'	=> wp_create_nonce('sc-security-nonce'),
+			)
+		);
+		
+		wp_enqueue_script('sc_js_admin');
+	}
 	# load external files END
 }
 
@@ -386,7 +440,7 @@ function sc_add_buttons() {
 		}
 		
 		// add loading screen
-		echo '<div id="custom_loader" class="blockUI blockOverlay"></div>';
+		//echo '<div id="custom_loader" class="blockUI blockOverlay"></div>';
 	}
 }
 
