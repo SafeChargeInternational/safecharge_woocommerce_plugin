@@ -698,7 +698,7 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			//SC_HELPER::create_log($cache, 'cache file');
 			
-			if (file_exists($cache)) {
+			if (is_readable($cache)) {
 				$params                   = json_decode(file_get_contents($cache), true);
 				$params['clientUniqueId'] = $order_id;
 				
@@ -715,13 +715,28 @@ class WC_SC extends WC_Payment_Gateway {
 				
 				@unlink($cache);
 				
-				file_get_contents($url);
+				$ch = curl_init();
+
+				curl_setopt($ch, CURLOPT_URL, $url);
+				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+				curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+				$resp = curl_exec($ch);
+				curl_close($ch);
+			}
+			else {
+				SC_HELPER::create_log('The DMN cache file is not readable.');
+				SC_HELPER::create_log(file_exists($cache), 'Is the cache DMN file exists ?:');
 			}
 			
 			return array(
 				'result'    => 'success',
 				'redirect'  => add_query_arg(array(), $this->get_return_url())
 			);
+		}
+		else {
+			SC_HELPER::create_log('Rest POST there is no sc_transaction_id.');
 		}
 		
 		// if we use UPO or APM
