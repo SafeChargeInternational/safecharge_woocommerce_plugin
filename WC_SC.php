@@ -45,7 +45,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->use_http         = @$this->settings['use_http'] ? $this->settings['use_http'] : 'yes';
 		$this->save_logs        = @$this->settings['save_logs'] ? $this->settings['save_logs'] : 'yes';
 		$this->hash_type        = @$this->settings['hash_type'] ? $this->settings['hash_type'] : 'sha256';
-		$this->payment_api      = @$this->settings['payment_api'] ? $this->settings['payment_api'] : 'cashier';
+		$this->payment_api      = @$this->settings['payment_api'] ? $this->settings['payment_api'] : 'rest';
 		$this->transaction_type = @$this->settings['transaction_type'] ? $this->settings['transaction_type'] : 'sale';
 		$this->rewrite_dmn      = @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
 		$this->webMasterId     .= WOOCOMMERCE_VERSION;
@@ -122,15 +122,15 @@ class WC_SC extends WC_Payment_Gateway {
 					'md5' => 'md5',
 				)
 			),
-			'payment_api' => array(
-				'title' => __('Payment solution', 'sc'),
-				'type' => 'select',
-				'description' => __('Select ' . SC_GATEWAY_TITLE . ' payment API', 'sc'),
-				'options' => array(
-					'cashier' => 'Hosted payment page',
-					'rest' => 'SafeCharge API',
-				)
-			),
+//			'payment_api' => array(
+//				'title' => __('Payment solution', 'sc'),
+//				'type' => 'select',
+//				'description' => __('Select ' . SC_GATEWAY_TITLE . ' payment API', 'sc'),
+//				'options' => array(
+//					'cashier' => 'Hosted payment page',
+//					'rest' => 'SafeCharge API',
+//				)
+//			),
 			'transaction_type' => array(
 				'title' => __('Payment action', 'sc'),
 				'type' => 'select',
