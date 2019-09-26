@@ -122,15 +122,15 @@ class WC_SC extends WC_Payment_Gateway {
 					'md5' => 'md5',
 				)
 			),
-//			'payment_api' => array(
-//				'title' => __('Payment solution', 'sc'),
-//				'type' => 'select',
-//				'description' => __('Select ' . SC_GATEWAY_TITLE . ' payment API', 'sc'),
-//				'options' => array(
-//					'cashier' => 'Hosted payment page',
-//					'rest' => 'SafeCharge API',
-//				)
-//			),
+		//          'payment_api' => array(
+		//              'title' => __('Payment solution', 'sc'),
+		//              'type' => 'select',
+		//              'description' => __('Select ' . SC_GATEWAY_TITLE . ' payment API', 'sc'),
+		//              'options' => array(
+		//                  'cashier' => 'Hosted payment page',
+		//                  'rest' => 'SafeCharge API',
+		//              )
+		//          ),
 			'transaction_type' => array(
 				'title' => __('Payment action', 'sc'),
 				'type' => 'select',
@@ -153,12 +153,12 @@ class WC_SC extends WC_Payment_Gateway {
 				'label' => __('Enable test mode', 'sc'),
 				'default' => 'no'
 			),
-//			'cashier_in_iframe' => array(
-//				'title' => __('Cashier in IFrame', 'sc'),
-//				'type' => 'checkbox',
-//				'label' => __('When use Cashier as Payment API, open it in iFrame, instead redirecting.', 'sc'),
-//				'default' => 'no'
-//			),
+		//          'cashier_in_iframe' => array(
+		//              'title' => __('Cashier in IFrame', 'sc'),
+		//              'type' => 'checkbox',
+		//              'label' => __('When use Cashier as Payment API, open it in iFrame, instead redirecting.', 'sc'),
+		//              'default' => 'no'
+		//          ),
 			'use_http' => array(
 				'title' => __('Use HTTP', 'sc'),
 				'type' => 'checkbox',
@@ -724,8 +724,7 @@ class WC_SC extends WC_Payment_Gateway {
 
 				$resp = curl_exec($ch);
 				curl_close($ch);
-			}
-			else {
+			} else {
 				SC_HELPER::create_log('The DMN cache file is not readable.');
 				SC_HELPER::create_log(file_exists($cache), 'Is the cache DMN file exists ?:');
 			}
@@ -734,8 +733,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'result'    => 'success',
 				'redirect'  => add_query_arg(array(), $this->get_return_url())
 			);
-		}
-		else {
+		} else {
 			SC_HELPER::create_log('Rest POST there is no sc_transaction_id.');
 		}
 		
