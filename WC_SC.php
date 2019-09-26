@@ -324,11 +324,7 @@ class WC_SC extends WC_Payment_Gateway {
 		// Order with Redirect URL
 		if (isset($_REQUEST['redirectUrl']) && 1 === sanitize_text_field($_REQUEST['redirectUrl'])) {
 			echo
-				'<form action="' . esc_attr(@$_SESSION['SC_P3D_acsUrl']) . '" method="post" id="sc_payment_form">'
-					. '<input type="hidden" name="PaReq" value="' . esc_attr(@$_SESSION['SC_P3D_PaReq']) . '">'
-					. '<input type="hidden" name="TermUrl" value="'
-						. esc_url($url . ( false !== strpos($url, '?') ? '&' : '?' ))
-						. 'wc-api=sc_listener&action=p3d">'
+				'<form action="' . esc_attr(@$_SESSION['redirectUrl']) . '" method="get" id="sc_payment_form">'
 					. '<noscript>'
 						. '<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'
 							. esc_attr(__('Pay via ' . SC_GATEWAY_TITLE, 'sc')) . '" />'
@@ -341,6 +337,25 @@ class WC_SC extends WC_Payment_Gateway {
 						. '});'
 					. '</script>'
 				. '</form>';
+			
+//			echo
+//				'<form action="' . esc_attr(@$_SESSION['SC_P3D_acsUrl']) . '" method="post" id="sc_payment_form">'
+//					. '<input type="hidden" name="PaReq" value="' . esc_attr(@$_SESSION['SC_P3D_PaReq']) . '">'
+//					. '<input type="hidden" name="TermUrl" value="'
+//						. esc_url($url . ( false !== strpos($url, '?') ? '&' : '?' ))
+//						. 'wc-api=sc_listener&action=p3d">'
+//					. '<noscript>'
+//						. '<input type="submit" class="button-alt" id="submit_sc_payment_form" value="'
+//							. esc_attr(__('Pay via ' . SC_GATEWAY_TITLE, 'sc')) . '" />'
+//						. '<a class="button cancel" href="' . esc_url($order->get_cancel_order_url()) . '">'
+//							. esc_html__('Cancel order &amp; restore cart', 'sc') . '</a>'
+//					. '</noscript>'
+//					. '<script type="text/javascript">'
+//						. 'jQuery(function(){'
+//							. 'jQuery("#sc_payment_form").submit();'
+//						. '});'
+//					. '</script>'
+//				. '</form>';
 			
 			wp_die();
 		}
@@ -734,7 +749,8 @@ class WC_SC extends WC_Payment_Gateway {
 				'result'    => 'success',
 				'redirect'  => add_query_arg(array(), $this->get_return_url())
 			);
-		} else {
+		} 
+		else {
 			SC_HELPER::create_log('Rest POST there is no sc_transaction_id.');
 		}
 		
@@ -1064,7 +1080,7 @@ class WC_SC extends WC_Payment_Gateway {
 						array(
 							'order-pay' => $order_id,
 							'key' => $this->get_order_data($order, 'order_key'),
-							'redirectURL' => 1,
+							'redirectURL' => $resp['redirectURL'],
 						),
 						$order->get_checkout_order_received_url()
 					)
@@ -1143,12 +1159,12 @@ class WC_SC extends WC_Payment_Gateway {
 					echo esc_html('DMN Exception: ' . $ex->getMessage());
 					exit;
 				}
-				// REST
 			} elseif (
 				empty($clientUniqueId)
 				&& empty($this->get_param('merchant_unique_id'))
 				&& !empty($this->get_param('TransactionID'))
 			) {
+				// WebSDK
 				SC_HELPER::create_log('REST Sale, DMN came before order save.');
 				
 				// try to get Order ID by its meta key
@@ -1158,7 +1174,6 @@ class WC_SC extends WC_Payment_Gateway {
 					$wpdb->prepare(
 						"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value LIKE %s;",
 						SC_GW_TRANS_ID_KEY,
-					//	$order->get_meta(SC_GW_TRANS_ID_KEY)
 						$TransactionID
 					)
 				);
@@ -1179,6 +1194,7 @@ class WC_SC extends WC_Payment_Gateway {
 					}
 				}
 			} else {
+				// REST
 				SC_HELPER::create_log('REST Sale.');
 				$order = new WC_Order($clientUniqueId);
 			}
