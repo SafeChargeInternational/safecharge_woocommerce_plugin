@@ -45,7 +45,8 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->use_http         = @$this->settings['use_http'] ? $this->settings['use_http'] : 'yes';
 		$this->save_logs        = @$this->settings['save_logs'] ? $this->settings['save_logs'] : 'yes';
 		$this->hash_type        = @$this->settings['hash_type'] ? $this->settings['hash_type'] : 'sha256';
-		$this->payment_api      = @$this->settings['payment_api'] ? $this->settings['payment_api'] : 'rest';
+	//	$this->payment_api      = @$this->settings['payment_api'] ? $this->settings['payment_api'] : 'rest';
+		$this->payment_api      = 'rest';
 		$this->transaction_type = @$this->settings['transaction_type'] ? $this->settings['transaction_type'] : 'sale';
 		$this->rewrite_dmn      = @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
 		$this->webMasterId     .= WOOCOMMERCE_VERSION;
