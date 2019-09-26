@@ -1,7 +1,7 @@
 *** WooCommerce Extension Template Changelog ***
 
 2019-09-10 - version 2.2
-* New - Create payments via WebSDK.
+* New - Create payments via WebSDK. Cashier payments are not supported anymore.
 
 2019-07-22 - version 2.1
 * New - Added logger class.

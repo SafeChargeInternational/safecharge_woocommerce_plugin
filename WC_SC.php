@@ -153,12 +153,12 @@ class WC_SC extends WC_Payment_Gateway {
 				'label' => __('Enable test mode', 'sc'),
 				'default' => 'no'
 			),
-			'cashier_in_iframe' => array(
-				'title' => __('Cashier in IFrame', 'sc'),
-				'type' => 'checkbox',
-				'label' => __('When use Cashier as Payment API, open it in iFrame, instead redirecting.', 'sc'),
-				'default' => 'no'
-			),
+//			'cashier_in_iframe' => array(
+//				'title' => __('Cashier in IFrame', 'sc'),
+//				'type' => 'checkbox',
+//				'label' => __('When use Cashier as Payment API, open it in iFrame, instead redirecting.', 'sc'),
+//				'default' => 'no'
+//			),
 			'use_http' => array(
 				'title' => __('Use HTTP', 'sc'),
 				'type' => 'checkbox',
