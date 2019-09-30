@@ -430,8 +430,9 @@ class WC_SC extends WC_Payment_Gateway {
 				. $params['amount'] . $params['currency'] . $time . $this->secret
 		);
 		
-		$params['paymentMethod'] = filter_input(INPUT_POST, 'sc_payment_method', FILTER_SANITIZE_STRING);
-
+		$params['paymentMethod']	= filter_input(INPUT_POST, 'sc_payment_method', FILTER_SANITIZE_STRING);
+		$post_sc_payment_fields		= filter_input(INPUT_POST, $params['paymentMethod'], FILTER_DEFAULT , FILTER_REQUIRE_ARRAY);
+		
 		if ($post_sc_payment_fields) {
 			$params['userAccountDetails'] = $post_sc_payment_fields;
 		}
@@ -500,37 +501,34 @@ class WC_SC extends WC_Payment_Gateway {
 			);
 		}
 		
-		if ($this->get_request_status($resp) === 'SUCCESS') {
-			// in case we have redirectURL
-			if (isset($resp['redirectURL']) && !empty($resp['redirectURL'])) {
-				SC_HELPER::create_log($resp['redirectURL'], 'we have redirectURL: ');
+		if ($this->get_request_status($resp) === 'SUCCESS' && !empty($resp['redirectURL'])) {
+			SC_HELPER::create_log($resp['redirectURL'], 'we have redirectURL: ');
 
-				if (
-					( isset($resp['gwErrorCode']) && -1 === $resp['gwErrorCode'] )
-					|| isset($resp['gwErrorReason'])
-				) {
-					$msg = __('Error with the Payment: ' . $resp['gwErrorReason'] . '.', 'sc');
-					
-					$order->add_order_note($msg);
-					$order->save();
-					
-					return array(
-						'result'    => 'success',
-						'redirect'    => add_query_arg(
-							array('Status' => 'error'),
-							$this->get_return_url()
-						)
-					);
-				}
-				
+			if (
+				( isset($resp['gwErrorCode']) && -1 === $resp['gwErrorCode'] )
+				|| isset($resp['gwErrorReason'])
+			) {
+				$msg = __('Error with the Payment: ' . $resp['gwErrorReason'] . '.', 'sc');
+
+				$order->add_order_note($msg);
+				$order->save();
+
 				return array(
 					'result'    => 'success',
 					'redirect'    => add_query_arg(
-						array(),
-						$resp['redirectURL']
+						array('Status' => 'error'),
+						$this->get_return_url()
 					)
 				);
 			}
+
+			return array(
+				'result'    => 'success',
+				'redirect'    => add_query_arg(
+					array(),
+					$resp['redirectURL']
+				)
+			);
 		} // when SUCCESS
 		
 		if (isset($resp['transactionId']) && '' !== $resp['transactionId']) {
@@ -549,7 +547,7 @@ class WC_SC extends WC_Payment_Gateway {
 		return array(
 			'result'    => 'success',
 			'redirect'    => add_query_arg(
-				array('Status' => 'error'),
+				array(),
 				$this->get_return_url()
 			)
 		);
