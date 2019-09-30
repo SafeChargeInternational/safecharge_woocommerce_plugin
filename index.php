@@ -43,8 +43,6 @@ function woocommerce_sc_init() {
 	add_action('template_redirect', 'sc_iframe_redirect');
 	// add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
 	add_action('woocommerce_order_item_add_action_buttons',	'sc_add_buttons');
-	// redirect when show receipt page
-	add_action('woocommerce_receipt_' . $wc_sc->id, array($wc_sc, 'generate_sc_form'));
 	// on the checkout page get the order total amount
 	add_action('woocommerce_checkout_before_order_review', array($wc_sc, 'checkout_open_order'));
 	// show custom final text
