@@ -174,9 +174,7 @@ function sc_enqueue_wo_files() {
 	// WebSDK URL for integration and production
 	wp_register_script(
 		'sc_websdk',
-		'yes' == $wc_sc->test
-			? 'https://dev-mobile.safecharge.com/cdn/WebSdk/dist/safecharge.js'
-				: 'https://cdn-int.safecharge.com/safecharge_resources/v1/websdk/safecharge.js',
+		'https://cdn.safecharge.com/safecharge_resources/v1/websdk/safecharge.js',
 		array('jquery'),
 		'1'
 	);
