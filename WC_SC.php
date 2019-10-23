@@ -20,7 +20,7 @@ class WC_SC extends WC_Payment_Gateway
     {
         global $session;
         
-        $post = get_post();
+        $post = $_POST;
         
         require_once plugin_dir_path(__FILE__) . 'SC_Versions_Resolver.php';
         
@@ -997,7 +997,7 @@ class WC_SC extends WC_Payment_Gateway
     public function process_payment($order_id)
     {
         global $session;
-        $post = get_post();
+        $post = $_POST;
         
         // get AMP fields and add them to the session for future use
         if (isset($post['payment_method_sc']) && !empty($post['payment_method_sc'])) {
@@ -1294,7 +1294,7 @@ class WC_SC extends WC_Payment_Gateway
     public function sc_checkout_process()
     {
         global $session;
-        $post = get_post();
+        $post = $_POST;
         
         $session['sc_subpayment'] = '';
         if (isset($post['payment_method_sc'])) {
@@ -1473,7 +1473,7 @@ class WC_SC extends WC_Payment_Gateway
      */
     public function process_refund($order_id, $amount = null, $reason = '')
     {
-        $post = get_post();
+        $post = $_POST;
         
         if ($post['api_refund'] === 'true') {
             return true;
@@ -1494,7 +1494,7 @@ class WC_SC extends WC_Payment_Gateway
         global $session;
         global $sc_request;
         
-        $post = get_post();
+        $post = $_POST;
         
         if (
             (isset($post['api_refund']) && $post['api_refund'] === 'false')
