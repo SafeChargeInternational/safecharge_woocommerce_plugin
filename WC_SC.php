@@ -1346,6 +1346,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'country' => $country,
 			),
 			'webMasterId'       => $this->webMasterId,
+			'paymentOption'		=> ['card' => ['threeD' => ['isDynamic3D' => 1]]],
 		);
 
 		$oo_params['checksum'] = hash(

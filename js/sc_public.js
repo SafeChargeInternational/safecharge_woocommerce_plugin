@@ -72,8 +72,7 @@ function scValidateAPMFields() {
                 currency        : scOrderCurr,
                 amount          : scOrderAmount,
                 cardHolderName  : document.getElementById('sc_card_holder_name').value,
-                paymentOption   : sfcFirstField,
-                isDynamic3D     : 1
+                paymentOption   : sfcFirstField
             }, function(resp){
                 console.log(resp);
 
