@@ -45,18 +45,13 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->use_http       = @$this->settings['use_http'] ? $this->settings['use_http'] : 'yes';
 		$this->save_logs      = @$this->settings['save_logs'] ? $this->settings['save_logs'] : 'yes';
 		$this->hash_type      = @$this->settings['hash_type'] ? $this->settings['hash_type'] : 'sha256';
-		//	$this->payment_api      = @$this->settings['payment_api'] ? $this->settings['payment_api'] : 'rest';
-		$this->payment_api      = 'rest';
-		$this->transaction_type = @$this->settings['transaction_type'] ? $this->settings['transaction_type'] : 'sale';
-		$this->rewrite_dmn      = @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
-		$this->webMasterId     .= WOOCOMMERCE_VERSION;
+		$this->rewrite_dmn    = @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
+		$this->webMasterId    .= WOOCOMMERCE_VERSION;
 		
 		$_SESSION['SC_Variables']['sc_create_logs'] = $this->save_logs;
 		
 		$this->use_wpml_thanks_page =
 			@$this->settings['use_wpml_thanks_page'] ? $this->settings['use_wpml_thanks_page'] : 'no';
-		$this->cashier_in_iframe    =
-			@$this->settings['cashier_in_iframe'] ? $this->settings['cashier_in_iframe'] : 'no';
 		
 		$this->supports[] = 'refunds'; // to enable auto refund support
 		
@@ -123,24 +118,6 @@ class WC_SC extends WC_Payment_Gateway {
 					'md5' => 'md5',
 				)
 			),
-		//          'payment_api' => array(
-		//              'title' => __('Payment solution', 'sc'),
-		//              'type' => 'select',
-		//              'description' => __('Select ' . SC_GATEWAY_TITLE . ' payment API', 'sc'),
-		//              'options' => array(
-		//                  'cashier' => 'Hosted payment page',
-		//                  'rest' => 'SafeCharge API',
-		//              )
-		//          ),
-			'transaction_type' => array(
-				'title' => __('Payment action', 'sc'),
-				'type' => 'select',
-				'description' => __('Select preferred Transaction Type.<br/>Just in case goto WooCommerce > Settings > Products > Inventory and remove any value that is present in the Hold Stock (minutes) field.', 'sc'),
-				'options' => array(
-					'Auth' => 'Authorize',
-					'Sale' => 'Authorize & Capture',
-				)
-			),
 			'notify_url' => array(
 				'title' => __('Notify URL', 'sc'),
 				'type' => 'text',
@@ -154,12 +131,6 @@ class WC_SC extends WC_Payment_Gateway {
 				'label' => __('Enable test mode', 'sc'),
 				'default' => 'no'
 			),
-		//          'cashier_in_iframe' => array(
-		//              'title' => __('Cashier in IFrame', 'sc'),
-		//              'type' => 'checkbox',
-		//              'label' => __('When use Cashier as Payment API, open it in iFrame, instead redirecting.', 'sc'),
-		//              'default' => 'no'
-		//          ),
 			'use_http' => array(
 				'title' => __('Use HTTP', 'sc'),
 				'type' => 'checkbox',
@@ -1216,10 +1187,6 @@ class WC_SC extends WC_Payment_Gateway {
 	 * @return void
 	 */
 	public function checkout_open_order() {
-		if ('cashier' === $this->payment_api) {
-			return;
-		}
-		
 		global $woocommerce;
 		
 		if (empty($woocommerce->cart->get_totals())) {

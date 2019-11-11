@@ -1,5 +1,8 @@
 *** WooCommerce Extension Template Changelog ***
 
+2019-11-11 - version 2.3
+* New - Removed Payment type from plugin options, removed the code for Cashier in iFrame.
+
 2019-09-10 - version 2.2
 * New - Create payments via WebSDK. Cashier payments are not supported anymore.
 

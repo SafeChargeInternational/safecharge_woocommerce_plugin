@@ -3,7 +3,7 @@
 Plugin Name: SafeCharge Payments
 Plugin URI: http://www.safecharge.com
 Description: SafeCharge gateway for woocommerce
-Version: 2.2
+Version: 2.3
 Author: SafeCharge
 Author URI: http://safecharge.com
 */
@@ -39,8 +39,6 @@ function woocommerce_sc_init() {
 	add_filter( 'woocommerce_enqueue_styles', 'sc_enqueue_wo_files' );
 	// replace the text at thank you page
 	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
-	// eliminates the problem with different permalinks
-	add_action('template_redirect', 'sc_iframe_redirect');
 	// add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
 	add_action('woocommerce_order_item_add_action_buttons',	'sc_add_buttons');
 	// on the checkout page get the order total amount
@@ -80,9 +78,9 @@ function sc_ajax_action() {
 	
 	global $wc_sc;
 	
-	if (empty($wc_sc->payment_api) || empty($wc_sc->test)) {
-		wp_send_json_error( __('Invalid payment api or/and site mode.') );
-		wp_die('Invalid payment api or/and site mode.');
+	if (empty($wc_sc->test)) {
+		wp_send_json_error( __('Invalid site mode.') );
+		wp_die('Invalid site mode.');
 	}
 	
 	$country = '';
@@ -115,27 +113,12 @@ function sc_ajax_action() {
 		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'settle');
 	}
 
-	if ('rest' == $wc_sc->payment_api) {
-		// when we use the REST - Open order and get APMs and UPOs
-		if (!empty($country) && !empty($amount) && !empty($userMail)) {
-			$wc_sc->prepare_rest_payment($amount, $userMail, $country);
-		}
-
-		wp_die();
-	} else {
-		// here we no need APMs
-		$msg = 'Missing some of conditions to using REST API.';
-
-		if ('rest' != $wc_sc->payment_api) {
-			$msg = 'You are using Cashier API. APMs are not available with it.';
-		}
-
-		wp_send_json(array(
-			'status'    => 2,
-			'msg'       =>  $msg
-		));
-		wp_die();
+	// when we use the REST - Open order and get APMs and UPOs
+	if (!empty($country) && !empty($amount) && !empty($userMail)) {
+		$wc_sc->prepare_rest_payment($amount, $userMail, $country);
 	}
+
+	wp_die();
 }
 
 /**
@@ -325,59 +308,6 @@ function sc_show_final_text() {
 	return $msg;
 }
 
-function sc_iframe_redirect() {
-	global $wp;
-	global $wc_sc;
-	
-	if (!is_checkout()) {
-		return;
-	}
-	
-	if (!isset($_REQUEST['order-received'])) {
-		$request_uri = '';
-		if (isset($_SERVER['REQUEST_URI'])) {
-			$request_uri = sanitize_text_field($_SERVER['REQUEST_URI']);
-		}
-		
-		$url_parts = explode('/', trim(parse_url($request_uri, PHP_URL_PATH), '/'));
-		
-		if (!$url_parts || empty($url_parts)) {
-			return;
-		}
-		
-		if (!in_array('order-received', $url_parts)) {
-			return;
-		}
-	}
-	
-	// when we use iframe
-	if (
-		!empty($_REQUEST['use_iframe'])
-		&& 1 == sanitize_text_field($_REQUEST['use_iframe'])
-	) {
-		echo
-			'<table id="sc_pay_msg" style="border: 0px; cursor: wait; line-height: 32px; width: 100%;"><tr>'
-				. '<td style="padding: 0px; border: 0px; width: 100px;">'
-					. '<img src="' . esc_url(get_site_url()) . '/wp-content/plugins/' . esc_html(basename(dirname(__FILE__))) . '/icons/loading.gif" style="width:100px; float:left; margin-right: 10px;" />'
-				. '</td>'
-				. '<td style="text-align: left; border: 0px;">'
-					. '<span>' . esc_html__('Thank you for your order. We are now redirecting you to ' . SC_GATEWAY_TITLE . ' Payment Gateway to make payment.', 'sc') . '</span>'
-				. '</td>'
-			. '</tr></table>'
-			
-			. '<script type="text/javascript">'
-				. 'var scNewUrl = window.location.toLocaleString().replace("use_iframe=1&", "");'
-				
-				. 'parent.postMessage({'
-					. 'scAction: "scRedirect",'
-					. 'scUrl: scNewUrl'
-				. '}, window.location.origin);'
-			. '</script>';
-		
-		wp_die();
-	}
-}
-
 function sc_add_buttons() {
 	$order_id = false;
 	
@@ -422,12 +352,8 @@ function sc_add_buttons() {
 				. esc_html__('Void', 'sc') . '</button>';
 		}
 		
-		// show SETTLE button ONLY if setting transaction_type IS Auth AND P3D resonse transaction_type IS Auth
-		if (
-			'pending' == $order_status
-			&& 'Auth' == $order->get_meta(SC_GW_P3D_RESP_TR_TYPE)
-			&& 'Auth' == $wc_sc->settings['transaction_type']
-		) {
+		// show SETTLE button ONLY if P3D resonse transaction_type IS Auth
+		if ('pending' == $order_status && 'Auth' == $order->get_meta(SC_GW_P3D_RESP_TR_TYPE)) {
 			echo 
 				'<button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
 				. esc_html__('Are you sure, you want to Settle Order #' . $order_id . '?', 'sc') . '\', '
