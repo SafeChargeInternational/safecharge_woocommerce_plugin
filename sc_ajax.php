@@ -8,7 +8,7 @@
  * @author SafeCharge
  */
 
-require_once plugin_dir_path(__FILE__) . 'sc_config.php';
+require_once '../sc_config.php';
 
 global $session;
 
@@ -54,7 +54,7 @@ if (
         exit;
     }
     
-    require_once plugin_dir_path(__FILE__) . 'SC_REST_API.php';
+    require_once '../SC_REST_API.php';
     
     // if there is no webMasterId in the session get it from the post
     if (
