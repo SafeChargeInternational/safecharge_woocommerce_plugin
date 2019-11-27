@@ -8,7 +8,7 @@
  * @author SafeCharge
  */
 
-require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'sc_config.php';
+require_once dirname(dirname(__FILE__)) . DIRECTORY_SEPARATOR . 'sc_config.php';
 
 global $session;
 
@@ -54,7 +54,7 @@ if (
         exit;
     }
     
-    require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'SC_REST_API.php';
+    require_once dirname(dirname(__FILE__)) . DIRECTORY_SEPARATOR . 'SC_REST_API.php';
     
     // if there is no webMasterId in the session get it from the post
     if (
