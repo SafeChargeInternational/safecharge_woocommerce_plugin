@@ -176,8 +176,9 @@ function sc_enqueue_wo_files() {
 		'sc_js_public',
 		'scTrans',
 		array(
-			'ajaxurl'	=> admin_url('admin-ajax.php'),
-			'security'	=> wp_create_nonce('sc-security-nonce'),
+			'ajaxurl'			=> admin_url('admin-ajax.php'),
+			'security'			=> wp_create_nonce('sc-security-nonce'),
+			'webMasterId'		=> 'WooCommerce ' . WOOCOMMERCE_VERSION,
 			
 			'paymentDeclined'	=> __('Your Payment was DECLINED. Please try another payment method!'),
 			'paymentError'		=> __('Error with your Payment. Please try again later!'),

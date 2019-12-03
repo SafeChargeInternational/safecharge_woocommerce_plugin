@@ -31,7 +31,7 @@ var fieldsStyle = {
         }
     }
 };
-var scOrderAmount, scOrderCurr, scMerchantId, scMerchantSiteId, scOpenOrderToken;
+var scOrderAmount, scOrderCurr, scMerchantId, scMerchantSiteId, scOpenOrderToken, webMasterId;
 
  /**
   * Function validateScAPMsModal
@@ -72,7 +72,8 @@ function scValidateAPMFields() {
                 currency        : scOrderCurr,
                 amount          : scOrderAmount,
                 cardHolderName  : document.getElementById('sc_card_holder_name').value,
-                paymentOption   : sfcFirstField
+                paymentOption   : sfcFirstField,
+				webMasterId		: scTrans.webMasterId
             }, function(resp){
                 console.log(resp);
 
@@ -253,10 +254,10 @@ function getAPMs() {
                     try {
                         console.log(resp);
                         
-                        scOpenOrderToken    = resp.sessionToken;
-                        scOrderCurr         = resp.currency;
-                        scMerchantId        = resp.merchantId;
-                        scMerchantSiteId    = resp.merchantSiteId;
+                        scOpenOrderToken		= resp.sessionToken;
+                        scOrderCurr				= resp.currency;
+                        scMerchantId			= resp.merchantId;
+                        scMerchantSiteId		= resp.merchantSiteId;
                         
                         scData.merchantSiteId   = resp.merchantSiteId;
                         scData.merchantId       = resp.merchantId;
