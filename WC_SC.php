@@ -45,6 +45,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->use_http       = @$this->settings['use_http'] ? $this->settings['use_http'] : 'yes';
 		$this->save_logs      = @$this->settings['save_logs'] ? $this->settings['save_logs'] : 'yes';
 		$this->hash_type      = @$this->settings['hash_type'] ? $this->settings['hash_type'] : 'sha256';
+		$this->payment_action = @$this->settings['payment_action'] ? $this->settings['payment_action'] : 'Auth';
 		$this->rewrite_dmn    = @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
 		$this->webMasterId    .= WOOCOMMERCE_VERSION;
 		
@@ -116,6 +117,15 @@ class WC_SC extends WC_Payment_Gateway {
 				'options' => array(
 					'sha256' => 'sha256',
 					'md5' => 'md5',
+				)
+			),
+			'payment_action' => array(
+				'title' => __('Payment action', 'sc'),
+				'type' => 'select',
+//				'description' => __('Choose Hash type provided by ' . SC_GATEWAY_TITLE, 'sc'),
+				'options' => array(
+					'Sale' => 'Authorize and Capture',
+					'Auth' => 'Authorize',
 				)
 			),
 			'notify_url' => array(
@@ -1314,6 +1324,7 @@ class WC_SC extends WC_Payment_Gateway {
 			),
 			'webMasterId'       => $this->webMasterId,
 			'paymentOption'		=> ['card' => ['threeD' => ['isDynamic3D' => 1]]],
+			'transactionType'	=> $this->payment_action,
 		);
 
 		$oo_params['checksum'] = hash(
