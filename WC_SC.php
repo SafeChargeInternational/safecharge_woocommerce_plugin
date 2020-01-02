@@ -644,7 +644,7 @@ class WC_SC extends WC_Payment_Gateway {
 				if ('completed' !== $order_status) {
 					$this->change_order_status(
 						$order,
-						$arr[0],
+						$order_id,
 						$req_status,
 						$transactionType
 					);
