@@ -187,21 +187,21 @@ class SC_HELPER {
 						}
 					}
 				}
+                
 				if (isset($data['userAccountDetails']) && is_array($data['userAccountDetails'])) {
 					foreach ($data['userAccountDetails'] as $k => $v) {
 						$data['userAccountDetails'][$k] = 'a string';
 					}
 				}
+                
 				if (isset($data['userPaymentOption']) && is_array($data['userPaymentOption'])) {
 					foreach ($data['userPaymentOption'] as $k => $v) {
 						$data['userPaymentOption'][$k] = 'a string';
 					}
 				}
-				if (isset($data['paResponse']) && !empty($data['paResponse'])) {
-					$data['paResponse'] = 'a long string';
-				}
-				if (isset($data['paReq']) && !empty($data['paReq'])) {
-					$data['paReq'] = 'a long string';
+				
+				if (isset($data['paymentMethods']) && is_array($data['paymentMethods'])) {
+                    $data['paymentMethods'] = json_encode($data['paymentMethods']);
 				}
 				
 				$d = print_r($data, true);

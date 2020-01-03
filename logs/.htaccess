@@ -5,5 +5,4 @@ RewriteEngine On
 <Files>
     Order Deny,Allow
     Deny from all
-    #Allow from 91.220.189.1
 </Files>

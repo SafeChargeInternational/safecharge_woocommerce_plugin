@@ -268,53 +268,18 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		// when we have Approved from the SDK we complete the order here
 		$sc_transaction_id = filter_input(INPUT_POST, 'sc_transaction_id', FILTER_SANITIZE_STRING);
-		
+        
 		if ($sc_transaction_id) {
 			$order->update_meta_data(SC_GW_TRANS_ID_KEY, $sc_transaction_id);
-			
-			$cache = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'tmp'
-				. DIRECTORY_SEPARATOR . $sc_transaction_id . '.txt';
-			
-			//SC_HELPER::create_log($cache, 'cache file');
-			
-			if (is_readable($cache)) {
-				$params                   = json_decode(file_get_contents($cache), true);
-				$params['clientUniqueId'] = $order_id;
-				
-				if (isset($params['wc-api'])) {
-					unset($params['wc-api']);
-				}
-				
-				$url = $this->set_notify_url() . '&' . http_build_query($params);
-				
-				SC_HELPER::create_log(
-					//$url,
-					'Internal DMN call'
-				);
-				
-				@unlink($cache);
-				
-				$ch = curl_init();
-
-				curl_setopt($ch, CURLOPT_URL, $url);
-				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-				curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-
-				$resp = curl_exec($ch);
-				curl_close($ch);
-			} else {
-				SC_HELPER::create_log('The DMN cache file is not readable.');
-				SC_HELPER::create_log(file_exists($cache), 'Is the cache DMN file exists ?:');
-			}
-			
+			$order->save();
+            
 			return array(
 				'result'    => 'success',
 				'redirect'  => add_query_arg(array(), $this->get_return_url())
 			);
-		} else {
-			SC_HELPER::create_log('Rest POST there is no sc_transaction_id. Probably APM Order.');
 		}
+		
+		SC_HELPER::create_log('Rest POST, there is no sc_transaction_id. Probably APM Order.');
 		
 		// if we use UPO or APM
 		$time           = date('Ymdhis');
@@ -567,63 +532,57 @@ class WC_SC extends WC_Payment_Gateway {
 			in_array($transactionType, array('Sale', 'Auth'), true)
 			&& $this->checkAdvancedCheckSum()
 		) {
-			SC_HELPER::create_log('A sale/auth.');
+			SC_HELPER::create_log($transactionType);
 			
-			// Cashier
-			if (!empty($invoice_id)) {
-				SC_HELPER::create_log('Cashier sale.');
-				
-				try {
-					$arr      = explode('_', $invoice_id);
-					$order_id = intval($arr[0]);
-					
-					$order = new WC_Order($order_id);
-				} catch (Exception $ex) {
-					SC_HELPER::create_log($ex->getMessage(), 'Cashier DMN Exception when try to get Order ID: ');
-					echo esc_html('DMN Exception: ' . $ex->getMessage());
-					exit;
-				}
-			} elseif (
+            // WebSDK
+			if (
 				empty($clientUniqueId)
 				&& empty($this->get_param('merchant_unique_id'))
 				&& !empty($this->get_param('TransactionID'))
 			) {
-				// WebSDK
-				SC_HELPER::create_log('REST Sale, DMN came before order save.');
-				
+				SC_HELPER::create_log('WebSDK');
 				// try to get Order ID by its meta key
 				global $wpdb; 
+                
+                $tries = 0;
 				
-				$res = $wpdb->get_results(
-					$wpdb->prepare(
-						"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value LIKE %s;",
-						SC_GW_TRANS_ID_KEY,
-						$TransactionID
-					)
+				$query = $wpdb->prepare(
+					"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value LIKE %s;",
+					SC_GW_TRANS_ID_KEY,
+					$TransactionID
 				);
+                
+                do {
+                    $tries++;
+
+                    $res = $wpdb->get_results($query);
+
+                    if(empty($res[0]->post_id)) {
+                        sleep(3);
+                    }
+                } while($tries <= 10 and empty($res[0]->post_id));
+                
+                if(empty($res[0]->post_id)) {
+                    SC_HELPER::create_log('The DMN didn\'t wait for the Order creation. Exit.');
+                    SC_HELPER::create_log($wpdb->last_query, 'Last query:');
+                    SC_HELPER::create_log($wpdb->last_result, 'Last result:');
+					
+                    echo 'The DMN didn\'t wait for the Order creation. Exit.';
+                    exit;
+                }
 				
-				// the Order was saved before the DMN
-				if (!empty($res) && !empty($res[0]->post_id)) {
-					$order_id = $res[0]->post_id;
-				} else {
-					// the Order is not saved yet, save cache file
-					$cache = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'tmp'
-						. DIRECTORY_SEPARATOR . $TransactionID . '.txt';
-
-					if (!file_exists($cache)) {
-						file_put_contents($cache, json_encode($_REQUEST));
-
-						SC_HELPER::create_log('DMN was saved to a cache file.');
-						exit;
-					}
-				}
+                $order_id = $res[0]->post_id;
 			} else {
 				// REST
 				SC_HELPER::create_log('REST Sale.');
-				$order = new WC_Order($clientUniqueId);
+				
+				if (empty($order_id) && is_numeric($clientUniqueId)) {
+					$order_id = $clientUniqueId;
+				}
 			}
 			
 			try {
+				$order = new WC_Order($order_id);
 				$order_status = strtolower($order->get_status());
 				
 				$order->update_meta_data(
