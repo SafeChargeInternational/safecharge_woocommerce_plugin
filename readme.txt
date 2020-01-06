@@ -3,10 +3,10 @@
 Tags: credit card, safecharge, woocommerce
 Wordpress requirements: 
 	- minimum v4.7
-	- tested up to v5.2.3
+	- tested up to v5.3.2
 WooCommerce requirements: 
 	- minimum v 3.0
-	- tested up to v3.7.0
+	- tested up to v3.8.1
 Stable tag: 1.9.3
 
 == Description ==
