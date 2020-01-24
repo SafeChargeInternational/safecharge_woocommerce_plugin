@@ -267,7 +267,18 @@ class WC_SC extends WC_Payment_Gateway {
 		$order_status = strtolower($order->get_status());
 		
 		// when we have Approved from the SDK we complete the order here
-		$sc_transaction_id = filter_input(INPUT_POST, 'sc_transaction_id', FILTER_SANITIZE_STRING);
+		$sc_transaction_id	= filter_input(INPUT_POST, 'sc_transaction_id', FILTER_SANITIZE_STRING);
+		$return_success_url	= add_query_arg(
+			array('key' => $order->get_order_key()),
+			$this->get_return_url($order)
+		);
+		$return_error_url	= add_query_arg(
+			array(
+				'Status'	=> 'error',
+				'key'		=> $order->get_order_key()
+			),
+			$this->get_return_url($order)
+		);
         
 		if ($sc_transaction_id) {
 			$order->update_meta_data(SC_GW_TRANS_ID_KEY, $sc_transaction_id);
@@ -275,7 +286,7 @@ class WC_SC extends WC_Payment_Gateway {
             
 			return array(
 				'result'    => 'success',
-				'redirect'  => add_query_arg(array(), $this->get_return_url())
+				'redirect'  => $return_success_url
 			);
 		}
 		
@@ -319,9 +330,9 @@ class WC_SC extends WC_Payment_Gateway {
 				'shippingCounty'    => '',
 			),
 			'urlDetails'        => array(
-				'successUrl'        => $this->get_return_url(),
-				'failureUrl'        => $this->get_return_url(),
-				'pendingUrl'        => $this->get_return_url(),
+				'successUrl'        => $return_success_url,
+				'failureUrl'        => $return_success_url,
+				'pendingUrl'        => $return_success_url,
 				'notificationUrl'   => $this->set_notify_url(),
 			),
 			'timeStamp'         => $time,
@@ -393,10 +404,7 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			return array(
 				'result'    => 'success',
-				'redirect'    => add_query_arg(
-					array('Status' => 'error'),
-					$this->get_return_url()
-				)
+				'redirect'	=> $return_error_url
 			);
 		}
 
@@ -412,10 +420,7 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			return array(
 				'result'    => 'success',
-				'redirect'    => add_query_arg(
-					array('Status' => 'error'),
-					$this->get_return_url()
-				)
+				'redirect'  => $return_error_url
 			);
 		}
 		
@@ -440,10 +445,7 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			return array(
 				'result'    => 'success',
-				'redirect'    => add_query_arg(
-					array('Status' => 'error'),
-					$this->get_return_url()
-				)
+				'redirect'  => $return_error_url
 			);
 		}
 		
@@ -461,10 +463,7 @@ class WC_SC extends WC_Payment_Gateway {
 
 				return array(
 					'result'    => 'success',
-					'redirect'    => add_query_arg(
-						array('Status' => 'error'),
-						$this->get_return_url()
-					)
+					'redirect'  => $return_error_url
 				);
 			}
 
@@ -492,10 +491,7 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		return array(
 			'result'    => 'success',
-			'redirect'    => add_query_arg(
-				array(),
-				$this->get_return_url()
-			)
+			'redirect'  => $return_success_url
 		);
 	}
 	
@@ -1271,9 +1267,9 @@ class WC_SC extends WC_Payment_Gateway {
 			'currency'          => get_woocommerce_currency(),
 			'timeStamp'         => $time,
 			'urlDetails'        => array(
-				'successUrl'        => $this->get_return_url(),
-				'failureUrl'        => $this->get_return_url(),
-				'pendingUrl'        => $this->get_return_url(),
+//				'successUrl'        => $this->get_return_url(),
+//				'failureUrl'        => $this->get_return_url(),
+//				'pendingUrl'        => $this->get_return_url(),
 				'notificationUrl'   => $this->set_notify_url(),
 			),
 			'deviceDetails'     => SC_HELPER::get_device_details(),
