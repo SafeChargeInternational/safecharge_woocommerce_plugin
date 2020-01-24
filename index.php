@@ -129,7 +129,7 @@ function woocommerce_add_sc_gateway( $methods) {
 	return $methods;
 }
 
-function sc_enqueue_wo_files() {
+function sc_enqueue_wo_files($styles) {
 	global $wc_sc;
 	
 	$plugin_dir = basename(dirname(__FILE__));
@@ -195,6 +195,8 @@ function sc_enqueue_wo_files() {
 
 	// connect the translations with some of the JS files
 	wp_enqueue_script('sc_js_public');
+	
+	return $styles;
 }
 
 // first method we come in
