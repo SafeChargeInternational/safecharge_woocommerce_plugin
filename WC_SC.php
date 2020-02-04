@@ -1275,7 +1275,8 @@ class WC_SC extends WC_Payment_Gateway {
 			'deviceDetails'     => SC_HELPER::get_device_details(),
 			'userTokenId'       => $user_mail,
 			'billingAddress'    => array(
-				'country' => $country,
+				'country'	=> $country,
+				'email'		=> $user_mail,
 			),
 			'webMasterId'       => $this->webMasterId,
 			'paymentOption'		=> ['card' => ['threeD' => ['isDynamic3D' => 1]]],
