@@ -233,7 +233,6 @@ function getAPMs() {
                     return;
                 }
         
-                // if resp.status == 2 the user use Cashier
                 if(
                     typeof resp != 'undefined'
                     && resp.status == 1
@@ -241,7 +240,7 @@ function getAPMs() {
                     && resp.data['paymentMethods'].length > 0
                 ) {
                     try {
-                        console.log(resp);
+//                        console.log(resp);
                         
                         scOpenOrderToken		= resp.sessionToken;
                         scOrderCurr				= resp.currency;
@@ -271,59 +270,7 @@ function getAPMs() {
 
                     var html_upos = '';
                     var html_apms = '';
-                    var upos = resp.data['upos'];
                     var pMethods = resp.data['paymentMethods'];
-                    
-                    for(var j in upos) {
-                        html_upos +=
-                            '<li class="apm_container">'
-                                +'<div class="apm_title">';
-
-                        try {
-                            if(resp.data.icons[upos[j].upoData.brand]) {
-                                html_upos += 
-                                    '<img src="'+ resp.data.icons[upos[j].upoData.brand].replace('/svg/', '/svg/solid-white/') +'" />';
-
-                                if(upos[j].upoData.ccCardNumber) {
-                                    html_upos +=
-                                    '<div>'+ upos[j].upoData.ccCardNumber +'</div>';
-                                }
-                            }
-                            else if(resp.data.icons[upos[j].paymentMethodName]) {
-                                html_upos += 
-                                    '<img src="'+ resp.data.icons[upos[j].paymentMethodName].replace('/svg/', '/svg/solid-white/') +'" />';
-                            }
-                            else if(resp.data.icons[upos[j].paymentMethodName].search('apmgw_') > -1) {
-                                html_upos += 
-                                    '<img src="#" alt="'+ resp.data.icons[upos[j].paymentMethodName].replace('apmgw_', '') +'" />';
-                            }
-                        }
-                        catch(exception) {}
-
-                        html_upos +=             
-                                    '<span class=""></span>'
-                                    + '<input type="radio" class="sc_payment_method_field" name="sc_payment_method" value="'
-                                        +upos[j].userPaymentOptionId +'" />'
-                                +'</div>';
-                        
-                        try {
-                            if(upos[j].paymentMethodName == 'cc_card' || upos[j].paymentMethodName == 'dc_card') {
-                                html_upos +=
-                                '<div class="apm_fields">'
-                                    + '<div class="apm_field">'
-                                        + '<input id="upo_cvv_field_'+ upos[j].userPaymentOptionId
-                                            +'" class="upo_cvv_field" name="upo_cvv_field_'
-                                            + upos[j].userPaymentOptionId
-                                            +'" type="text" pattern="^[0-9]{3,4}$" placeholder="CVV Number">'
-                                    + '</div>'
-                                + '</div>';
-                            }
-                        }
-                        catch(exception) {}
-                        
-                        html_upos +=             
-                            '</li>';
-                    }
                     
                     for(var i in pMethods) {
                         var pmMsg = '';
@@ -340,7 +287,12 @@ function getAPMs() {
                         }
 
                         var newImg = pmMsg;
-                        if(typeof pMethods[i]['logoURL'] != 'undefined') {
+						
+						if('cc_card' == pMethods[i]['paymentMethod']) {
+							newImg = '<img src="'+ scTrans.plugin_dir_url
+								+'icons/visa_mc_maestro.svg" alt="'+ pmMsg +'" style="height: 26px;" />';
+						}
+                        else if(typeof pMethods[i]['logoURL'] != 'undefined') {
                             newImg = '<img src="'+ pMethods[i]['logoURL'].replace('/svg/', '/svg/solid-white/')
                                 +'" alt="'+ pmMsg +'" />';
                         }
@@ -350,11 +302,11 @@ function getAPMs() {
                         
                         html_apms +=
                             '<li class="apm_container">'
-                                +'<div class="apm_title">'
-                                    +newImg
-                                    +'<input id="sc_payment_method_'+ pMethods[i].paymentMethod +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ pMethods[i].paymentMethod +'" />'
-                                    +'<span class=""></span>'
-                                +'</div>';
+                                + '<div class="apm_title">'
+                                    + newImg
+                                    + '<input id="sc_payment_method_'+ pMethods[i].paymentMethod +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ pMethods[i].paymentMethod +'" />'
+                                    + '<span class=""></span>'
+                                + '</div>';
 
                         if(pMethods[i].paymentMethod == 'cc_card' || pMethods[i].paymentMethod == 'dc_card') {
                             html_apms +=
