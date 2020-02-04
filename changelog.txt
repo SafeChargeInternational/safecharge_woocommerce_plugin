@@ -1,5 +1,8 @@
 *** WooCommerce Extension Template Changelog ***
 
+2020-02-03 - version 2.4
+* Fix for Guest user Order.
+
 2020-01-03 - version 2.3
 * New - Removed the code for Cashier in iFrame. Fixes.
 

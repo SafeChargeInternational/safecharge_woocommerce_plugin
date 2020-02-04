@@ -1256,8 +1256,7 @@ class WC_SC extends WC_Payment_Gateway {
 	public function prepare_rest_payment( $amount, $user_mail, $country) {
 		$time = date('YmdHis');
 		
-		$oo_endpoint_url = 'yes' == $this->test
-			? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
+		$oo_endpoint_url = 'yes' == $this->test ? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
 
 		$oo_params = array(
 			'merchantId'        => $this->merchantId,
@@ -1342,70 +1341,6 @@ class WC_SC extends WC_Payment_Gateway {
 		$upos  = array();
 		$icons = array();
 		
-		/* TODO UPOs are stopped for the moment */
-		if (false && is_user_logged_in()) {
-			$endpoint_url = 'yes' == $this->test
-				? SC_TEST_USER_UPOS_URL : SC_LIVE_USER_UPOS_URL;
-
-			$upos_params = array(
-				'merchantId'        => $this->merchantId,
-				'merchantSiteId'    => $this->merchantSiteId,
-				'userTokenId'       => @wp_get_current_user()->data->user_email,
-				'clientRequestId'   => uniqid(),
-				'timeStamp'         => $time,
-			);
-			
-			$upos_params['checksum'] =
-				hash(
-					$this->hash_type,
-					$this->merchantId . $this->merchantSiteId . $upos_params['userTokenId']
-						. $upos_params['clientRequestId'] . $time . $this->secret
-				);
-
-			$upos_data = SC_HELPER::call_rest_api($endpoint_url, $upos_params);
-
-			if (!empty($upos_data['paymentMethods'])) {
-				foreach ($upos_data['paymentMethods'] as $upo_key => $upo) {
-					if (
-						'enabled' != @$upo['upoStatus']
-						|| ( isset($upo['upoData']['ccCardNumber'])
-							&& empty($upo['upoData']['ccCardNumber']) )
-						|| ( isset($upo['expiryDate'])
-							&& strtotime($upo['expiryDate']) < strtotime(date('Ymd')) )
-					) {
-						continue;
-					}
-
-					// search in payment methods
-					foreach ($payment_methods as $pm) {
-						if (
-							isset($upo['paymentMethodName'], $pm['paymentMethod'])
-							&& $upo['paymentMethodName'] == $pm['paymentMethod']
-						) {
-							if (
-								in_array(@$upo['paymentMethodName'], array('cc_card', 'dc_card'))
-								&& @$upo['upoData']['brand'] && @$pm['logoURL']
-							) {
-								$icons[@$upo['upoData']['brand']] = str_replace(
-									'default_cc_card',
-									$upo['upoData']['brand'],
-									$pm['logoURL']
-								);
-							} elseif (@$pm['logoURL']) {
-								$icons[$pm['paymentMethod']] = $pm['logoURL'];
-							}
-
-							$upos[] = $upo;
-							break;
-						}
-					}
-				}
-			} else {
-				SC_HELPER::create_log($upos_data, '$upos_data:');
-			}
-		}
-		# get UPOs END
-
 		wp_send_json(array(
 			'status'            => 1,
 			'testEnv'           => $this->test,

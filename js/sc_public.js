@@ -15,9 +15,9 @@ var cardCvc                     = null;
 var scData                      = {};
 // set some classes for the Fields
 var elementClasses = {
-    focus: 'focus',
-    empty: 'empty',
-    invalid: 'invalid',
+    focus	: 'focus',
+    empty	: 'empty',
+    invalid	: 'invalid',
 };
 // styles for the fields
 var fieldsStyle = {
@@ -105,7 +105,7 @@ function scValidateAPMFields() {
             });
         }
         // use APM data
-        else if(isNaN(parseInt(selectedPM))) {
+        else {
             var checkId = 'sc_payment_method_' + selectedPM;
 
             // iterate over payment fields
@@ -135,19 +135,6 @@ function scValidateAPMFields() {
             });
 
             if(!formValid) {
-                scFormFalse();
-                return;
-            }
-
-            jQuery('#custom_loader').hide();
-            jQuery('form.woocommerce-checkout').submit();
-        }
-        // use UPO data
-        else {
-            if(
-                jQuery('#upo_cvv_field_' + selectedPM).length > 0
-                && jQuery('#upo_cvv_field_' + selectedPM).val() == ''
-            ) {
                 scFormFalse();
                 return;
             }
@@ -202,11 +189,13 @@ function getAPMs() {
     if (
         typeof scOrderAmount == 'undefined'
         || typeof jQuery("#billing_email").val() == 'undefined'
+        || jQuery("#billing_email").val() == ''
         || typeof jQuery("#billing_country").val() == 'undefined'
+        || jQuery("#billing_country").val() == ''
     ) {
         return;
     }
-    
+	
     if(jQuery("#billing_country").val() != billing_country_first_val) {
         manualChangedCountry = true;
         billing_country_first_val = jQuery("#billing_country").val();
@@ -370,10 +359,6 @@ function getAPMs() {
                         if(pMethods[i].paymentMethod == 'cc_card' || pMethods[i].paymentMethod == 'dc_card') {
                             html_apms +=
                                 '<div class="apm_fields" id="sc_'+ pMethods[i].paymentMethod +'">'
-//                                    +'<div class="apm_field">'
-//                                        + '<div id="card-field-placeholder"></div>'
-//                                    +'</div>'
-                            
                                     + '<div class="apm_field">'
                                         + '<input type="text" id="sc_card_holder_name" name="'+ pMethods[i].paymentMethod
                                             +'[cardHolderName]" placeholder="Card holder name" />'
@@ -598,19 +583,12 @@ jQuery(function() {
     jQuery('#custom_loader_2').parent('div').hide();
     // Prepare REST payment END
     
-    // listener for the iFrane
-    window.addEventListener('message', function(event) {
-        if(window.location.origin === event.origin && event.data.scAction === 'scRedirect') {
-            window.location.href = event.data.scUrl;
-        }
-    }, false);
-    
     jQuery('#payment').append('<div id="custom_loader" class="blockUI"></div>');
     
     billing_country_first_val = jQuery("#billing_country").val();
     
     // if user change the billing country get new payment methods
-    jQuery("#billing_country").on('change', function() {
+    jQuery("#billing_country ,#billing_email").on('change', function() {
         getAPMs();
     });
     
@@ -647,10 +625,5 @@ jQuery(function() {
         // hide errors
         jQuery('.apm_error').hide();
     });
-    
-    jQuery('#i_frame').on('load', function(){
-        jQuery('#sc_pay_msg').hide();
-    });
-    
 });
 // document ready function END

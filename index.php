@@ -2,8 +2,8 @@
 /*
 Plugin Name: SafeCharge Payments
 Plugin URI: http://www.safecharge.com
-Description: SafeCharge gateway for woocommerce
-Version: 2.3
+Description: SafeCharge gateway for WooCommerce
+Version: 2.4
 Author: SafeCharge
 Author URI: http://safecharge.com
 */
@@ -83,6 +83,7 @@ function sc_ajax_action() {
 		wp_die('Invalid site mode.');
 	}
 	
+	// set parameters
 	$country = '';
 	if (isset($_POST['country'])) {
 		$country = sanitize_text_field($_POST['country']);
@@ -103,6 +104,7 @@ function sc_ajax_action() {
 		$payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
 	}
 
+	// recognize the action:
 	// Void (Cancel)
 	if (!empty($_POST['cancelOrder']) && !empty($_POST['orderId'])) {
 		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'void');
@@ -113,7 +115,7 @@ function sc_ajax_action() {
 		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'settle');
 	}
 
-	// when we use the REST - Open order and get APMs and UPOs
+	// when we use the REST - Open order and get APMs
 	if (!empty($country) && !empty($amount) && !empty($userMail)) {
 		$wc_sc->prepare_rest_payment($amount, $userMail, $country);
 	}

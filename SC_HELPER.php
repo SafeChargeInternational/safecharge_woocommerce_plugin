@@ -78,23 +78,23 @@ class SC_HELPER {
 	 * @return array $device_details
 	 */
 	public static function get_device_details() {
-		$server = filter_input_array(INPUT_SERVER, $_SERVER);
-		
 		$device_details = array(
 			'deviceType'    => 'UNKNOWN', // DESKTOP, SMARTPHONE, TABLET, TV, and UNKNOWN
-			'deviceName'    => '',
-			'deviceOS'      => '',
-			'browser'       => '',
-			'ipAddress'     => '',
+			'deviceName'    => 'UNKNOWN',
+			'deviceOS'      => 'UNKNOWN',
+			'browser'       => 'UNKNOWN',
+			'ipAddress'     => '0.0.0.0',
 		);
 		
-		if (empty($server['HTTP_USER_AGENT'])) {
+		$user_agent = strtolower(filter_input(INPUT_SERVER, 'HTTP_USER_AGENT', FILTER_SANITIZE_STRING));
+		
+		if (empty($user_agent)) {
+			$device_details['Warning'] = 'Probably the merchant Server has problems with PHP filter_input function!';
+			
 			return $device_details;
 		}
 		
-		$user_agent = strtolower($server['HTTP_USER_AGENT']);
-		
-		$device_details['deviceName'] = $server['HTTP_USER_AGENT'];
+		$device_details['deviceName'] = $user_agent;
 
 		if (defined('SC_DEVICES_TYPES')) {
 			$devs_tps = json_decode(SC_DEVICES_TYPES, true);
@@ -141,17 +141,18 @@ class SC_HELPER {
 		}
 
 		// get ip
-		$ip_address = '';
-
-		if (isset($server['REMOTE_ADDR'])) {
-			$ip_address = $server['REMOTE_ADDR'];
-		} elseif (isset($server['HTTP_X_FORWARDED_FOR'])) {
-			$ip_address = $server['HTTP_X_FORWARDED_FOR'];
-		} elseif (isset($server['HTTP_CLIENT_IP'])) {
-			$ip_address = $server['HTTP_CLIENT_IP'];
+		$ip_address = filter_input(INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP);
+		
+		if(empty($ip_address)) {
+			$ip_address = filter_input(INPUT_SERVER, 'HTTP_X_FORWARDED_FOR', FILTER_VALIDATE_IP);
 		}
-
-		$device_details['ipAddress'] = (string) $ip_address;
+		if(empty($ip_address)) {
+			$ip_address = filter_input(INPUT_SERVER, 'HTTP_CLIENT_IP', FILTER_VALIDATE_IP);
+		}
+		
+		if(!empty($ip_address)) {
+			$device_details['ipAddress'] = (string) $ip_address;
+		}
 			
 		return $device_details;
 	}
