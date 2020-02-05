@@ -47,7 +47,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->hash_type      = @$this->settings['hash_type'] ? $this->settings['hash_type'] : 'sha256';
 		$this->payment_action = @$this->settings['payment_action'] ? $this->settings['payment_action'] : 'Auth';
 		$this->rewrite_dmn    = @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
-		$this->webMasterId    .= WOOCOMMERCE_VERSION;
+		$this->webMasterId   .= WOOCOMMERCE_VERSION;
 		
 		$_SESSION['SC_Variables']['sc_create_logs'] = $this->save_logs;
 		
@@ -122,7 +122,7 @@ class WC_SC extends WC_Payment_Gateway {
 			'payment_action' => array(
 				'title' => __('Payment action', 'sc'),
 				'type' => 'select',
-//				'description' => __('Choose Hash type provided by ' . SC_GATEWAY_TITLE, 'sc'),
+		//              'description' => __('Choose Hash type provided by ' . SC_GATEWAY_TITLE, 'sc'),
 				'options' => array(
 					'Sale' => 'Authorize and Capture',
 					'Auth' => 'Authorize',
@@ -279,11 +279,11 @@ class WC_SC extends WC_Payment_Gateway {
 			),
 			$this->get_return_url($order)
 		);
-        
+		
 		if ($sc_transaction_id) {
 			$order->update_meta_data(SC_GW_TRANS_ID_KEY, $sc_transaction_id);
 			$order->save();
-            
+			
 			return array(
 				'result'    => 'success',
 				'redirect'  => $return_success_url
@@ -292,9 +292,9 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		SC_HELPER::create_log('Rest POST, there is no sc_transaction_id. Probably APM Order.');
 		
-		// if we use UPO or APM
-		$time           = date('Ymdhis');
-		$endpoint_url   = '';
+		// if we use APM
+		$time         = gmdate('Ymdhis');
+		$endpoint_url = '';
 		
 		$params = array(
 			'merchantId'        => $this->merchantId,
@@ -387,8 +387,8 @@ class WC_SC extends WC_Payment_Gateway {
 				. $params['amount'] . $params['currency'] . $time . $this->secret
 		);
 		
-		$params['paymentMethod']	= filter_input(INPUT_POST, 'sc_payment_method', FILTER_SANITIZE_STRING);
-		$post_sc_payment_fields		= filter_input(INPUT_POST, $params['paymentMethod'], FILTER_DEFAULT , FILTER_REQUIRE_ARRAY);
+		$params['paymentMethod'] = filter_input(INPUT_POST, 'sc_payment_method', FILTER_SANITIZE_STRING);
+		$post_sc_payment_fields  = filter_input(INPUT_POST, $params['paymentMethod'], FILTER_DEFAULT , FILTER_REQUIRE_ARRAY);
 		
 		if ($post_sc_payment_fields) {
 			$params['userAccountDetails'] = $post_sc_payment_fields;
@@ -505,6 +505,11 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		$req_status = $this->get_request_status();
 		
+		if (empty($req_status)) {
+			echo 'Error: the DMN Status is empty!';
+			exit;
+		}
+		
 		// santitized get variables
 		$invoice_id      = $this->get_param('invoice_id');
 		$clientUniqueId  = $this->get_param('clientUniqueId');
@@ -530,7 +535,7 @@ class WC_SC extends WC_Payment_Gateway {
 		) {
 			SC_HELPER::create_log($transactionType);
 			
-            // WebSDK
+			// WebSDK
 			if (
 				empty($clientUniqueId)
 				&& empty($this->get_param('merchant_unique_id'))
@@ -539,35 +544,33 @@ class WC_SC extends WC_Payment_Gateway {
 				SC_HELPER::create_log('WebSDK');
 				// try to get Order ID by its meta key
 				global $wpdb; 
-                
-                $tries = 0;
 				
-				$query = $wpdb->prepare(
-					"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value LIKE %s;",
-					SC_GW_TRANS_ID_KEY,
-					$TransactionID
-				);
-                
-                do {
-                    $tries++;
+				$tries = 0;
+				
+				do {
+					$tries++;
 
-                    $res = $wpdb->get_results($query);
+					$res = $wpdb->get_results(
+						"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value LIKE %d;",
+						SC_GW_TRANS_ID_KEY,
+						$TransactionID
+					);
 
-                    if(empty($res[0]->post_id)) {
-                        sleep(3);
-                    }
-                } while($tries <= 10 and empty($res[0]->post_id));
-                
-                if(empty($res[0]->post_id)) {
-                    SC_HELPER::create_log('The DMN didn\'t wait for the Order creation. Exit.');
-                    SC_HELPER::create_log($wpdb->last_query, 'Last query:');
-                    SC_HELPER::create_log($wpdb->last_result, 'Last result:');
+					if (empty($res[0]->post_id)) {
+						sleep(3);
+					}
+				} while ($tries <= 10 && empty($res[0]->post_id));
+				
+				if (empty($res[0]->post_id)) {
+					SC_HELPER::create_log('The DMN didn\'t wait for the Order creation. Exit.');
+					SC_HELPER::create_log($wpdb->last_query, 'Last query:');
+					SC_HELPER::create_log($wpdb->last_result, 'Last result:');
 					
-                    echo 'The DMN didn\'t wait for the Order creation. Exit.';
-                    exit;
-                }
+					echo 'The DMN didn\'t wait for the Order creation. Exit.';
+					exit;
+				}
 				
-                $order_id = $res[0]->post_id;
+				$order_id = $res[0]->post_id;
 			} else {
 				// REST
 				SC_HELPER::create_log('REST Sale.');
@@ -578,7 +581,7 @@ class WC_SC extends WC_Payment_Gateway {
 			}
 			
 			try {
-				$order = new WC_Order($order_id);
+				$order        = new WC_Order($order_id);
 				$order_status = strtolower($order->get_status());
 				
 				$order->update_meta_data(
@@ -610,9 +613,10 @@ class WC_SC extends WC_Payment_Gateway {
 				exit;
 			}
 			
-			$order->add_order_note(
-				__('DMN for Order #' . $order_id . ', was received.', 'sc')
-			);
+			$msg = __('DMN for Order #' . $order_id . ', was received.', 'sc')
+				. '<br/>' . __('Payment method:', 'sc') . ' <b>' . $this->get_param('payment_method') . '</b>.';
+			
+			$order->add_order_note($msg);
 			$order->save();
 			
 			echo esc_html('DMN received.');
@@ -631,8 +635,13 @@ class WC_SC extends WC_Payment_Gateway {
 				$order_id = $clientUniqueId;
 				$order    = new WC_Order($order_id);
 				
+				$msg = __('DMN for Order #' . $order_id . ', was received.', 'sc');
+				
 				if ('Settle' == $transactionType) {
 					$this->save_update_order_numbers($order);
+					
+					$msg .= '<br/>' . __('Payment method:', 'sc')
+						. ' <b>' . $this->get_param('payment_method') . '</b>.';
 				}
 				
 				$this->change_order_status(
@@ -648,8 +657,6 @@ class WC_SC extends WC_Payment_Gateway {
 					'process_dmns() REST API DMN DMN Exception: probably invalid order number'
 				);
 			}
-			
-			$msg = __('DMN for Order #' . $order_id . ', was received.', 'sc');
 			
 			if (!empty($Reason)) {
 				$msg .= ' ' . __($Reason . '.', 'sc');
@@ -741,11 +748,6 @@ class WC_SC extends WC_Payment_Gateway {
 			}
 			
 			echo 'DMN received.';
-			exit;
-		}
-		
-		if ('' === $req_status) {
-			echo 'Error: the DMN Status is empty!';
 			exit;
 		}
 		
@@ -994,7 +996,7 @@ class WC_SC extends WC_Payment_Gateway {
 			$cpanel_url = SC_LIVE_CPANEL_URL;
 		}
 		
-		$time = date('YmdHis', time());
+		$time = gmdate('YmdHis', time());
 		
 		$ref_parameters = array(
 			'merchantId'            => $this->settings['merchantId'],
@@ -1180,7 +1182,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 */
 	public function create_settle_void( $order_id, $action ) {
 		$ord_status = 1;
-		$time		= date('YmdHis');
+		$time		= gmdate('YmdHis');
 		
 		if ('settle' == $action) {
 			$url = 'no' == $_SESSION['SC_Variables']['test'] ? SC_LIVE_SETTLE_URL : SC_TEST_SETTLE_URL;
@@ -1254,7 +1256,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 * @param string $country
 	 */
 	public function prepare_rest_payment( $amount, $user_mail, $country) {
-		$time = date('YmdHis');
+		$time = gmdate('YmdHis');
 		
 		$oo_endpoint_url = 'yes' == $this->test ? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
 
@@ -1266,9 +1268,9 @@ class WC_SC extends WC_Payment_Gateway {
 			'currency'          => get_woocommerce_currency(),
 			'timeStamp'         => $time,
 			'urlDetails'        => array(
-//				'successUrl'        => $this->get_return_url(),
-//				'failureUrl'        => $this->get_return_url(),
-//				'pendingUrl'        => $this->get_return_url(),
+		//              'successUrl'        => $this->get_return_url(),
+		//              'failureUrl'        => $this->get_return_url(),
+		//              'pendingUrl'        => $this->get_return_url(),
 				'notificationUrl'   => $this->set_notify_url(),
 			),
 			'deviceDetails'     => SC_HELPER::get_device_details(),
@@ -1278,7 +1280,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'email'		=> $user_mail,
 			),
 			'webMasterId'       => $this->webMasterId,
-			'paymentOption'		=> ['card' => ['threeD' => ['isDynamic3D' => 1]]],
+			'paymentOption'		=> array('card' => array('threeD' => array('isDynamic3D' => 1))),
 			'transactionType'	=> $this->payment_action,
 		);
 
