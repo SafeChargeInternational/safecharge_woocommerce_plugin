@@ -131,7 +131,7 @@ function woocommerce_add_sc_gateway( $methods) {
 	return $methods;
 }
 
-function sc_enqueue_wo_files($styles) {
+function sc_enqueue_wo_files( $styles) {
 	global $wc_sc;
 	
 	$plugin_dir = basename(dirname(__FILE__));
@@ -344,7 +344,7 @@ function sc_add_buttons() {
 	if ('completed' == $order_status || 'pending' == $order_status) {
 		global $wc_sc;
 
-		$time             = date('YmdHis', time());
+		$time             = gmdate('YmdHis', time());
 		$order_tr_id      = $order->get_meta(SC_GW_TRANS_ID_KEY);
 		$order_has_refund = $order->get_meta('_scHasRefund');
 		$notify_url       = $wc_sc->set_notify_url();

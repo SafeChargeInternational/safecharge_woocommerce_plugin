@@ -143,14 +143,14 @@ class SC_HELPER {
 		// get ip
 		$ip_address = filter_input(INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP);
 		
-		if(empty($ip_address)) {
+		if (empty($ip_address)) {
 			$ip_address = filter_input(INPUT_SERVER, 'HTTP_X_FORWARDED_FOR', FILTER_VALIDATE_IP);
 		}
-		if(empty($ip_address)) {
+		if (empty($ip_address)) {
 			$ip_address = filter_input(INPUT_SERVER, 'HTTP_CLIENT_IP', FILTER_VALIDATE_IP);
 		}
 		
-		if(!empty($ip_address)) {
+		if (!empty($ip_address)) {
 			$device_details['ipAddress'] = (string) $ip_address;
 		}
 			
@@ -188,13 +188,13 @@ class SC_HELPER {
 						}
 					}
 				}
-                
+				
 				if (isset($data['userAccountDetails']) && is_array($data['userAccountDetails'])) {
 					foreach ($data['userAccountDetails'] as $k => $v) {
 						$data['userAccountDetails'][$k] = 'a string';
 					}
 				}
-                
+				
 				if (isset($data['userPaymentOption']) && is_array($data['userPaymentOption'])) {
 					foreach ($data['userPaymentOption'] as $k => $v) {
 						$data['userPaymentOption'][$k] = 'a string';
@@ -202,7 +202,7 @@ class SC_HELPER {
 				}
 				
 				if (isset($data['paymentMethods']) && is_array($data['paymentMethods'])) {
-                    $data['paymentMethods'] = json_encode($data['paymentMethods']);
+					$data['paymentMethods'] = json_encode($data['paymentMethods']);
 				}
 				
 				$d = print_r($data, true);
@@ -223,8 +223,8 @@ class SC_HELPER {
 
 			try {
 				file_put_contents(
-					SC_LOGS_DIR . date('Y-m-d', time()) . '.txt',
-					date('H:i:s', time()) . ': ' . $d . "\r\n",
+					SC_LOGS_DIR . gmdate('Y-m-d', time()) . '.txt',
+					gmdate('H:i:s', time()) . ': ' . $d . "\r\n",
 					FILE_APPEND
 				);
 			} catch (Exception $exc) {
