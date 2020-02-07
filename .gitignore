@@ -1,7 +1,9 @@
 logs/*.txt
+tmp/*.txt
 desktop.ini
 Rubbish/*
 error_log
 vendor/*
-composer.json
-composer.lock
+composer.*
+phpcs.xml
+*.7z
