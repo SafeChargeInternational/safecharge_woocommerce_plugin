@@ -138,5 +138,6 @@ define('SC_DEVICES_OS', json_encode(array('android', 'windows', 'linux', 'mac os
 define('SC_AUTH_CODE_KEY', '_authCode');
 define('SC_GW_TRANS_ID_KEY', '_relatedTransactionId');
 define('SC_GW_P3D_RESP_TR_TYPE', '_p3dRespTransactionType');
+define('SC_SOURCE_APPLICATION', 'WOOCOMMERCE_PLUGIN');
 
 define('SC_LOGS_DIR', dirname(__FILE__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR);

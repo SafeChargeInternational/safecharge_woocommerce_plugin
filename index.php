@@ -181,6 +181,7 @@ function sc_enqueue_wo_files( $styles) {
 			'ajaxurl'			=> admin_url('admin-ajax.php'),
 			'security'			=> wp_create_nonce('sc-security-nonce'),
 			'webMasterId'		=> 'WooCommerce ' . WOOCOMMERCE_VERSION,
+			'sourceApplication'	=> SC_SOURCE_APPLICATION,
 			'plugin_dir_url'	=> plugin_dir_url(__FILE__),
 			
 			'paymentDeclined'	=> __('Your Payment was DECLINED. Please try another payment method!'),

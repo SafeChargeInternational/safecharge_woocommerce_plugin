@@ -240,16 +240,15 @@ function getAPMs() {
                     && resp.data['paymentMethods'].length > 0
                 ) {
                     try {
-//                        console.log(resp);
-                        
                         scOpenOrderToken		= resp.sessionToken;
                         scOrderCurr				= resp.currency;
                         scMerchantId			= resp.merchantId;
                         scMerchantSiteId		= resp.merchantSiteId;
                         
-                        scData.merchantSiteId   = resp.merchantSiteId;
-                        scData.merchantId       = resp.merchantId;
-                        scData.sessionToken     = resp.sessionToken;
+                        scData.merchantSiteId		= resp.merchantSiteId;
+                        scData.merchantId			= resp.merchantId;
+                        scData.sessionToken			= resp.sessionToken;
+                        scData.sourceApplication	= scTrans.webMasterId;
                         
                         if(resp.testEnv == 'yes') {
                             scData.env = 'test';

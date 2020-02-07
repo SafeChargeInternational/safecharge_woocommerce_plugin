@@ -337,6 +337,7 @@ class WC_SC extends WC_Payment_Gateway {
 			),
 			'timeStamp'         => $time,
 			'webMasterId'       => $this->webMasterId,
+			'sourceApplication' => SC_SOURCE_APPLICATION,
 			'deviceDetails'     => SC_HELPER::get_device_details(),
 			'sessionToken'      => filter_input(INPUT_POST, 'lst', FILTER_SANITIZE_STRING),
 		);
@@ -551,9 +552,11 @@ class WC_SC extends WC_Payment_Gateway {
 					$tries++;
 
 					$res = $wpdb->get_results(
-						"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value LIKE %d;",
-						SC_GW_TRANS_ID_KEY,
-						$TransactionID
+						$wpdb->prepare(
+							"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value = %d ;",
+							SC_GW_TRANS_ID_KEY,
+							$TransactionID
+						)
 					);
 
 					if (empty($res[0]->post_id)) {
@@ -939,8 +942,7 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		// get order refunds
 		try {
-			$refund_data                = $refund->get_data();
-			$refund_data['webMasterId'] = $this->webMasterId; // need this param for the API
+			$refund_data = $refund->get_data();
 			
 			// the hooks calling this method, fired twice when change status
 			// to Refunded, but we do not want to try more than one SC Refunds
@@ -1019,11 +1021,10 @@ class WC_SC extends WC_Payment_Gateway {
 			$checksum_str . $this->settings['secret']
 		);
 		
-		$ref_parameters['checksum']    = $checksum;
-		$ref_parameters['urlDetails']  = array(
-			'notificationUrl' => $notify_url
-		);
-		$ref_parameters['webMasterId'] = $refund_data['webMasterId'];
+		$ref_parameters['checksum']				= $checksum;
+		$ref_parameters['urlDetails']			= array('notificationUrl' => $notify_url);
+		$ref_parameters['webMasterId']			= $this->webMasterId;
+		$ref_parameters['sourceApplication']	= SC_SOURCE_APPLICATION;
 		
 		$resp = SC_HELPER::call_rest_api($refund_url, $ref_parameters);
 
@@ -1213,6 +1214,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'timeStamp'				=> $time,
 				'checksum'				=> '',
 				'webMasterId'			=> $this->webMasterId,
+				'sourceApplication'		=> SC_SOURCE_APPLICATION,
 			);
 
 			$params['checksum'] = hash(
