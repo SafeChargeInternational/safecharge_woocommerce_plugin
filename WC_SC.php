@@ -263,7 +263,16 @@ class WC_SC extends WC_Payment_Gateway {
 	  * @param int $order_id
 	 **/
 	public function process_payment( $order_id) {
-		$order        = new WC_Order($order_id);
+		SC_HELPER::create_log('Process payment for Order #' . $order_id);
+		
+		$order = wc_get_order($order_id);
+		
+		if(!$order) {
+			SC_HELPER::create_log('Order is false for order id ' . $order_id);
+			
+			return array('result' => 'error');
+		}
+		
 		$order_status = strtolower($order->get_status());
 		
 		// when we have Approved from the SDK we complete the order here
@@ -280,8 +289,11 @@ class WC_SC extends WC_Payment_Gateway {
 			$this->get_return_url($order)
 		);
 		
+		// in case of webSDK payment (cc_card)
 		if ($sc_transaction_id) {
-			$order->update_meta_data(SC_GW_TRANS_ID_KEY, $sc_transaction_id);
+			SC_HELPER::create_log('Process webSDK Order, transaction ID #' . $sc_transaction_id);
+			
+			$order->update_meta_data(SC_TRANS_ID, $sc_transaction_id);
 			$order->save();
 			
 			return array(
@@ -290,7 +302,7 @@ class WC_SC extends WC_Payment_Gateway {
 			);
 		}
 		
-		SC_HELPER::create_log('Rest POST, there is no sc_transaction_id. Probably APM Order.');
+		SC_HELPER::create_log('Process Rest APM Order.');
 		
 		// if we use APM
 		$time         = gmdate('Ymdhis');
@@ -411,7 +423,7 @@ class WC_SC extends WC_Payment_Gateway {
 
 		// If we get Transaction ID save it as meta-data
 		if (isset($resp['transactionId']) && $resp['transactionId']) {
-			$order->update_meta_data(SC_GW_TRANS_ID_KEY, $resp['transactionId'], 0);
+			$order->update_meta_data(SC_TRANS_ID, $resp['transactionId'], 0);
 		}
 
 		if (isset($resp['transactionStatus']) && 'DECLINED' === $resp['transactionStatus']) {
@@ -485,7 +497,7 @@ class WC_SC extends WC_Payment_Gateway {
 
 		// save the response transactionType value
 		if (isset($resp['transactionType']) && '' !== $resp['transactionType']) {
-			$order->update_meta_data(SC_GW_P3D_RESP_TR_TYPE, $resp['transactionType']);
+			$order->update_meta_data(SC_RESP_TRANS_TYPE, $resp['transactionType']);
 		}
 
 		$order->save();
@@ -507,6 +519,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$req_status = $this->get_request_status();
 		
 		if (empty($req_status)) {
+			SC_HELPER::create_log('Error: the DMN Status is empty!');
 			echo 'Error: the DMN Status is empty!';
 			exit;
 		}
@@ -529,13 +542,16 @@ class WC_SC extends WC_Payment_Gateway {
 			exit;
 		}
 		
+		if(!$this->checkAdvancedCheckSum()) {
+			SC_HELPER::create_log('Error when check AdvancedCheckSum!');
+			echo esc_html('Error when check AdvancedCheckSum!');
+			exit;
+		}
+		
+		SC_HELPER::create_log($transactionType);
+		
 		# Sale and Auth
-		if (
-			in_array($transactionType, array('Sale', 'Auth'), true)
-			&& $this->checkAdvancedCheckSum()
-		) {
-			SC_HELPER::create_log($transactionType);
-			
+		if (in_array($transactionType, array('Sale', 'Auth'), true)) {
 			// WebSDK
 			if (
 				empty($clientUniqueId)
@@ -554,7 +570,7 @@ class WC_SC extends WC_Payment_Gateway {
 					$res = $wpdb->get_results(
 						$wpdb->prepare(
 							"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value = %d ;",
-							SC_GW_TRANS_ID_KEY,
+							SC_TRANS_ID,
 							$TransactionID
 						)
 					);
@@ -569,7 +585,7 @@ class WC_SC extends WC_Payment_Gateway {
 					SC_HELPER::create_log($wpdb->last_query, 'Last query:');
 					SC_HELPER::create_log($wpdb->last_result, 'Last result:');
 					
-					echo 'The DMN didn\'t wait for the Order creation. Exit.';
+					echo esc_html('The DMN didn\'t wait for the Order creation. Exit.');
 					exit;
 				}
 				
@@ -583,37 +599,25 @@ class WC_SC extends WC_Payment_Gateway {
 				}
 			}
 			
-			try {
-				$order        = new WC_Order($order_id);
-				$order_status = strtolower($order->get_status());
+			$order = wc_get_order($order_id);
 				
-				$order->update_meta_data(
-					SC_GW_P3D_RESP_TR_TYPE,
+			if(!$order) {
+				SC_HELPER::create_log('Order gets False.');
+				echo esc_html('DMN error - Order gets False.');
+				exit;
+			}
+			
+			$this->save_update_order_numbers($order);
+			
+			$order_status = strtolower($order->get_status());
+			
+			if ('completed' !== $order_status) {
+				$this->change_order_status(
+					$order,
+					$order_id,
+					$req_status,
 					$transactionType
 				);
-				
-				// in case of WebSDK Chalenge
-				if (!$order->get_meta(SC_AUTH_CODE_KEY) && '' != $AuthCode) {
-					$order->update_meta_data(
-						SC_AUTH_CODE_KEY,
-						$AuthCode
-					);
-				}
-				
-				$this->save_update_order_numbers($order);
-				
-				if ('completed' !== $order_status) {
-					$this->change_order_status(
-						$order,
-						$order_id,
-						$req_status,
-						$transactionType
-					);
-				}
-			} catch (Exception $ex) {
-				SC_HELPER::create_log($ex->getMessage(), 'Sale DMN Exception: ');
-				echo esc_html('DMN Exception: ' . $ex->getMessage());
-				exit;
 			}
 			
 			$msg = __('DMN for Order #' . $order_id . ', was received.', 'sc')
@@ -630,37 +634,27 @@ class WC_SC extends WC_Payment_Gateway {
 		if (
 			'' != $clientUniqueId
 			&& ( in_array($transactionType, array('Void', 'Settle'), true) )
-			&& $this->checkAdvancedCheckSum()
 		) {
-			SC_HELPER::create_log($transactionType);
+			$order_id = $clientUniqueId;
+			$order    = wc_get_order($order_id);
 			
-			try {
-				$order_id = $clientUniqueId;
-				$order    = new WC_Order($order_id);
-				
-				$msg = __('DMN for Order #' . $order_id . ', was received.', 'sc');
-				
-				if ('Settle' == $transactionType) {
-					$this->save_update_order_numbers($order);
-					
-					$msg .= '<br/>' . __('Payment method:', 'sc')
-						. ' <b>' . $this->get_param('payment_method') . '</b>.';
-				}
-				
-				$this->change_order_status(
-					$order,
-					$order_id,
-					$req_status,
-					$transactionType
-				);
-				
-			} catch (Exception $ex) {
-				SC_HELPER::create_log(
-					$ex->getMessage(),
-					'process_dmns() REST API DMN DMN Exception: probably invalid order number'
-				);
+			if(!$order) {
+				SC_HELPER::create_log('Order gets False.');
+				echo esc_html('DMN error - Order gets False.');
+				exit;
 			}
 			
+			$msg = __('DMN for Order #' . $order_id . ', was received.', 'sc');
+			
+			if ('Settle' == $transactionType) {
+				$this->save_update_order_numbers($order);
+
+				$msg .= '<br/>' . __('Payment method:', 'sc')
+					. ' <b>' . $this->get_param('payment_method') . '</b>.';
+			}
+
+			$this->change_order_status($order, $order_id, $req_status, $transactionType);
+				
 			if (!empty($Reason)) {
 				$msg .= ' ' . __($Reason . '.', 'sc');
 			}
@@ -676,81 +670,25 @@ class WC_SC extends WC_Payment_Gateway {
 		// see https://www.safecharge.com/docs/API/?json#refundTransaction -> Output Parameters
 		// when we refund form CPanel we get transactionType = Credit and Status = 'APPROVED'
 		if (
-			(
-				'refund' == $action
-				|| in_array($transactionType, array('Credit', 'Refund'), true)
-			)
-			&& !empty($req_status)
-			&& $this->checkAdvancedCheckSum()
+			'refund' == $action
+			|| in_array($transactionType, array('Credit', 'Refund'), true)
 		) {
-			SC_HELPER::create_log('Refund DMN.');
+			$order = wc_get_order($order_id);
 			
-			$order = new WC_Order($order_id);
-
-			if (!is_a($order, 'WC_Order')) {
-				SC_HELPER::create_log('DMN meassage: there is no Order!');
-				
-				echo 'There is no Order';
+			if(!$order) {
+				SC_HELPER::create_log('Order gets False.');
+				echo esc_html('DMN error - Order gets False.');
 				exit;
 			}
 			
-			// change to Refund if request is Approved and the Order status is not Refunded
-			if ('APPROVED' === $req_status) {
-				$this->change_order_status(
-					$order,
-					$order->get_id(),
-					'APPROVED',
-					'Credit',
-					array(
-						'resp_id'       => $clientUniqueId,
-						'totalAmount'   => $this->get_param('totalAmount')
-					)
-				);
-			} elseif (in_array ($this->get_param('transactionStatus'), array('DECLINED', 'ERROR'), true)) {
-				$msg = 'DMN message: Your try to Refund #' . $clientUniqueId
-					. ' faild with ERROR: "';
+			$this->change_order_status($order, $order_id, $req_status, $transactionType,
+				array(
+					'resp_id'       => $clientUniqueId,
+					'totalAmount'   => $this->get_param('totalAmount')
+				)
+			);
 
-				// in case DMN URL was rewrited all spaces were replaces with "_"
-				if (1 == $this->get_param('wc_sc_redirected')) {
-					$msg .= str_replace('_', ' ', $gwErrorReason);
-				} else {
-					$msg .= $gwErrorReason;
-				}
-
-				$msg .= '".';
-
-				$order -> add_order_note(__($msg, 'sc'));
-				$order->save();
-			}
-			
-			echo esc_html('DMN received - Refund.');
-			exit;
-		}
-		
-		# other cases
-		if (!$action && $this->checkAdvancedCheckSum()) {
-			SC_HELPER::create_log('', 'Other cases.');
-			
-			try {
-				$order = new WC_Order($clientUniqueId);
-
-				$this->change_order_status(
-					$order,
-					$clientUniqueId,
-					$this->get_request_status(),
-					$transactionType
-				);
-			} catch (Exception $ex) {
-				SC_HELPER::create_log(
-					$ex->getMessage(),
-					'process_dmns() REST API DMN Exception: '
-				);
-				
-				echo 'Exception error.';
-				exit;
-			}
-			
-			echo 'DMN received.';
+			echo esc_html('DMN received.');
 			exit;
 		}
 		
@@ -962,10 +900,10 @@ class WC_SC extends WC_Payment_Gateway {
 				$order_id = $post_ID;
 			}
 			
-			$order = new WC_Order($order_id);
+			$order = wc_get_order($order_id);
 			
 			$order_meta_data = array(
-				'order_tr_id'   => $order->get_meta(SC_GW_TRANS_ID_KEY),
+				'order_tr_id'   => $order->get_meta(SC_TRANS_ID),
 				'auth_code'     => $order->get_meta(SC_AUTH_CODE_KEY),
 			);
 		} catch (Exception $ex) {
@@ -1130,7 +1068,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 * @return void
 	 */
 	public function sc_restock_on_refunded_status( $order_id) {
-		$order            = new WC_Order($order_id);
+		$order            = wc_get_order($order_id);
 		$items            = $order->get_items();
 		$is_order_restock = $order->get_meta('_scIsRestock');
 		
@@ -1191,10 +1129,10 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		try {
-			$order = new WC_Order($order_id);
+			$order = wc_get_order($order_id);
 			
 			$order_meta_data = array(
-				'order_tr_id'   => $order->get_meta(SC_GW_TRANS_ID_KEY),
+				'order_tr_id'   => $order->get_meta(SC_TRANS_ID),
 				'auth_code'     => $order->get_meta(SC_AUTH_CODE_KEY),
 			);
 			
@@ -1369,10 +1307,10 @@ class WC_SC extends WC_Payment_Gateway {
 	 * @param object $order
 	 * @param int $order_id
 	 * @param string $status
-	 * @param string $transactionType - not mandatory for the DMN
+	 * @param string $transactionType
 	 * @param array $res_args - we must use $res_args instead $_REQUEST, if not empty
 	 */
-	private function change_order_status( $order, $order_id, $status, $transactionType = '', $res_args = array()) {
+	private function change_order_status( $order, $order_id, $status, $transactionType, $res_args = array()) {
 		SC_HELPER::create_log(
 			'Order ' . $order_id . ' has Status: ' . $status,
 			'WC_SC change_order_status() status-order: '
@@ -1387,6 +1325,7 @@ class WC_SC extends WC_Payment_Gateway {
 
 				$this->msg['message'] = $message;
 				$this->msg['class']   = 'woocommerce_message';
+				
 				$order->update_status('failed');
 				$order->add_order_note('Failed');
 				$order->add_order_note($this->msg['message']);
@@ -1402,22 +1341,20 @@ class WC_SC extends WC_Payment_Gateway {
 					break;
 				}
 				
-				// Refun Approved
-				if ('Credit' === $transactionType) {
+				if (in_array($transactionType, array('Credit', 'Refund'), true)) {
 					$order->add_order_note(
 						__('DMN message: Your Refund #' . $res_args['resp_id']
-							. ' was successful. Refund Transaction ID is: ', 'sc')
+							. ' was successful.<br/>Refund Transaction ID is: ', 'sc')
 							. $this->get_param('TransactionID') . '.'
 					);
 					
 					// set flag that order has some refunds
-					$order->update_meta_data('_scHasRefund', 1);
+					$order->update_meta_data(SC_ORDER_HAS_REFUND, 1);
 					$order->save();
 					break;
 				}
 				
-				$message = 'The amount has been authorized and captured by '
-					. SC_GATEWAY_TITLE . '. ';
+				$message = 'The amount has been authorized and captured by ' . SC_GATEWAY_TITLE . '. ';
 				
 				if ('Auth' === $transactionType) {
 					$message = 'The amount has been authorized and wait to for Settle. ';
@@ -1425,14 +1362,9 @@ class WC_SC extends WC_Payment_Gateway {
 					$message = 'The amount has been captured by ' . SC_GATEWAY_TITLE . '. ';
 				}
 				
-				$message .= 'PPP_TransactionID = ' . $this->get_param('PPP_TransactionID')
-					. ', Status = ' . $status;
-
-				if ($transactionType) {
-					$message .= ', TransactionType = ' . $transactionType;
-				}
-
-				$message .= ', GW_TransactionID = ' . $this->get_param('TransactionID');
+				$message .= '<br/>PPP_TransactionID = ' . $this->get_param('PPP_TransactionID')
+					. ',<br/>Status = ' . $status . ',<br/>TransactionType = ' . $transactionType
+					. ',<br/>TransactionID = ' . $this->get_param('TransactionID');
 
 				$this->msg['message'] = $message;
 				$this->msg['class']   = 'woocommerce_message';
@@ -1458,23 +1390,18 @@ class WC_SC extends WC_Payment_Gateway {
 			case 'ERROR':
 			case 'DECLINED':
 			case 'FAIL':
-				$reason = ', Reason = ';
+				$reason = ',<br/>Reason = ';
 				if ('' != $this->get_param('reason')) {
 					$reason .= $this->get_param('reason');
 				} elseif ('' != $this->get_param('Reason')) {
 					$reason .= $this->get_param('Reason');
 				}
 				
-				$message = 'Payment failed. PPP_TransactionID = ' . $this->get_param('PPP_TransactionID')
-					. ', Status = ' . $status . ', Error code = ' . $this->get_param('ErrCode')
-					. ', Message = ' . $this->get_param('message')
-					. $reason;
-				
-				if ($transactionType) {
-					$message .= ', TransactionType = ' . $transactionType;
-				}
-
-				$message .= ', GW_TransactionID = ' . $this->get_param('TransactionID');
+				$message = 'Payment failed.<br/>PPP_TransactionID = ' . $this->get_param('PPP_TransactionID')
+					. ',<br/>Status = ' . $status . ',<br/>Error code = ' . $this->get_param('ErrCode')
+					. ',<br/>Message = ' . $this->get_param('message') . $reason
+					. ',<br/>TransactionType = ' . $transactionType
+					. ',<br/>TransactionID = ' . $this->get_param('TransactionID');
 				
 				// do not change status
 				if ('Void' === $transactionType) {
@@ -1554,24 +1481,28 @@ class WC_SC extends WC_Payment_Gateway {
 	 *
 	 * @param object $order
 	 */
-	private function save_update_order_numbers( $order) {
+	private function save_update_order_numbers($order) {
 		// save or update AuthCode and GW Transaction ID
 		$auth_code = $this->get_param('AuthCode');
-		$saved_ac  = $order->get_meta(SC_AUTH_CODE_KEY);
-
-		if (!$saved_ac || empty($saved_ac) || $saved_ac !== $auth_code) {
+		if (!empty($auth_code)) {
 			$order->update_meta_data(SC_AUTH_CODE_KEY, $auth_code);
 		}
 
-		$gw_transaction_id = $this->get_param('TransactionID');
-		$saved_tr_id       = $order->get_meta(SC_GW_TRANS_ID_KEY);
-
-		if (!$saved_tr_id || empty($saved_tr_id) || $saved_tr_id !== $gw_transaction_id) {
-			$order->update_meta_data(SC_GW_TRANS_ID_KEY, $gw_transaction_id);
+		$transaction_id = $this->get_param('TransactionID');
+		if (!empty($transaction_id)) {
+			$order->update_meta_data(SC_TRANS_ID, $transaction_id);
 		}
 		
-		$order->update_meta_data('_paymentMethod', $this->get_param('payment_method'));
+		$pm = $this->get_param('payment_method');
+		if(!empty($pm)) {
+			$order->update_meta_data(SC_PAYMENT_METHOD, $pm);
+		}
 
+		$tr_type = $this->get_param('transactionType');
+		if(!empty($tr_type)) {
+			$order->update_meta_data(SC_RESP_TRANS_TYPE, $tr_type);
+		}
+		
 		$order->save();
 	}
 	

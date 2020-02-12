@@ -292,7 +292,7 @@ function sc_show_final_text() {
 		try {
 			$arr      = explode('_', sanitize_text_field($_REQUEST['invoice_id']));
 			$order_id = $arr[0];
-			$order    = new WC_Order($order_id);
+			$order    = wc_get_order($order_id);
 
 			if (strtolower(sanitize_text_field($_REQUEST['ppp_status'])) == 'fail') {
 				$order->add_order_note('User order failed.');
@@ -349,7 +349,7 @@ function sc_add_buttons() {
 	}
 	
 	try {
-		$order                = new WC_Order($order_id);
+		$order                = wc_get_order($order_id);
 		$order_status         = strtolower($order->get_status());
 		$order_payment_method = $order->get_meta('_paymentMethod');
 		
@@ -364,7 +364,7 @@ function sc_add_buttons() {
 	}
 	
 	// to show SC buttons we must be sure the order is paid via SC Paygate
-	if (!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_GW_TRANS_ID_KEY)) {
+	if (!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_TRANS_ID)) {
 		return;
 	}
 	
@@ -372,8 +372,8 @@ function sc_add_buttons() {
 		global $wc_sc;
 
 		$time             = gmdate('YmdHis', time());
-		$order_tr_id      = $order->get_meta(SC_GW_TRANS_ID_KEY);
-		$order_has_refund = $order->get_meta('_scHasRefund');
+		$order_tr_id      = $order->get_meta(SC_TRANS_ID);
+		$order_has_refund = $order->get_meta(SC_ORDER_HAS_REFUND);
 		$notify_url       = $wc_sc->set_notify_url();
 		
 		// Show VOID button
@@ -386,7 +386,7 @@ function sc_add_buttons() {
 		}
 		
 		// show SETTLE button ONLY if P3D resonse transaction_type IS Auth
-		if ('pending' == $order_status && 'Auth' == $order->get_meta(SC_GW_P3D_RESP_TR_TYPE)) {
+		if ('pending' == $order_status && 'Auth' == $order->get_meta(SC_RESP_TRANS_TYPE)) {
 			echo 
 				'<button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
 				. esc_html__('Are you sure, you want to Settle Order #' . $order_id . '?', 'sc') . '\', '

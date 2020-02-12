@@ -1,7 +1,10 @@
 *** WooCommerce Extension Template Changelog ***
 
+2020-02-12 - version 3.0
+* New - new keys and values of SC Order meta data. Add few more SC meta fields.
+
 2020-02-04 - version 2.4
-* Fix for Guest user Order. 
+* Fix for Guest user Order. Fix for the case when user changes the shipping method, and this changes the Order Total.
 * New - add new icon for the CC method.
 
 2020-01-03 - version 2.3
