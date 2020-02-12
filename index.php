@@ -133,6 +133,7 @@ function woocommerce_add_sc_gateway( $methods) {
 
 function sc_enqueue_wo_files( $styles) {
 	global $wc_sc;
+	global $wpdb;
 	
 	$plugin_dir = basename(dirname(__FILE__));
 	$plugin_url = WP_PLUGIN_URL;
@@ -172,7 +173,30 @@ function sc_enqueue_wo_files( $styles) {
 		array('jquery'),
 		'1'
 	);
+	
+	// get selected WC price separators
+	$wcThSep	= '';
+	$wcDecSep	= '';
+	
+	$res = $wpdb->get_results(
+		'SELECT option_name, option_value '
+			. "FROM {$wpdb->prefix}options "
+			. "WHERE option_name LIKE 'woocommerce%_sep' ;",
+		ARRAY_N
+	);
+			
+	if (!empty($res)) {
+		foreach ($res as $row) {
+			if (false != strpos($row[0], 'thousand_sep') && !empty($row[1])) {
+				$wcThSep = $row[1];
+			}
 
+			if (false != strpos($row[0], 'decimal_sep') && !empty($row[1])) {
+				$wcDecSep = $row[1];
+			}
+		}
+	}
+	
 	// put translations here into the array
 	wp_localize_script(
 		'sc_js_public',
@@ -183,6 +207,8 @@ function sc_enqueue_wo_files( $styles) {
 			'webMasterId'		=> 'WooCommerce ' . WOOCOMMERCE_VERSION,
 			'sourceApplication'	=> SC_SOURCE_APPLICATION,
 			'plugin_dir_url'	=> plugin_dir_url(__FILE__),
+			'wcThSep'			=> $wcThSep,
+			'wcDecSep'			=> $wcDecSep,
 			
 			'paymentDeclined'	=> __('Your Payment was DECLINED. Please try another payment method!'),
 			'paymentError'		=> __('Error with your Payment. Please try again later!'),

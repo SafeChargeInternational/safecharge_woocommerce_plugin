@@ -183,7 +183,35 @@ function showErrorLikeInfo(elemId) {
         jQuery('#error_'+elemId).show();
     }
  }
- 
+
+/**
+ * Function scGetOrderTotal
+ * Try to get Order Total amount
+ * 
+ * @return string
+ */
+function scGetOrderTotal() {
+	var totalHtmlContent	= jQuery('.order-total .woocommerce-Price-amount').html().split('</span>');
+	var amount				= '';
+		
+	if(
+		typeof totalHtmlContent == 'object'
+		&& totalHtmlContent.length >= 2
+		&& '' != totalHtmlContent[1]
+	) {
+		amount = totalHtmlContent[1].replace(scTrans.wcThSep, '');
+
+		// format the number
+		if('.' != scTrans.wcDecSep) {
+			amount = amount.replace(scTrans.wcDecSep, '.');
+		}
+
+		return parseFloat(amount).toFixed(2);
+	}
+	
+	return amount;
+}
+
 function getAPMs() {
     // you are not on checkout page
     if (
@@ -207,7 +235,12 @@ function getAPMs() {
             return;
         }
         
-        isAjaxCalled = true;
+        isAjaxCalled	= true;
+		var orderTotal	= scGetOrderTotal();
+		
+		if('' != orderTotal && orderTotal != scOrderAmount) {
+			scOrderAmount = orderTotal;
+		}
 
         jQuery.ajax({
             type: "POST",
@@ -461,34 +494,6 @@ function print_apms_options(upos, apms) {
         .append(apms)
         .promise()
         .done(function(){
-            // create the Fields
-//            scCard = scFields.create('card', {
-//                iconStyle: 'solid',
-//                style: {
-//                    base: {
-//                        iconColor: "#c4f0ff",
-//                        color: "#000",
-//                        fontWeight: 500,
-//                        fontFamily: "sans-serif, Roboto, Open Sans, Segoe UI",
-//                        fontSize: '16px',
-//                        fontSmoothing: "antialiased",
-//                        ":-webkit-autofill": {
-//                            color: "#fce883"
-//                        },
-//                        "::placeholder": {
-//                            color: "#52545A" 
-//                        }
-//                    },
-//                    invalid: {
-//                        iconColor: "#FFC7EE",
-//                        color: "#FFC7EE"
-//                    }
-//                },
-//                classes: elementClasses
-//            });
-//
-//            scCard.attach('#card-field-placeholder');
-
             cardNumber = sfcFirstField = scFields.create('ccNumber', {
                 classes: elementClasses
                 ,style: fieldsStyle
@@ -542,7 +547,7 @@ jQuery(function() {
     jQuery("#billing_country ,#billing_email").on('change', function() {
         getAPMs();
     });
-    
+
     // when click on APM payment method
     jQuery('form.woocommerce-checkout').on('click', '.apm_title', function() {
         // hide all check marks 
@@ -578,3 +583,23 @@ jQuery(function() {
     });
 });
 // document ready function END
+
+/**
+ * Try to catch the changes in Order total, then create new Open Order request
+ */
+jQuery(document).ajaxStop(function() {
+	if(
+		jQuery('#billing_country').length > 0
+		&& jQuery('#billing_email').length > 0
+		&& !jQuery('#billing_country').closest('p').hasClass('woocommerce-invalid')
+		&& !jQuery('#billing_email').closest('p').hasClass('woocommerce-invalid')
+	) {
+		var orderTotal = scGetOrderTotal();
+		console.log('after ajax order total is: ', orderTotal)
+		
+		if('' != orderTotal && orderTotal != scOrderAmount) {
+			console.log('after ajax call getAPMs()')
+			getAPMs();
+		}
+	}
+});

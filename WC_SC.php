@@ -1021,10 +1021,10 @@ class WC_SC extends WC_Payment_Gateway {
 			$checksum_str . $this->settings['secret']
 		);
 		
-		$ref_parameters['checksum']				= $checksum;
-		$ref_parameters['urlDetails']			= array('notificationUrl' => $notify_url);
-		$ref_parameters['webMasterId']			= $this->webMasterId;
-		$ref_parameters['sourceApplication']	= SC_SOURCE_APPLICATION;
+		$ref_parameters['checksum']          = $checksum;
+		$ref_parameters['urlDetails']        = array('notificationUrl' => $notify_url);
+		$ref_parameters['webMasterId']       = $this->webMasterId;
+		$ref_parameters['sourceApplication'] = SC_SOURCE_APPLICATION;
 		
 		$resp = SC_HELPER::call_rest_api($refund_url, $ref_parameters);
 
@@ -1168,11 +1168,10 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		$cart_totals = $woocommerce->cart->get_totals();
 		
-		echo 
+		echo
 			'<script type="text/javascript">'
-				. 'scOrderAmount    = "' . esc_html($cart_totals['total']) . '"; '
-			. '</script>'
-		;
+				. 'scOrderAmount = ' . esc_js(round(floatval($cart_totals['total']), 2)) . '; '
+			. '</script>';
 	}
 	
 	/**
