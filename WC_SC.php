@@ -262,7 +262,7 @@ class WC_SC extends WC_Payment_Gateway {
 	  *
 	  * @param int $order_id
 	 **/
-	public function process_payment( $order_id) {
+	public function process_payment($order_id) {
 		SC_HELPER::create_log('Process payment(), Order #' . $order_id);
 		
 		$order = wc_get_order($order_id);
@@ -622,7 +622,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$order_id = $clientUniqueId;
 		
 		if(!is_numeric($order_id)) {
-			$ord_data = $this->sc_get_order_data($TransactionID);
+			$ord_data = $this->sc_get_order_data($this->get_param('relatedTransactionId'));
 
 			if (!empty($ord_data[0]->post_id)) {
 				$order_id = $ord_data[0]->post_id;
