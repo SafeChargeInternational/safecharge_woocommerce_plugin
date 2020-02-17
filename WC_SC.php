@@ -263,13 +263,12 @@ class WC_SC extends WC_Payment_Gateway {
 	  * @param int $order_id
 	 **/
 	public function process_payment( $order_id) {
-		SC_HELPER::create_log('Process payment for Order #' . $order_id);
+		SC_HELPER::create_log('Process payment(), Order #' . $order_id);
 		
 		$order = wc_get_order($order_id);
 		
 		if(!$order) {
 			SC_HELPER::create_log('Order is false for order id ' . $order_id);
-			
 			return array('result' => 'error');
 		}
 		
@@ -560,20 +559,12 @@ class WC_SC extends WC_Payment_Gateway {
 			) {
 				SC_HELPER::create_log('WebSDK');
 				// try to get Order ID by its meta key
-				global $wpdb; 
-				
 				$tries = 0;
 				
 				do {
 					$tries++;
 
-					$res = $wpdb->get_results(
-						$wpdb->prepare(
-							"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key LIKE %s AND meta_value = %d ;",
-							SC_TRANS_ID,
-							$TransactionID
-						)
-					);
+					$res = $this->sc_get_order_data($TransactionID);
 
 					if (empty($res[0]->post_id)) {
 						sleep(3);
@@ -582,10 +573,7 @@ class WC_SC extends WC_Payment_Gateway {
 				
 				if (empty($res[0]->post_id)) {
 					SC_HELPER::create_log('The DMN didn\'t wait for the Order creation. Exit.');
-					SC_HELPER::create_log($wpdb->last_query, 'Last query:');
-					SC_HELPER::create_log($wpdb->last_result, 'Last result:');
-					
-					echo esc_html('The DMN didn\'t wait for the Order creation. Exit.');
+					echo 'The DMN didn\'t wait for the Order creation. Exit.';
 					exit;
 				}
 				
@@ -626,8 +614,19 @@ class WC_SC extends WC_Payment_Gateway {
 			$order->add_order_note($msg);
 			$order->save();
 			
-			echo esc_html('DMN received.');
+			echo 'DMN received.';
 			exit;
+		}
+		
+		// try to get the Order ID
+		$order_id = $clientUniqueId;
+		
+		if(!is_numeric($order_id)) {
+			$ord_data = $this->sc_get_order_data($TransactionID);
+
+			if (!empty($ord_data[0]->post_id)) {
+				$order_id = $ord_data[0]->post_id;
+			}
 		}
 		
 		# Void, Settle
@@ -635,8 +634,7 @@ class WC_SC extends WC_Payment_Gateway {
 			'' != $clientUniqueId
 			&& ( in_array($transactionType, array('Void', 'Settle'), true) )
 		) {
-			$order_id = $clientUniqueId;
-			$order    = wc_get_order($order_id);
+			$order = wc_get_order($order_id);
 			
 			if(!$order) {
 				SC_HELPER::create_log('Order gets False.');
@@ -1300,6 +1298,23 @@ class WC_SC extends WC_Payment_Gateway {
 		wp_die();
 	}
 	
+	private function sc_get_order_data($TransactionID) {
+		global $wpdb;
+		
+		$res = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->prefix}postmeta WHERE meta_key = %s AND meta_value = %s ;",
+				SC_TRANS_ID,
+				$TransactionID
+			)
+		);
+				
+		SC_HELPER::create_log($wpdb->last_query, 'Last query:');
+		SC_HELPER::create_log($wpdb->last_result, 'Last result:');
+				
+		return $res;
+	}
+	
 	/**
 	 * Function change_order_status
 	 * Change the status of the order.
@@ -1502,6 +1517,14 @@ class WC_SC extends WC_Payment_Gateway {
 		if(!empty($tr_type)) {
 			$order->update_meta_data(SC_RESP_TRANS_TYPE, $tr_type);
 		}
+		
+		SC_HELPER::create_log(array(
+			'ord id' => $order->get_id(),
+			'AuthCode' => $auth_code,
+			'TransactionID' => $transaction_id,
+			'payment_method' => $pm,
+			'transactionType' => $tr_type,
+		), 'Order to update fields');
 		
 		$order->save();
 	}
