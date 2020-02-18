@@ -38,13 +38,11 @@ function woocommerce_sc_init() {
 	// load WC styles
 	add_filter( 'woocommerce_enqueue_styles', 'sc_enqueue_wo_files' );
 	// replace the text at thank you page
-	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
+//	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
 	// add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
 	add_action('woocommerce_order_item_add_action_buttons',	'sc_add_buttons');
 	// on the checkout page get the order total amount
 	add_action('woocommerce_checkout_before_order_review', array($wc_sc, 'checkout_open_order'));
-	// show custom final text
-	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
 	// handle Ajax calls
 	add_action('wp_ajax_sc-ajax-action', 'sc_ajax_action');
 	add_action('wp_ajax_nopriv_sc-ajax-action', 'sc_ajax_action');
@@ -281,56 +279,15 @@ function sc_show_final_text() {
 	global $woocommerce;
 	global $wc_sc;
 	
-	$msg = __('Thank you. Your payment process is completed. Your order status will be updated soon.', 'sc');
+	$msg = __('Your payment is being processed. Your order status will be updated soon.', 'sc');
    
-	// Cashier
+	// REST API tahnk you page handler
 	if (
-		!empty($_REQUEST['invoice_id'])
-		&& !empty($_REQUEST['ppp_status'])
-		&& $wc_sc->checkAdvancedCheckSum()
-	) {
-		try {
-			$arr      = explode('_', sanitize_text_field($_REQUEST['invoice_id']));
-			$order_id = $arr[0];
-			$order    = wc_get_order($order_id);
-
-			if (strtolower(sanitize_text_field($_REQUEST['ppp_status'])) == 'fail') {
-				$order->add_order_note('User order failed.');
-				$order->update_status('failed', 'User order failed.');
-
-				$msg = __('Your payment failed. Please, try again.', 'sc');
-			} else {
-				$TransactionID = '';
-				if (isset($_REQUEST['TransactionID'])) {
-					$TransactionID = sanitize_text_field($_REQUEST['TransactionID']);
-				}
-				
-				$transactionId = 'TransactionId = ' . $TransactionID;
-
-				$PPPTransactionId = '';
-				if (isset($_REQUEST['PPP_TransactionID'])) {
-					$PPPTransactionId = sanitize_text_field($_REQUEST['PPP_TransactionID']);
-				}
-				
-				$pppTransactionId = '; PPPTransactionId = ' . $PPPTransactionId;
-
-				$order->add_order_note('User returned from Safecharge Payment page; ' . $transactionId . $pppTransactionId);
-				$woocommerce->cart->empty_cart();
-			}
-			
-			$order->save();
-		} catch (Exception $ex) {
-			SC_HELPER::create_log($ex->getMessage(), 'Cashier handle exception error: ');
-		}
+		!empty($_REQUEST['Status'])
+		&& 'error' == sanitize_text_field($_REQUEST['Status'])) {
+		$msg = __('Your payment failed. Please, try again.', 'sc');
 	} else {
-		// REST API tahnk you page handler
-		if (
-			!empty($_REQUEST['Status'])
-			&& 'error' == sanitize_text_field($_REQUEST['Status'])) {
-			$msg = __('Your payment failed. Please, try again.', 'sc');
-		} else {
-			$woocommerce->cart->empty_cart();
-		}
+		$woocommerce->cart->empty_cart();
 	}
 	
 	// clear session variables for the order

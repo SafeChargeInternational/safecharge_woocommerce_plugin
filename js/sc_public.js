@@ -82,20 +82,32 @@ function scValidateAPMFields() {
 					
 					if (resp.result == 'APPROVED' && resp.transactionId != 'undefined') {
 						jQuery('#sc_transaction_id').val(resp.transactionId);
-						
 						jQuery('form.woocommerce-checkout').submit();
 					} else if (resp.result == 'DECLINED') {
 						scFormFalse(scTrans.paymentDeclined);
+						
+						jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
+						scCard = null;
+						getAPMs();
 					} else {
 						if (resp.errorDescription != 'undefined' && resp.errorDescription != '') {
 							scFormFalse(resp.errorDescription);
 						} else {
 							scFormFalse(scTrans.paymentError);
 						}
+						
+						jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
+						scCard = null;
+						getAPMs();
 					}
 				} else {
 					scFormFalse(scTrans.unexpectedError);
 					console.error('Error with SDK response: ' + resp);
+					
+					jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
+					scCard = null;
+					getAPMs();
+					
 					return;
 				}
 			});
@@ -130,6 +142,7 @@ function scValidateAPMFields() {
 
 			if (!formValid) {
 				scFormFalse();
+				jQuery('#custom_loader').hide();
 				return;
 			}
 
@@ -138,6 +151,7 @@ function scValidateAPMFields() {
 		}
 	} else {
 		scFormFalse();
+		jQuery('#custom_loader').hide();
 		return;
 	}
 }
@@ -156,7 +170,7 @@ function scFormFalse(text) {
 	   +'</div>'
 	);
 
-	jQuery('#custom_loader').hide();
+//	jQuery('#custom_loader').hide();
 	window.location.hash = '#masthead';
 }
  
@@ -248,6 +262,7 @@ function getAPMs() {
 		})
 			.fail(function(){
 				alert(scTrans.errorWithPMs);
+				jQuery('#custom_loader').hide();
 				return;
 			})
 			.done(function(resp) {
@@ -288,6 +303,7 @@ function getAPMs() {
 					} catch (exception) {
 						alert(scTrans.missData);
 						console.error(exception);
+						jQuery('#custom_loader').hide();
 						return;
 					}
 
@@ -426,6 +442,8 @@ function getAPMs() {
 					jQuery( document.body ).on( 'updated_checkout', function() {
 						print_apms_options(html_upos, html_apms);
 					});
+					
+					jQuery('#custom_loader').hide();
 				}
 				// show some error
 				else if (resp.status == 0) {
@@ -436,6 +454,7 @@ function getAPMs() {
 					);
 			
 					window.location.hash = '#main';
+					jQuery('#custom_loader').hide();
 				}
 			});
 	}
@@ -449,21 +468,6 @@ function getAPMs() {
  * @param {string} apms - html code for the APMs
  */
 function print_apms_options(upos, apms) {
-	// apend UPOs holder
-	if (upos != '') {
-		if (jQuery('form.woocommerce-checkout').find('#sc_upos_list').length == 0) {
-			jQuery('div.payment_method_sc').append(
-				'<b>'+ scTrans.chooseUPO +':</b><ul id="sc_upos_list"></div>');
-		} else {
-			// remove old upos
-			jQuery('#sc_upos_list').html('');
-		}
-
-		jQuery('#sc_upos_list').append(upos);
-	}
-	
-	/////////////////////////////
-	
 	// apend APMs holder
 	if (jQuery('form.woocommerce-checkout').find('#sc_apms_list').length == 0) {
 		jQuery('div.payment_method_sc').append(
