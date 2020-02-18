@@ -175,8 +175,8 @@ function sc_enqueue_wo_files( $styles) {
 	);
 	
 	// get selected WC price separators
-	$wcThSep	= '';
-	$wcDecSep	= '';
+	$wcThSep  = '';
+	$wcDecSep = '';
 	
 	$res = $wpdb->get_results(
 		'SELECT option_name, option_value '

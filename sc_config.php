@@ -135,10 +135,10 @@ define('SC_DEVICES_TYPES', json_encode(array('tablet', 'mobile', 'tv', 'windows'
 define('SC_DEVICES_OS', json_encode(array('android', 'windows', 'linux', 'mac os')));
 
 // some keys for order metadata, we make them hiden when starts with underscore
-define('SC_AUTH_CODE_KEY',		'_authCode');
-define('SC_TRANS_ID',			'_transactionId');
-define('SC_RESP_TRANS_TYPE',	'_transactionType');
-define('SC_PAYMENT_METHOD',		'_paymentMethod');
-define('SC_ORDER_HAS_REFUND',	'_scHasRefund');
+define('SC_AUTH_CODE_KEY', '_authCode');
+define('SC_TRANS_ID', '_transactionId');
+define('SC_RESP_TRANS_TYPE', '_transactionType');
+define('SC_PAYMENT_METHOD', '_paymentMethod');
+define('SC_ORDER_HAS_REFUND', '_scHasRefund');
 define('SC_SOURCE_APPLICATION',	'WOOCOMMERCE_PLUGIN');
-define('SC_LOGS_DIR',			dirname(__FILE__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR);
+define('SC_LOGS_DIR', dirname(__FILE__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR);

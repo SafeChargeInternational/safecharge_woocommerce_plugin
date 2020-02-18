@@ -1,180 +1,180 @@
 @font-face {
-    font-family: 'icobase';
-    src: url('fonts/icobase.eot?ujixn1');
-    src: url('fonts/icobase.eot?#iefixujixn1') format('embedded-opentype'),
-        url('fonts/icobase.ttf?ujixn1') format('truetype'),
-        url('fonts/icobase.woff?ujixn1') format('woff'),
-        url('fonts/icobase.svg?ujixn1#icobase') format('svg');
-    font-weight: normal;
-    font-style: normal
+	font-family: 'icobase';
+	src: url('fonts/icobase.eot?ujixn1');
+	src: url('fonts/icobase.eot?#iefixujixn1') format('embedded-opentype'),
+		url('fonts/icobase.ttf?ujixn1') format('truetype'),
+		url('fonts/icobase.woff?ujixn1') format('woff'),
+		url('fonts/icobase.svg?ujixn1#icobase') format('svg');
+	font-weight: normal;
+	font-style: normal
 }
 
 div.payment_method_sc {
-    background-color: #fafafa !important;
+	background-color: #fafafa !important;
 }
 
 #sc_apms_list, #sc_upos_list {
-    box-shadow: 0 2px 4px 0 rgba(0,0,0,0.19);
-    width: 100%;
-    margin: 0.5em 0 1.4em 0;
+	box-shadow: 0 2px 4px 0 rgba(0,0,0,0.19);
+	width: 100%;
+	margin: 0.5em 0 1.4em 0;
 }
 
 .apm_container {
-    width: 100%;
-    cursor: pointer;
-    padding: 1rem 0 0 0;
-    background-color: #FFFFFF;
+	width: 100%;
+	cursor: pointer;
+	padding: 1rem 0 0 0;
+	background-color: #FFFFFF;
 }
 
 .apm_title {
-    border-bottom: .1rem solid #939393;
-    padding-left: 0.7em;
-    padding-bottom: 0.5em;
-    position: relative;
+	border-bottom: .1rem solid #939393;
+	padding-left: 0.7em;
+	padding-bottom: 0.5em;
+	position: relative;
 }
 
 .apm_title img {
-    float: none !important;
+	float: none !important;
 }
 
 .apm_fields {
-    display: none;
-    background-color: #fafafa;
-    border-bottom: .1rem solid #9B9B9B;
+	display: none;
+	background-color: #fafafa;
+	border-bottom: .1rem solid #9B9B9B;
 }
 
 .apm_field {
-    padding-left: 0.7em;
-    padding-right: 0.7em;
-    position: relative;
+	padding-left: 0.7em;
+	padding-right: 0.7em;
+	position: relative;
 }
 
 .SfcField {
-    padding-top: 1em;
-    border-bottom: .1rem solid #9B9B9B;
+	padding-top: 1em;
+	border-bottom: .1rem solid #9B9B9B;
 }
 
 #sc_upos_list .apm_title div {
-    position: absolute;
-    margin-left: 50px;
-    top: 0px;
+	position: absolute;
+	margin-left: 50px;
+	top: 0px;
 }
 
 .SfcField iframe {
-    min-height: 20px !important;
-    color: inherit !important;
+	min-height: 20px !important;
+	color: inherit !important;
 }
 
 .apm_field .question_mark {
-    top: 5px;
-    position: absolute;
-    right: 0.7rem;
+	top: 5px;
+	position: absolute;
+	right: 0.7rem;
 }
 
 .apm_field .question_mark:before {
-    content: '\e902';
-    font-family: icobase;
-    font-size: 1.1rem;
-    color: #14B5F1;
+	content: '\e902';
+	font-family: icobase;
+	font-size: 1.1rem;
+	color: #14B5F1;
 }
 
 .apm_field input, .SfcField iframe:focus {
-    border: 0 !important;
-    outline: 0 !important;
-    background-color: inherit !important;
-    border-bottom: .1rem solid #9B9B9B !important;
-    border-radius: 0px !important;
-    padding-bottom: 8px !important;
-    padding-left: 0px !important;
-    padding-right: 0px !important;
-    width: 90%;
-    box-shadow: none !important;
-    color: #43454b;
-    font-size: 16px;
-    font-family: sans-serif;
+	border: 0 !important;
+	outline: 0 !important;
+	background-color: inherit !important;
+	border-bottom: .1rem solid #9B9B9B !important;
+	border-radius: 0px !important;
+	padding-bottom: 8px !important;
+	padding-left: 0px !important;
+	padding-right: 0px !important;
+	width: 90%;
+	box-shadow: none !important;
+	color: #43454b;
+	font-size: 16px;
+	font-family: sans-serif;
 }
 
 .apm_field input::placeholder {
-    color: #52545A;
-    font-family: sans-serif;
+	color: #52545A;
+	font-family: sans-serif;
 }
 
 #sc_card_holder_name {
-    width: 100%;
-    padding-bottom: 0px !important;
-    padding-top: 1em;
-    font-family: sans-serif;
+	width: 100%;
+	padding-bottom: 0px !important;
+	padding-top: 1em;
+	font-family: sans-serif;
 }
 
 #sc_card_holder_name::placeholder {
-    font-family: sans-serif;
+	font-family: sans-serif;
 }
 
 .apm_error {
-    background: none;
-    width: 100%;
-    margin-top: 0.2rem;
-    display: none;
-    padding-top: 5px;
+	background: none;
+	width: 100%;
+	margin-top: 0.2rem;
+	display: none;
+	padding-top: 5px;
 }
 
 .apm_error label {
-    color: #E7463B;
-    font-size: 12px;
-    text-align: left;
-    font-weight: normal;
+	color: #E7463B;
+	font-size: 12px;
+	text-align: left;
+	font-weight: normal;
 }
 
 .apm_error.error_info label {
-    color: #9B9B9B;
-    font-style: italic;
+	color: #9B9B9B;
+	font-style: italic;
 }
 
 /* fixes for last field borders */
 .apm_fields .apm_field:last-child input, #sc_card_cvc {
-    border: 0 !important;
+	border: 0 !important;
 }
 
 .apm_fields .apm_field:last-child .apm_error {
-    border-top: .1rem solid #9B9B9B !important;
-    margin-top: 0px;
-    padding-top: 15px;
-    margin-top: 2px;
+	border-top: .1rem solid #9B9B9B !important;
+	margin-top: 0px;
+	padding-top: 15px;
+	margin-top: 2px;
 }
 /* fixes for last field borders END */
 
 .sc_payment_method_field {
-    display: none;
+	display: none;
 }
 
 form.woocommerce-checkout #payment.woocommerce-checkout-payment {
-    position: relative;
+	position: relative;
 }
 
 #custom_loader {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    top: 0px;
-    background-color: white;
-    opacity: 0.4;
-    display: none;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 0px;
+	background-color: white;
+	opacity: 0.4;
+	display: none;
 }
 
 .apm_title .apm_selected {
-    background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016.43%2012.6%22%3E%3Ctitle%3Eicon-checkmark%3C%2Ftitle%3E%3Cpath%20d%3D%22M16.43%2C2.46a1%2C1%2C0%2C0%2C1-.3.72L7%2C12.3a1%2C1%2C0%2C0%2C1-1.44%2C0L.3%2C7a1%2C1%2C0%2C0%2C1%2C0-1.44L1.74%2C4.14a1%2C1%2C0%2C0%2C1%2C.72-.3%2C1%2C1%2C0%2C0%2C1%2C.72.3L6.3%2C7.26l7-7A1%2C1%2C0%2C0%2C1%2C14.7.3l1.44%2C1.44A1%2C1%2C0%2C0%2C1%2C16.43%2C2.46Z%22%20fill%3D%22%231ECE80%22%2F%3E%3C%2Fsvg%3E") no-repeat center center;
-    width: 1.2rem;
-    height: 1.2rem;
-    display: block;
-    position: absolute;
-    right: 1rem;
-    bottom: 1.3rem;
-    top: 5px;
+	background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016.43%2012.6%22%3E%3Ctitle%3Eicon-checkmark%3C%2Ftitle%3E%3Cpath%20d%3D%22M16.43%2C2.46a1%2C1%2C0%2C0%2C1-.3.72L7%2C12.3a1%2C1%2C0%2C0%2C1-1.44%2C0L.3%2C7a1%2C1%2C0%2C0%2C1%2C0-1.44L1.74%2C4.14a1%2C1%2C0%2C0%2C1%2C.72-.3%2C1%2C1%2C0%2C0%2C1%2C.72.3L6.3%2C7.26l7-7A1%2C1%2C0%2C0%2C1%2C14.7.3l1.44%2C1.44A1%2C1%2C0%2C0%2C1%2C16.43%2C2.46Z%22%20fill%3D%22%231ECE80%22%2F%3E%3C%2Fsvg%3E") no-repeat center center;
+	width: 1.2rem;
+	height: 1.2rem;
+	display: block;
+	position: absolute;
+	right: 1rem;
+	bottom: 1.3rem;
+	top: 5px;
 }
 
 /* for the 3DS modal */
 .sfcModal-dialog {
-    width: 50%;
-    margin: 0 auto;
-    margin-top: 10%;
+	width: 50%;
+	margin: 0 auto;
+	margin-top: 10%;
 }

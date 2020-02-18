@@ -262,12 +262,12 @@ class WC_SC extends WC_Payment_Gateway {
 	  *
 	  * @param int $order_id
 	 **/
-	public function process_payment($order_id) {
+	public function process_payment( $order_id) {
 		SC_HELPER::create_log('Process payment(), Order #' . $order_id);
 		
 		$order = wc_get_order($order_id);
 		
-		if(!$order) {
+		if (!$order) {
 			SC_HELPER::create_log('Order is false for order id ' . $order_id);
 			return array('result' => 'error');
 		}
@@ -541,7 +541,7 @@ class WC_SC extends WC_Payment_Gateway {
 			exit;
 		}
 		
-		if(!$this->checkAdvancedCheckSum()) {
+		if (!$this->checkAdvancedCheckSum()) {
 			SC_HELPER::create_log('Error when check AdvancedCheckSum!');
 			echo esc_html('Error when check AdvancedCheckSum!');
 			exit;
@@ -589,7 +589,7 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			$order = wc_get_order($order_id);
 				
-			if(!$order) {
+			if (!$order) {
 				SC_HELPER::create_log('Order gets False.');
 				echo esc_html('DMN error - Order gets False.');
 				exit;
@@ -621,7 +621,7 @@ class WC_SC extends WC_Payment_Gateway {
 		// try to get the Order ID
 		$order_id = $clientUniqueId;
 		
-		if(!is_numeric($order_id)) {
+		if (!is_numeric($order_id)) {
 			$ord_data = $this->sc_get_order_data($this->get_param('relatedTransactionId'));
 
 			if (!empty($ord_data[0]->post_id)) {
@@ -636,7 +636,7 @@ class WC_SC extends WC_Payment_Gateway {
 		) {
 			$order = wc_get_order($order_id);
 			
-			if(!$order) {
+			if (!$order) {
 				SC_HELPER::create_log('Order gets False.');
 				echo esc_html('DMN error - Order gets False.');
 				exit;
@@ -673,7 +673,7 @@ class WC_SC extends WC_Payment_Gateway {
 		) {
 			$order = wc_get_order($order_id);
 			
-			if(!$order) {
+			if (!$order) {
 				SC_HELPER::create_log('Order gets False.');
 				echo esc_html('DMN error - Order gets False.');
 				exit;
@@ -1298,7 +1298,7 @@ class WC_SC extends WC_Payment_Gateway {
 		wp_die();
 	}
 	
-	private function sc_get_order_data($TransactionID) {
+	private function sc_get_order_data( $TransactionID) {
 		global $wpdb;
 		
 		$res = $wpdb->get_results(
@@ -1496,7 +1496,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 *
 	 * @param object $order
 	 */
-	private function save_update_order_numbers($order) {
+	private function save_update_order_numbers( $order) {
 		// save or update AuthCode and GW Transaction ID
 		$auth_code = $this->get_param('AuthCode');
 		if (!empty($auth_code)) {
@@ -1509,12 +1509,12 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		$pm = $this->get_param('payment_method');
-		if(!empty($pm)) {
+		if (!empty($pm)) {
 			$order->update_meta_data(SC_PAYMENT_METHOD, $pm);
 		}
 
 		$tr_type = $this->get_param('transactionType');
-		if(!empty($tr_type)) {
+		if (!empty($tr_type)) {
 			$order->update_meta_data(SC_RESP_TRANS_TYPE, $tr_type);
 		}
 		
