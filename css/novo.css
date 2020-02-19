@@ -167,8 +167,8 @@ form.woocommerce-checkout #payment.woocommerce-checkout-payment {
 
 .apm_title .apm_selected {
 	background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016.43%2012.6%22%3E%3Ctitle%3Eicon-checkmark%3C%2Ftitle%3E%3Cpath%20d%3D%22M16.43%2C2.46a1%2C1%2C0%2C0%2C1-.3.72L7%2C12.3a1%2C1%2C0%2C0%2C1-1.44%2C0L.3%2C7a1%2C1%2C0%2C0%2C1%2C0-1.44L1.74%2C4.14a1%2C1%2C0%2C0%2C1%2C.72-.3%2C1%2C1%2C0%2C0%2C1%2C.72.3L6.3%2C7.26l7-7A1%2C1%2C0%2C0%2C1%2C14.7.3l1.44%2C1.44A1%2C1%2C0%2C0%2C1%2C16.43%2C2.46Z%22%20fill%3D%22%231ECE80%22%2F%3E%3C%2Fsvg%3E") no-repeat center center;
-	width: 1.2rem;
-	height: 1.2rem;
+	width: 20px;
+	height: 20px;
 	display: block;
 	position: absolute;
 	right: 1rem;
