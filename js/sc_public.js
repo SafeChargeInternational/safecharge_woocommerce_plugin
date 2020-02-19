@@ -541,7 +541,7 @@ jQuery(function() {
 		jQuery('#sc_apms_list').find('.apm_title span').removeClass('apm_selected');
 		
 		// hide all containers with fields
-		jQuery('#sc_apms_list, #sc_upos_list').find('.apm_fields').each(function(){
+		jQuery('#sc_apms_list').find('.apm_fields').each(function(){
 			var self = jQuery(this);
 			if (self.css('display') == 'block') {
 				self.slideToggle('slow');
