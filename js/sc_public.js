@@ -538,7 +538,7 @@ jQuery(function() {
 	// when click on APM payment method
 	jQuery('form.woocommerce-checkout').on('click', '.apm_title', function() {
 		// hide all check marks 
-		jQuery('#sc_apms_list, #sc_upos_list').find('.apm_title span').removeClass('apm_selected');
+		jQuery('#sc_apms_list').find('.apm_title span').removeClass('apm_selected');
 		
 		// hide all containers with fields
 		jQuery('#sc_apms_list, #sc_upos_list').find('.apm_fields').each(function(){

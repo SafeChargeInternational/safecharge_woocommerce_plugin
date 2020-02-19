@@ -38,7 +38,7 @@ function woocommerce_sc_init() {
 	// load WC styles
 	add_filter( 'woocommerce_enqueue_styles', 'sc_enqueue_wo_files' );
 	// replace the text at thank you page
-//	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
+	//  add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
 	// add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
 	add_action('woocommerce_order_item_add_action_buttons',	'sc_add_buttons');
 	// on the checkout page get the order total amount

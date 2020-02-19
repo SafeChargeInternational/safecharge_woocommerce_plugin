@@ -65,6 +65,21 @@ div.payment_method_sc {
 	color: inherit !important;
 }
 
+#sc_card_holder_name {
+	width: 100%;
+	padding-bottom: 0px !important;
+	padding-top: 1em;
+	font-family: sans-serif;
+	margin: 0px !important;
+	font-size: 15.5px !important;
+	height: 37px !important;
+}
+
+#sc_card_holder_name::placeholder {
+	font-family: sans-serif;
+	color: #52545A;
+}
+
 .apm_field .question_mark {
 	top: 5px;
 	position: absolute;
@@ -96,17 +111,6 @@ div.payment_method_sc {
 
 .apm_field input::placeholder {
 	color: #52545A;
-	font-family: sans-serif;
-}
-
-#sc_card_holder_name {
-	width: 100%;
-	padding-bottom: 0px !important;
-	padding-top: 1em;
-	font-family: sans-serif;
-}
-
-#sc_card_holder_name::placeholder {
 	font-family: sans-serif;
 }
 
