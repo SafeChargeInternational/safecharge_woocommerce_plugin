@@ -39,8 +39,8 @@ div.payment_method_sc {
 
 .apm_fields {
 	display: none;
-	background-color: #fafafa;
-	border-bottom: .1rem solid #9B9B9B;
+	background-color: #fafafa !important;
+	border-bottom: .1rem solid #9B9B9B !important;
 }
 
 .apm_field {
