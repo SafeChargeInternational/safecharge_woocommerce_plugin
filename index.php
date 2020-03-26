@@ -1,11 +1,15 @@
 <?php
 /*
-Plugin Name: SafeCharge Payments
-Plugin URI: http://www.safecharge.com
-Description: SafeCharge gateway for WooCommerce
-Version: 3.0
-Author: SafeCharge
-Author URI: http://safecharge.com
+ * Plugin Name: SafeCharge Payments
+ * Plugin URI: http://www.safecharge.com
+ * Description: SafeCharge gateway for WooCommerce
+ * Version: 3.0
+ * Author: SafeCharge
+ * Author URI: http://safecharge.com
+ * Require at least: 4.7
+ * Tested up to: 5.3.2
+ * WC requires at least: 3.0
+ * WC tested up to: 3.9.1
 */
 
 defined('ABSPATH') || die('die');
