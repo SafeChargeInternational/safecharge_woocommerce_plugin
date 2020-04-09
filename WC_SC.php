@@ -274,13 +274,12 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		$order_status = strtolower($order->get_status());
 		
-		// when we have Approved from the SDK we complete the order here
-		$sc_transaction_id	= filter_input(INPUT_POST, 'sc_transaction_id', FILTER_SANITIZE_STRING);
 		$return_success_url	= add_query_arg(
 			array('key' => $order->get_order_key()),
 			$this->get_return_url($order)
 		);
-		$return_error_url	= add_query_arg(
+		
+		$return_error_url = add_query_arg(
 			array(
 				'Status'	=> 'error',
 				'key'		=> $order->get_order_key()
@@ -288,8 +287,11 @@ class WC_SC extends WC_Payment_Gateway {
 			$this->get_return_url($order)
 		);
 		
+		// when we have Approved from the SDK we complete the order here
+		$sc_transaction_id = $this->get_param('sc_transaction_id');
+		
 		// in case of webSDK payment (cc_card)
-		if ($sc_transaction_id) {
+		if (!empty($sc_transaction_id)) {
 			SC_HELPER::create_log('Process webSDK Order, transaction ID #' . $sc_transaction_id);
 			
 			$order->update_meta_data(SC_TRANS_ID, $sc_transaction_id);
@@ -310,7 +312,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$params = array(
 			'merchantId'        => $this->merchantId,
 			'merchantSiteId'    => $this->merchantSiteId,
-			'userTokenId'       => $this->get_param('billing_email'),
+			'userTokenId'       => $this->get_param('billing_email', '', 'mail'),
 			'clientUniqueId'    => $order_id,
 			'clientRequestId'   => $time . '_' . uniqid(),
 			'currency'          => $order->get_currency(),
@@ -322,20 +324,14 @@ class WC_SC extends WC_Payment_Gateway {
 				'totalTax'          => '0.00',
 			),
 			'shippingAddress'   => array(
-				'firstName'         => urlencode(preg_replace('/[[:punct:]]/', '', 
-					filter_input(INPUT_POST, 'shipping_first_name', FILTER_SANITIZE_STRING))),
-				'lastName'          => urlencode(preg_replace('/[[:punct:]]/', '', 
-					filter_input(INPUT_POST, 'shipping_last_name', FILTER_SANITIZE_STRING))),
-				'address'           => urlencode(preg_replace('/[[:punct:]]/', '', 
-					filter_input(INPUT_POST, 'shipping_address_1', FILTER_SANITIZE_STRING))),
+				'firstName'         => $this->get_param('shipping_first_name'),
+				'lastName'          => $this->get_param('shipping_last_name'),
+				'address'           => $this->get_param('shipping_address_1'),
 				'cell'              => '',
 				'phone'             => '',
-				'zip'               => urlencode(preg_replace('/[[:punct:]]/', '', 
-					filter_input(INPUT_POST, 'shipping_postcode', FILTER_SANITIZE_STRING))),
-				'city'              => urlencode(preg_replace('/[[:punct:]]/', '', 
-					filter_input(INPUT_POST, 'shipping_city', FILTER_SANITIZE_STRING))),
-				'country'           => urlencode(preg_replace('/[[:punct:]]/', '', 
-					filter_input(INPUT_POST, 'shipping_country', FILTER_SANITIZE_STRING))),
+				'zip'               => $this->get_param('shipping_postcode'),
+				'city'              => $this->get_param('shipping_city'),
+				'country'           => $this->get_param('shipping_country'),
 				'state'             => '',
 				'email'             => '',
 				'shippingCounty'    => '',
@@ -350,26 +346,19 @@ class WC_SC extends WC_Payment_Gateway {
 			'webMasterId'       => $this->webMasterId,
 			'sourceApplication' => SC_SOURCE_APPLICATION,
 			'deviceDetails'     => SC_HELPER::get_device_details(),
-			'sessionToken'      => filter_input(INPUT_POST, 'lst', FILTER_SANITIZE_STRING),
+			'sessionToken'      => $this->get_param('lst'),
 		);
 		
 		$params['userDetails'] = array(
-			'firstName'         => urlencode(preg_replace('/[[:punct:]]/', '', 
-				filter_input(INPUT_POST, 'billing_first_name', FILTER_SANITIZE_STRING))),
-			'lastName'          => urlencode(preg_replace('/[[:punct:]]/', '', 
-				filter_input(INPUT_POST, 'billing_last_name', FILTER_SANITIZE_STRING))),
-			'address'           => urlencode(preg_replace('/[[:punct:]]/', '', 
-				filter_input(INPUT_POST, 'billing_address_1', FILTER_SANITIZE_STRING))),
-			'phone'             => urlencode(preg_replace('/[[:punct:]]/', '', 
-				filter_input(INPUT_POST, 'billing_phone', FILTER_SANITIZE_STRING))),
-			'zip'               => urlencode(preg_replace('/[[:punct:]]/', '', 
-				filter_input(INPUT_POST, 'billing_postcode', FILTER_SANITIZE_STRING))),
-			'city'              => urlencode(preg_replace('/[[:punct:]]/', '', 
-				filter_input(INPUT_POST, 'billing_city', FILTER_SANITIZE_STRING))),
-			'country'           => urlencode(preg_replace('/[[:punct:]]/', '', 
-				filter_input(INPUT_POST, 'billing_country', FILTER_SANITIZE_STRING))),
+			'firstName'         => $this->get_param('billing_first_name'),
+			'lastName'			=> $this->get_param('billing_last_name'),
+			'address'			=> $this->get_param('billing_address_1'),
+			'phone'				=> $this->get_param('billing_phone'),
+			'zip'				=> $this->get_param('billing_phone'),
+			'city'				=> $this->get_param('billing_city'),
+			'country'			=> $this->get_param('billing_country'),
 			'state'             => '',
-			'email'             => filter_input(INPUT_POST, 'billing_email', FILTER_SANITIZE_STRING),
+			'email'             => $this->get_param('billing_email', '', 'mail'),
 			'county'            => '',
 		);
 		
@@ -399,10 +388,10 @@ class WC_SC extends WC_Payment_Gateway {
 				. $params['amount'] . $params['currency'] . $time . $this->secret
 		);
 		
-		$params['paymentMethod'] = filter_input(INPUT_POST, 'sc_payment_method', FILTER_SANITIZE_STRING);
-		$post_sc_payment_fields  = filter_input(INPUT_POST, $params['paymentMethod'], FILTER_DEFAULT , FILTER_REQUIRE_ARRAY);
+		$params['paymentMethod'] = $this->get_param('sc_payment_method');
+		$post_sc_payment_fields  = $this->get_param('paymentMethod', array(), 'array');
 		
-		if ($post_sc_payment_fields) {
+		if (!empty($post_sc_payment_fields) && is_array($post_sc_payment_fields)) {
 			$params['userAccountDetails'] = $post_sc_payment_fields;
 		}
 
@@ -682,7 +671,7 @@ class WC_SC extends WC_Payment_Gateway {
 			$this->change_order_status($order, $order_id, $req_status, $transactionType,
 				array(
 					'resp_id'       => $clientUniqueId,
-					'totalAmount'   => $this->get_param('totalAmount')
+					'totalAmount'   => $this->get_param('totalAmount', '0', 'float')
 				)
 			);
 
@@ -718,8 +707,8 @@ class WC_SC extends WC_Payment_Gateway {
 	public function checkAdvancedCheckSum() {
 		$str = hash(
 			$this->hash_type,
-			$this->secret . $this->get_param('totalAmount')
-				. $this->get_param('currency') . $this->get_param('responseTimeStamp')
+			$this->secret . $this->get_param('totalAmount', 0, 'float')
+				. $this->get_param('currency') . $this->get_param('responseTimeStamp', 0, 'other')
 				. $this->get_param('PPP_TransactionID') . $this->get_request_status()
 				. $this->get_param('productId')
 		);
@@ -727,6 +716,15 @@ class WC_SC extends WC_Payment_Gateway {
 		if (strval($str) == $this->get_param('advanceResponseChecksum')) {
 			return true;
 		}
+		
+		var_dump($this->secret . $this->get_param('totalAmount', 0, 'float')
+				. $this->get_param('currency') . $this->get_param('responseTimeStamp')
+				. $this->get_param('PPP_TransactionID') . $this->get_request_status()
+				. $this->get_param('productId'));
+		
+		var_dump($this->get_param('advanceResponseChecksum'));
+		var_dump($str);
+		var_dump($this->get_param('totalAmount', 0, 'float'));
 		
 		return false;
 	}
@@ -1053,7 +1051,7 @@ class WC_SC extends WC_Payment_Gateway {
 	
 	public function sc_return_sc_settle_btn( $args) {
 		// revert buttons on Recalculate
-		if (!$this->get_param('refund_amount', false) && $this->get_param('items', false)) {
+		if (!$this->get_param('refund_amount', false, 'float') && $this->get_param('items', false)) {
 			echo esc_js('<script type="text/javascript">returnSCBtns();</script>');
 		}
 	}
@@ -1565,12 +1563,37 @@ class WC_SC extends WC_Payment_Gateway {
 	 * Function get_param
 	 * Get request parameter by key
 	 * 
-	 * @param mixed $key
-	 * @param mixed $default
+	 * @param string $key - request key
+	 * @param mixed $default - returnd value if fail
+	 * @param string $type - possible vaues: string, float, int, array, mail, other
+	 * 
 	 * @return mixed
 	 */
-	private function get_param( $key, $default = '') {
-		return !empty($_REQUEST[$key]) ? sanitize_text_field($_REQUEST[$key]) : $default;
+	private function get_param( $key, $default = '', $type = 'string') {
+		switch ($type) {
+			case 'mail':
+				return !empty($_REQUEST[$key])
+					? filter_var($_REQUEST[$key], FILTER_VALIDATE_EMAIL) : $default;
+				
+			case 'float':
+				return !empty($_REQUEST[$key])
+					? filter_var($_REQUEST[$key], FILTER_VALIDATE_FLOAT) : $default;
+				
+			case 'int':
+				return !empty($_REQUEST[$key])
+					? filter_var($_REQUEST[$key], FILTER_VALIDATE_INT) : $default;
+				
+			case 'array': 
+				return !empty($_REQUEST[$key])
+					? filter_var($_REQUEST[$key], FILTER_REQUIRE_ARRAY) : $default;
+				
+			case 'other': 
+				return !empty($_REQUEST[$key]) ? $_REQUEST[$key] : $default;
+				
+			default:
+				return !empty($_REQUEST[$key])
+					? urlencode(preg_replace('/[[:punct:]]/', '', filter_var($_REQUEST[$key], FILTER_SANITIZE_STRING))) : $default;
+		}
 	}
 }
 

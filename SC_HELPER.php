@@ -86,7 +86,9 @@ class SC_HELPER {
 			'ipAddress'     => '0.0.0.0',
 		);
 		
-		$user_agent = strtolower(filter_input(INPUT_SERVER, 'HTTP_USER_AGENT', FILTER_SANITIZE_STRING));
+		if (!empty($_SERVER['HTTP_USER_AGENT'])) {
+			$user_agent = strtolower(filter_var($_SERVER['HTTP_USER_AGENT'], FILTER_SANITIZE_STRING));
+		}
 		
 		if (empty($user_agent)) {
 			$device_details['Warning'] = 'Probably the merchant Server has problems with PHP filter_input function!';
@@ -141,13 +143,15 @@ class SC_HELPER {
 		}
 
 		// get ip
-		$ip_address = filter_input(INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP);
-		
-		if (empty($ip_address)) {
-			$ip_address = filter_input(INPUT_SERVER, 'HTTP_X_FORWARDED_FOR', FILTER_VALIDATE_IP);
+		if (!empty($_SERVER['REMOTE_ADDR'])) {
+			$ip_address = filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP);
 		}
-		if (empty($ip_address)) {
-			$ip_address = filter_input(INPUT_SERVER, 'HTTP_CLIENT_IP', FILTER_VALIDATE_IP);
+		
+		if (empty($ip_address) && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+			$ip_address = filter_var($_SERVER['HTTP_X_FORWARDED_FOR'], FILTER_VALIDATE_IP);
+		}
+		if (empty($ip_address && !empty($_SERVER['HTTP_CLIENT_IP']))) {
+			$ip_address = filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP);
 		}
 		
 		if (!empty($ip_address)) {
