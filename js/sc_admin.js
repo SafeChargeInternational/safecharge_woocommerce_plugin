@@ -6,7 +6,6 @@ function settleAndCancelOrder(question, action, orderId) {
 	console.log('settleAndCancelOrder')
 	
 	if (confirm(question)) {
-		jQuery('#sc_void_btn, #sc_settle_btn').hide();
 		jQuery('#custom_loader').show();
 		
 		var data = {

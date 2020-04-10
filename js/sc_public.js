@@ -49,6 +49,11 @@ function scValidateAPMFields() {
 	var formValid = true;
 	selectedPM    = jQuery('input[name="sc_payment_method"]:checked').val();
 	
+	// WC check for the terms when try to submit the form, the idea is just to prevent webSDK call
+	if(jQuery('#terms').length > 0 && !jQuery('#terms').is(':checked')) {
+		selectedPM = 'dummy text';
+	}
+	
 	if (typeof selectedPM != 'undefined' && selectedPM != '') {
 		// use cards
 		if (selectedPM == 'cc_card' || selectedPM == 'dc_card') {
