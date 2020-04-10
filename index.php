@@ -315,7 +315,10 @@ function sc_add_buttons() {
 		$order_payment_method = $order->get_meta('_paymentMethod');
 		
 		// hide Refund Button
-		if (!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))) {
+		if (
+			!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))
+			|| 'processing' == $order_status
+		) {
 			echo '<script type="text/javascript">jQuery(\'.refund-items\').prop("disabled", true);</script>';
 		}
 	} catch (Exception $ex) {
@@ -356,7 +359,7 @@ function sc_add_buttons() {
 		}
 		
 		// add loading screen
-		//echo '<div id="custom_loader" class="blockUI blockOverlay"></div>';
+//		echo '<div id="custom_loader" class="blockUI blockOverlay"></div>';
 	}
 }
 
