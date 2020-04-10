@@ -17,9 +17,9 @@ if (!session_id()) {
 class WC_SC extends WC_Payment_Gateway {
 
 	# payments URL
-	private $URL			= '';
-	private $webMasterId	= 'WooCommerce ';
-	private $stop_dmn		= 0; // when 1 - stops the DMN for testing
+	private $URL         = '';
+	private $webMasterId = 'WooCommerce ';
+	private $stop_dmn    = 0; // when 1 - stops the DMN for testing
 	private $sc_order;
 	
 	public function __construct() {
@@ -274,8 +274,8 @@ class WC_SC extends WC_Payment_Gateway {
 			return array('result' => 'error');
 		}
 		
-//		$order_status = strtolower($order->get_status());
-//		$order->update_status('processing');
+		//      $order_status = strtolower($order->get_status());
+		//      $order->update_status('processing');
 		
 		$return_success_url	= add_query_arg(
 			array('key' => $order->get_order_key()),
@@ -432,9 +432,9 @@ class WC_SC extends WC_Payment_Gateway {
 			'ERROR' === $this->get_request_status($resp)
 			|| ( isset($resp['transactionStatus']) && 'ERROR' === $resp['transactionStatus'] )
 		) {
-//			if ('pending' === $order_status) {
+			//          if ('pending' === $order_status) {
 				$order->set_status('failed');
-//			}
+			//          }
 
 			$error_txt = 'Payment error';
 
@@ -507,7 +507,7 @@ class WC_SC extends WC_Payment_Gateway {
 	public function process_dmns( $params = array() ) {
 		SC_HELPER::create_log($_REQUEST, 'Receive DMN with params: ');
 		
-		if($this->get_param('stopDMN', 'int') == 1) {
+		if ($this->get_param('stopDMN', 'int') == 1) {
 			SC_HELPER::create_log('DMN was stopped for test case, please fire it manually!');
 			echo 'DMN was stopped for test case, please fire it manually!';
 			exit;
@@ -699,12 +699,12 @@ class WC_SC extends WC_Payment_Gateway {
 				. $this->get_param('productId')
 		);
 		
-//		var_dump($this->secret . $this->get_param('totalAmount', 'float')
-//				. $this->get_param('currency') . $this->get_param('responseTimeStamp')
-//				. $this->get_param('PPP_TransactionID', 'int') . $this->get_request_status()
-//				. $this->get_param('productId'));
+		//      var_dump($this->secret . $this->get_param('totalAmount', 'float')
+		//              . $this->get_param('currency') . $this->get_param('responseTimeStamp')
+		//              . $this->get_param('PPP_TransactionID', 'int') . $this->get_request_status()
+		//              . $this->get_param('productId'));
 		
-//		var_dump($this->get_param('totalAmount', 'float'));
+		//      var_dump($this->get_param('totalAmount', 'float'));
 		
 		if (strval($str) == $this->get_param('advanceResponseChecksum')) {
 			return true;
@@ -1162,8 +1162,7 @@ class WC_SC extends WC_Payment_Gateway {
 			|| 'DECLINED' == @$resp['transactionStatus']
 		) {
 			$ord_status = 0;
-		}
-		else {
+		} else {
 			$order->update_status('processing');
 		}
 		
@@ -1311,7 +1310,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 * @param string $transactionType
 	 * @param array $res_args - we must use $res_args instead $_REQUEST, if not empty
 	 */
-	private function change_order_status($order_id, $req_status, $transactionType, $res_args = array()) {
+	private function change_order_status( $order_id, $req_status, $transactionType, $res_args = array()) {
 		SC_HELPER::create_log(
 			'Order ' . $order_id . ' was ' . $req_status,
 			'WC_SC change_order_status()'
@@ -1320,17 +1319,18 @@ class WC_SC extends WC_Payment_Gateway {
 		$gw_data = ',<br/>' . __('Status = ', 'sc') . $req_status
 			. '<br/>' . __('PPP Transaction ID = ', 'sc') . $this->get_param('PPP_TransactionID', 'int')
 			. ',<br/>' . __('Transaction Type = ', 'sc') . $transactionType
-			. ',<br/>' . __('Transaction ID = ', 'sc') . $this->get_param('TransactionID', 'int');
+			. ',<br/>' . __('Transaction ID = ', 'sc') . $this->get_param('TransactionID', 'int')
+			. ',<br/>' . __('Payment Method - ', 'sc') . $this->get_param('payment_method');
 		
-		$message	= '';
-		$status		= $this->sc_order->get_status();
+		$message = '';
+		$status  = $this->sc_order->get_status();
 		
 		switch ($req_status) {
 			case 'CANCELED':
 				$message			= __('Your action was Canceld.', 'sc') . $gw_data;
 				$this->msg['class']	= 'woocommerce_message';
 				
-				if(in_array($transactionType, array('Auth', 'Settle', 'Sale'))) {
+				if (in_array($transactionType, array('Auth', 'Settle', 'Sale'))) {
 					$status = 'failed';
 				}
 				break;
@@ -1341,23 +1341,23 @@ class WC_SC extends WC_Payment_Gateway {
 						. $gw_data . '<br/>' . __('Plsese check your stock!', 'sc');
 					
 					$status = 'cancelled';
-				} else if (in_array($transactionType, array('Credit', 'Refund'), true)) {
-					$message	= __('DMN message: Your Refund was successful.', 'sc') . $gw_data;
-					$status		= 'completed';
+				} elseif (in_array($transactionType, array('Credit', 'Refund'), true)) {
+					$message = __('DMN message: Your Refund was successful.', 'sc') . $gw_data;
+					$status  = 'completed';
 					
 					// set flag that order has some refunds
 					$this->sc_order->update_meta_data(SC_ORDER_HAS_REFUND, 1);
-				} else if ('Auth' === $transactionType) {
-					$message	= __('The amount has been authorized and wait to for Settle.', 'sc') . $gw_data;
-					$status		= 'pending';
-				} elseif ('Settle' === $transactionType) {
-					$message	= __('The amount has been authorized and captured by ', 'sc') . SC_GATEWAY_TITLE . '.' . $gw_data;
-					$status		= 'completed';
+				} elseif ('Auth' === $transactionType) {
+					$message = __('The amount has been authorized and wait to for Settle.', 'sc') . $gw_data;
+					$status  = 'pending';
+				} elseif (in_array($transactionType, array('Settle', 'Sale'), true)) {
+					$message = __('The amount has been authorized and captured by ', 'sc') . SC_GATEWAY_TITLE . '.' . $gw_data;
+					$status  = 'completed';
 					
 					$this->sc_order->payment_complete($order_id);
 				}
 				
-				$this->msg['class']   = 'woocommerce_message';
+				$this->msg['class'] = 'woocommerce_message';
 				break;
 
 			case 'ERROR':
@@ -1378,7 +1378,7 @@ class WC_SC extends WC_Payment_Gateway {
 				if ('Void' === $transactionType) {
 					$message = 'DMN message: Your Void request fail.';
 				}
-				if(in_array($transactionType, array('Auth', 'Settle', 'Sale'))) {
+				if (in_array($transactionType, array('Auth', 'Settle', 'Sale'))) {
 					$status = 'failed';
 				}
 				
@@ -1396,7 +1396,7 @@ class WC_SC extends WC_Payment_Gateway {
 				break;
 		}
 		
-		if(!empty($message)) {
+		if (!empty($message)) {
 			$this->msg['message'] = $message;
 			$this->sc_order->add_order_note($this->msg['message']);
 		}
@@ -1509,15 +1509,15 @@ class WC_SC extends WC_Payment_Gateway {
 				
 			case 'float':
 			case 'int':
-				if(empty($default)) {
+				if (empty($default)) {
 					$default = (float) 0.00;
 				}
 				
-				return (!empty($_REQUEST[$key]) && is_numeric($_REQUEST[$key]))
-					? $_REQUEST[$key] : $default;
+				return ( !empty($_REQUEST[$key]) && is_numeric($_REQUEST[$key]) )
+					? filter_var($_REQUEST[$key], FILTER_DEFAULT) : $default;
 				
 			case 'array': 
-				if(empty($default)) {
+				if (empty($default)) {
 					$default = array();
 				}
 				
@@ -1526,8 +1526,8 @@ class WC_SC extends WC_Payment_Gateway {
 				
 			case 'string': 
 				return !empty($_REQUEST[$key])
-//					? urlencode(preg_replace('/[[:punct:]]/', '', filter_var($_REQUEST[$key], FILTER_SANITIZE_STRING))) : $default;
-//					? urlencode(filter_var($_REQUEST[$key], FILTER_SANITIZE_STRING)) : $default;
+			//                  ? urlencode(preg_replace('/[[:punct:]]/', '', filter_var($_REQUEST[$key], FILTER_SANITIZE_STRING))) : $default;
+			//                  ? urlencode(filter_var($_REQUEST[$key], FILTER_SANITIZE_STRING)) : $default;
 					? filter_var($_REQUEST[$key], FILTER_SANITIZE_STRING) : $default;
 				
 			default:
