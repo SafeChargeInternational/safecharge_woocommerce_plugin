@@ -129,7 +129,7 @@ define('SC_DEVICES', json_encode(array('iphone', 'ipad', 'android', 'silk', 'bla
 define('SC_BROWSERS', json_encode(array('ucbrowser', 'firefox', 'chrome', 'opera', 'msie', 'edge', 'safari', 'blackberry', 'trident')));
 
 // list of devices types
-define('SC_DEVICES_TYPES', json_encode(array('tablet', 'mobile', 'tv', 'windows', 'linux')));
+define('SC_DEVICES_TYPES', json_encode(array('tablet', 'mobile', 'tv', 'windows', 'linux', 'tv', 'smarttv', 'googletv', 'appletv', 'hbbtv', 'pov_tv', 'netcast.tv', 'bluray')));
 
 // list of devices OSs
 define('SC_DEVICES_OS', json_encode(array('android', 'windows', 'linux', 'mac os')));

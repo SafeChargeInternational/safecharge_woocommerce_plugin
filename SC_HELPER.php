@@ -106,8 +106,12 @@ class SC_HELPER {
 					if (strstr($user_agent, $d) !== false) {
 						if ('linux' === $d || 'windows' === $d) {
 							$device_details['deviceType'] = 'DESKTOP';
+						} else if('mobile' === $d) {
+							$device_details['deviceType'] = 'SMARTPHONE';
+						} else if('tablet' === $d) {
+							$device_details['deviceType'] = 'TABLET';
 						} else {
-							$device_details['deviceType'] = $d;
+							$device_details['deviceType'] = 'TV';
 						}
 
 						break;
