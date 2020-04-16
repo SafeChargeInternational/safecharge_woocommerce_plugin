@@ -104,7 +104,7 @@ class SC_HELPER {
 			if (is_array($devs_tps) && !empty($devs_tps)) {
 				foreach ($devs_tps as $d) {
 					if (strstr($user_agent, $d) !== false) {
-						if ('linux' === $d || 'windows' === $d) {
+						if(in_array($d, array('linux', 'windows', 'macintosh'), true)) {
 							$device_details['deviceType'] = 'DESKTOP';
 						} else if('mobile' === $d) {
 							$device_details['deviceType'] = 'SMARTPHONE';
