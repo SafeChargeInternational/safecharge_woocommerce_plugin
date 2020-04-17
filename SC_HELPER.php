@@ -96,7 +96,7 @@ class SC_HELPER {
 			return $device_details;
 		}
 		
-		$device_details['deviceName'] = $user_agent;
+		$device_details['deviceName'] = substr($user_agent, 0, 250);
 
 		if (defined('SC_DEVICES_TYPES')) {
 			$devs_tps = json_decode(SC_DEVICES_TYPES, true);
