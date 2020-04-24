@@ -3,7 +3,7 @@
 /**
  * SC_HELPER Class
  *
- * @year 2019
+ * @year 2020
  * @author SafeCharge
  */
 class SC_HELPER {
@@ -117,6 +117,7 @@ class SC_HELPER {
 	
 	/**
 	 * Function call_rest_api
+	 * 
 	 * Call REST API with cURL post and get response.
 	 * The URL depends from the case.
 	 *
@@ -137,7 +138,7 @@ class SC_HELPER {
 		$resp = false;
 		
 		// get them only if we pass them empty
-		if (isset($params['deviceDetails']) && empty($params['deviceDetails'])) {
+		if (empty($params['deviceDetails'])) {
 			$params['deviceDetails'] = self::get_device_details();
 		}
 		
@@ -210,6 +211,7 @@ class SC_HELPER {
 	
 	/**
 	 * Function get_device_details
+	 * 
 	 * Get browser and device based on HTTP_USER_AGENT.
 	 * The method is based on D3D payment needs.
 	 *
@@ -224,13 +226,19 @@ class SC_HELPER {
 			'ipAddress'     => '0.0.0.0',
 		);
 		
-		if (!empty($_SERVER['HTTP_USER_AGENT'])) {
-			$user_agent = strtolower(filter_var($_SERVER['HTTP_USER_AGENT'], FILTER_SANITIZE_STRING));
+		if(empty($_SERVER['HTTP_USER_AGENT'])) {
+			$device_details['Warning'] = 'User Agent is empty.';
+			
+			self::create_log($device_details['Warning'], 'Error');
+			return $device_details;
 		}
 		
+		$user_agent = strtolower(filter_var($_SERVER['HTTP_USER_AGENT'], FILTER_SANITIZE_STRING));
+		
 		if (empty($user_agent)) {
-			$device_details['Warning'] = 'Probably the merchant Server has problems with PHP filter_input function!';
+			$device_details['Warning'] = 'Probably the merchant Server has problems with PHP filter_var function!';
 			
+			self::create_log($device_details['Warning'], 'Error');
 			return $device_details;
 		}
 		
@@ -288,14 +296,12 @@ class SC_HELPER {
 		if (!empty($_SERVER['REMOTE_ADDR'])) {
 			$ip_address = filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP);
 		}
-		
 		if (empty($ip_address) && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
 			$ip_address = filter_var($_SERVER['HTTP_X_FORWARDED_FOR'], FILTER_VALIDATE_IP);
 		}
 		if (empty($ip_address && !empty($_SERVER['HTTP_CLIENT_IP']))) {
 			$ip_address = filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP);
 		}
-		
 		if (!empty($ip_address)) {
 			$device_details['ipAddress'] = (string) $ip_address;
 		}
