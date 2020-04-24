@@ -7,7 +7,114 @@
  * @author SafeCharge
  */
 class SC_HELPER {
-
+	
+	// array details to validate request parameters
+    private $params_validation = array(
+        // deviceDetails
+        'deviceType' => array(
+            'length' => 10,
+            'flag'    => FILTER_SANITIZE_STRING
+        ),
+        'deviceName' => array(
+            'length' => 255,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'deviceOS' => array(
+            'length' => 255,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'browser' => array(
+            'length' => 255,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'ipAddress' => array(
+            'length' => 15,
+            'flag'    => FILTER_VALIDATE_IP
+        ),
+        // deviceDetails END
+        
+        // userDetails, shippingAddress, billingAddress
+        'firstName' => array(
+            'length' => 30,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'lastName' => array(
+            'length' => 40,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'address' => array(
+            'length' => 60,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'cell' => array(
+            'length' => 18,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'phone' => array(
+            'length' => 18,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'zip' => array(
+            'length' => 10,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'city' => array(
+            'length' => 30,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'country' => array(
+            'length' => 20,
+            'flag'    => FILTER_SANITIZE_STRING
+        ),
+        'state' => array(
+            'length' => 2,
+            'flag'    => FILTER_SANITIZE_STRING
+        ),
+        'email' => array(
+            'length' => 100,
+            'flag'    => FILTER_VALIDATE_EMAIL
+        ),
+        'county' => array(
+            'length' => 255,
+            'flag'    => FILTER_DEFAULT
+        ),
+        // userDetails, shippingAddress, billingAddress END
+        
+        // specific for shippingAddress
+        'shippingCounty' => array(
+            'length' => 255,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'addressLine2' => array(
+            'length' => 50,
+            'flag'    => FILTER_DEFAULT
+        ),
+        'addressLine3' => array(
+            'length' => 50,
+            'flag'    => FILTER_DEFAULT
+        ),
+        // specific for shippingAddress END
+        
+        // urlDetails
+        'successUrl' => array(
+            'length' => 1000,
+            'flag'    => FILTER_VALIDATE_URL
+        ),
+        'failureUrl' => array(
+            'length' => 1000,
+            'flag'    => FILTER_VALIDATE_URL
+        ),
+        'pendingUrl' => array(
+            'length' => 1000,
+            'flag'    => FILTER_VALIDATE_URL
+        ),
+        'notificationUrl' => array(
+            'length' => 1000,
+            'flag'    => FILTER_VALIDATE_URL
+        ),
+        // urlDetails END
+    );
+	
 	/**
 	 * Function call_rest_api
 	 * Call REST API with cURL post and get response.
@@ -33,6 +140,37 @@ class SC_HELPER {
 		if (isset($params['deviceDetails']) && empty($params['deviceDetails'])) {
 			$params['deviceDetails'] = self::get_device_details();
 		}
+		
+		// validate parameters
+		foreach ($params as $key1 => $val1) {
+            if (!is_array($val1) && !empty($val1) && array_key_exists($key1, $this->params_validation)) {
+                $new_val = $val1;
+                
+                if (mb_strlen($val1) > $this->params_validation[$key1]['length']) {
+                    $new_val = mb_substr($val1, 0, $this->params_validation[$key1]['length']);
+                    
+                    self::create_log($key1, 'Limit');
+                }
+                
+                $params[$key1] = filter_var($new_val, $this->params_validation[$key1]['flag']);
+            }
+			elseif (is_array($val1) && !empty($val1)) {
+                foreach ($val1 as $key2 => $val2) {
+                    if (!is_array($val2) && !empty($val2) && array_key_exists($key2, $this->params_validation)) {
+                        $new_val = $val2;
+
+                        if (mb_strlen($val2) > $this->params_validation[$key2]['length']) {
+                            $new_val = mb_substr($val2, 0, $this->params_validation[$key2]['length']);
+                            
+                            self::create_log($key2, 'Limit');
+                        }
+
+                        $params[$key1][$key2] = filter_var($new_val, $this->params_validation[$key2]['flag']);
+                    }
+                }
+            }
+        }
+		// validate parameters END
 		
 		$json_post = json_encode($params);
 		
@@ -96,7 +234,7 @@ class SC_HELPER {
 			return $device_details;
 		}
 		
-		$device_details['deviceName'] = substr($user_agent, 0, 250);
+		$device_details['deviceName'] = $user_agent;
 
 		if (defined('SC_DEVICES_TYPES')) {
 			$devs_tps = json_decode(SC_DEVICES_TYPES, true);
