@@ -158,7 +158,7 @@ form.woocommerce-checkout #payment.woocommerce-checkout-payment {
 	position: relative;
 }
 
-#custom_loader {
+#custom_loader, .custom_loaders {
 	position: absolute;
 	width: 100%;
 	height: 100%;
@@ -166,6 +166,12 @@ form.woocommerce-checkout #payment.woocommerce-checkout-payment {
 	background-color: white;
 	opacity: 0.4;
 	display: none;
+}
+
+.custom_loaders {
+	left: 0;
+	right: 0;
+	display: block;
 }
 
 .apm_title .apm_selected {

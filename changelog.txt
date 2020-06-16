@@ -3,6 +3,7 @@
 2020-02-12 - version 3.0
 * New - new keys and values of SC Order meta data. Added few more SC meta fields.
 Please, complete all you existing Orders before apply this update!
+* Added validations in SC_CLASS for some of the request parameters;
 
 2020-02-04 - version 2.4
 * Fix for Guest user Order. Fix for the case when user changes the shipping method, and this changes the Order Total.

@@ -7,9 +7,9 @@
  * Author: SafeCharge
  * Author URI: http://safecharge.com
  * Require at least: 4.7
- * Tested up to: 5.3.2
+ * Tested up to: 5.4.1
  * WC requires at least: 3.0
- * WC tested up to: 3.9.1
+ * WC tested up to: 4.1.0
 */
 
 defined('ABSPATH') || die('die');
@@ -20,7 +20,7 @@ if (!session_id()) {
 
 require_once 'sc_config.php';
 require_once 'SC_Versions_Resolver.php';
-require_once 'SC_HELPER.php';
+require_once 'SC_CLASS.php';
 
 $wc_sc = null;
 
@@ -41,15 +41,36 @@ function woocommerce_sc_init() {
 	add_action('init', 'sc_enqueue');
 	// load WC styles
 	add_filter( 'woocommerce_enqueue_styles', 'sc_enqueue_wo_files' );
-	// replace the text at thank you page
-	//  add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
 	// add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
 	add_action('woocommerce_order_item_add_action_buttons',	'sc_add_buttons');
-	// on the checkout page get the order total amount
-	add_action('woocommerce_checkout_before_order_review', array($wc_sc, 'checkout_open_order'));
-	// handle Ajax calls
+	
+	// handle custom Ajax calls
 	add_action('wp_ajax_sc-ajax-action', 'sc_ajax_action');
 	add_action('wp_ajax_nopriv_sc-ajax-action', 'sc_ajax_action');
+	
+	// if validation success get order details
+	add_action('woocommerce_after_checkout_validation', function($data, $errors) {
+		SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
+		SC_CLASS::create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
+		
+		if( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
+			$_SESSION['sc_order_details'] = $data;
+		}
+		
+		if ($_POST['confirm-order-flag'] == "1") {
+			wp_send_json(array(
+				'result' => 'failure',
+				'refresh' => false,
+				'reload' => false,
+				'messages' => '<ul id="sc_fake_error" class="woocommerce-error" style="display: none;" role="alert"><li></li></ul>'
+			));
+			
+			wp_die();
+		} 
+	}, 9999, 2);
+	
+	// use this to change button text, because of the cache the jQuery not always works
+	add_filter('woocommerce_order_button_text', 'sc_edit_order_buttons' );
 	
 	// those actions are valid only when the plugin is enabled
 	if ('yes' == $wc_sc->settings['enabled']) {
@@ -85,22 +106,6 @@ function sc_ajax_action() {
 		wp_die('Invalid site mode.');
 	}
 	
-	// set parameters
-	$country = '';
-	if (isset($_POST['country'])) {
-		$country = sanitize_text_field($_POST['country']);
-	}
-
-	$amount = '';
-	if (isset($_POST['amount'])) {
-		$amount = sanitize_text_field($_POST['amount']);
-	}
-
-	$userMail = '';
-	if (isset($_POST['userMail'])) {
-		$userMail = sanitize_text_field($_POST['userMail']);
-	}
-
 	$payment_method_sc = '';
 	if (isset($_POST['payment_method_sc'])) {
 		$payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
@@ -118,8 +123,8 @@ function sc_ajax_action() {
 	}
 
 	// when we use the REST - Open order and get APMs
-	if (!empty($country) && !empty($amount) && !empty($userMail)) {
-		$wc_sc->prepare_rest_payment($amount, $userMail, $country);
+	if (!empty($_POST['sc_request']) && 'OpenOrder' === $_POST['sc_request']) {
+		$wc_sc->prepare_rest_payment();
 	}
 
 	wp_die();
@@ -221,7 +226,8 @@ function sc_enqueue_wo_files( $styles) {
 			'missData'			=> __('Mandatory data is missing, please try again later!'),
 			'proccessError'		=> __('Error in the proccess. Please, try again later!'),
 			'chooseUPO'			=> __('Choose from you prefered payment methods'),
-			'chooseAPM'			=> __('Choose from the other payment methods'),
+			'chooseAPM'			=> __('Choose from the payment options'),
+			'goBack'			=> __('Go back'),
 		)
 	);
 
@@ -422,7 +428,28 @@ function sc_wpml_thank_you_page( $order_received_url, $order) {
 	$lang_code          = get_post_meta($order->id, 'wpml_language', true);
 	$order_received_url = apply_filters('wpml_permalink', $order_received_url, $lang_code);
 	
-	SC_HELPER::create_log($order_received_url, 'sc_wpml_thank_you_page: ');
+	SC_CLASS::create_log($order_received_url, 'sc_wpml_thank_you_page: ');
  
 	return $order_received_url;
+}
+
+function sc_edit_order_buttons() {
+	$default_text			= __( 'Place order', 'woocommerce' );
+	$sc_continue_text		= __( 'Continue', 'woocommerce' ); 
+    $chosen_payment_method	= WC()->session->get('chosen_payment_method');
+	
+	// save default text into button attribute
+	?><script>
+		(function($){
+			$('#place_order')
+				.attr('data-default-text', '<?= $default_text; ?>')
+				.attr('data-sc-text', '<?= $sc_continue_text; ?>');
+		})(jQuery);
+	</script><?php
+
+    if( 'sc' == $chosen_payment_method ){
+		return $sc_continue_text;
+    }
+
+    return $default_text;
 }

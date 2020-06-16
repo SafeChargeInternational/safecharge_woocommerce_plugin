@@ -38,6 +38,8 @@ var scOrderAmount, scOrderCurr, scMerchantId, scMerchantSiteId, scOpenOrderToken
   * When click save on modal, check for mandatory fields and validate them.
   */
 function scValidateAPMFields() {
+	console.log('scValidateAPMFields')
+	
 	if ('sc' != jQuery('input[name="payment_method"]:checked').val()) {
 		jQuery('form.woocommerce-checkout').submit();
 		return;
@@ -45,6 +47,8 @@ function scValidateAPMFields() {
 	
 	jQuery('#payment').append('<div id="custom_loader" class="blockUI"></div>');
 	jQuery('#custom_loader').show();
+	
+	jQuery('#confirm-order-flag').val(''); // reset the fake parameter flag
 	
 	var formValid = true;
 	selectedPM    = jQuery('input[name="sc_payment_method"]:checked').val();
@@ -68,7 +72,7 @@ function scValidateAPMFields() {
 				console.error('Missing SDK parameters.');
 				return;
 			}
-	
+			
 			// create payment with WebSDK
 			sfc.createPayment({
 				sessionToken    : scOpenOrderToken,
@@ -88,13 +92,15 @@ function scValidateAPMFields() {
 					if (resp.result == 'APPROVED' && resp.transactionId != 'undefined') {
 						jQuery('#sc_transaction_id').val(resp.transactionId);
 						jQuery('form.woocommerce-checkout').submit();
-					} else if (resp.result == 'DECLINED') {
+					}
+					else if (resp.result == 'DECLINED') {
 						scFormFalse(scTrans.paymentDeclined);
 						
 						jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
 						scCard = null;
 						getAPMs();
-					} else {
+					}
+					else {
 						if (resp.errorDescription != 'undefined' && resp.errorDescription != '') {
 							scFormFalse(resp.errorDescription);
 						} else {
@@ -105,14 +111,14 @@ function scValidateAPMFields() {
 						scCard = null;
 						getAPMs();
 					}
-				} else {
+				}
+				else {
 					scFormFalse(scTrans.unexpectedError);
 					console.error('Error with SDK response: ' + resp);
 					
 					jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
 					scCard = null;
 					getAPMs();
-					
 					return;
 				}
 			});
@@ -154,7 +160,8 @@ function scValidateAPMFields() {
 			jQuery('#custom_loader').hide();
 			jQuery('form.woocommerce-checkout').submit();
 		}
-	} else {
+	}
+	else {
 		scFormFalse();
 		jQuery('#custom_loader').hide();
 		return;
@@ -195,274 +202,225 @@ function showErrorLikeInfo(elemId) {
 	}
 }
 
-/**
- * Function scGetOrderTotal
- * Try to get Order Total amount
- * 
- * @return string
- */
-function scGetOrderTotal() {
-	var totalHtmlContent = jQuery('.order-total .woocommerce-Price-amount').html().split('</span>');
-	var amount           = '';
-		
-	if (
-		typeof totalHtmlContent == 'object'
-		&& totalHtmlContent.length >= 2
-		&& '' != totalHtmlContent[1]
-	) {
-		amount = totalHtmlContent[1].replace(scTrans.wcThSep, '');
-
-		// format the number
-		if ('.' != scTrans.wcDecSep) {
-			amount = amount.replace(scTrans.wcDecSep, '.');
-		}
-
-		return parseFloat(amount).toFixed(2);
-	}
-	
-	return amount;
-}
-
 function getAPMs() {
-	// you are not on checkout page
-	if (
-		typeof scOrderAmount == 'undefined'
-		|| typeof jQuery("#billing_email").val() == 'undefined'
-		|| jQuery("#billing_email").val() == ''
-		|| typeof jQuery("#billing_country").val() == 'undefined'
-		|| jQuery("#billing_country").val() == ''
-	) {
-		return;
-	}
-	
-	if (jQuery("#billing_country").val() != billing_country_first_val) {
-		manualChangedCountry      = true;
-		billing_country_first_val = jQuery("#billing_country").val();
-	}
-
-	if (isAjaxCalled === false || manualChangedCountry === true) {
-		if ('' == jQuery("#billing_email").val() || '' == jQuery("#billing_country").val()) {
-			alert(scTrans.fillFields);
+	jQuery.ajax({
+		type: "POST",
+		url: scTrans.ajaxurl,
+		data: {
+			action      : 'sc-ajax-action',
+			security    : scTrans.security,
+			sc_request	: 'OpenOrder'
+		},
+		dataType: 'json'
+	})
+		.fail(function(){
+			alert(scTrans.errorWithPMs);
+			jQuery('#custom_loader').hide();
 			return;
-		}
-		
-		isAjaxCalled   = true;
-		var orderTotal = scGetOrderTotal();
-		
-		if ('' != orderTotal && orderTotal != scOrderAmount) {
-			scOrderAmount = orderTotal;
-		}
-
-		jQuery.ajax({
-			type: "POST",
-			url: scTrans.ajaxurl,
-			data: {
-				action      : 'sc-ajax-action',
-				security    : scTrans.security,
-				country     : jQuery("#billing_country").val(),
-				amount      : scOrderAmount,
-				userMail    : jQuery("#billing_email").val(),
-			},
-			dataType: 'json'
 		})
-			.fail(function(){
+		.done(function(resp) {
+			console.log(resp)
+
+			if (resp === null) {
 				alert(scTrans.errorWithPMs);
-				jQuery('#custom_loader').hide();
 				return;
-			})
-			.done(function(resp) {
-				console.log(resp)
-				
-				if (resp === null) {
-					alert(scTrans.errorWithPMs);
+			}
+
+			if (
+				typeof resp != 'undefined'
+				&& resp.status == 1
+				&& typeof resp.data['paymentMethods'] != 'undefined'
+				&& resp.data['paymentMethods'].length > 0
+			) {
+				try {
+					scOpenOrderToken	= resp.sessionToken;
+					scOrderCurr			= resp.currency;
+					scMerchantId		= resp.merchantId;
+					scMerchantSiteId	= resp.merchantSiteId;
+					scOrderAmount		= resp.amount;
+
+					scData.merchantSiteId		= resp.merchantSiteId;
+					scData.merchantId			= resp.merchantId;
+					scData.sessionToken			= resp.sessionToken;
+					scData.sourceApplication	= scTrans.webMasterId;
+
+					if (resp.testEnv == 'yes') {
+						scData.env = 'test';
+					}
+
+					sfc = SafeCharge(scData);
+
+					// prepare fields
+					scFields = sfc.fields({ locale: resp.langCode });
+				} catch (exception) {
+					alert(scTrans.missData);
+					console.error(exception);
+					jQuery('#custom_loader').hide();
 					return;
 				}
-		
-				if (
-					typeof resp != 'undefined'
-					&& resp.status == 1
-					&& typeof resp.data['paymentMethods'] != 'undefined'
-					&& resp.data['paymentMethods'].length > 0
-				) {
-					try {
-						scOpenOrderToken = resp.sessionToken;
-						scOrderCurr      = resp.currency;
-						scMerchantId     = resp.merchantId;
-						scMerchantSiteId = resp.merchantSiteId;
-						
-						scData.merchantSiteId    = resp.merchantSiteId;
-						scData.merchantId        = resp.merchantId;
-						scData.sessionToken      = resp.sessionToken;
-						scData.sourceApplication = scTrans.webMasterId;
-						
-						if (resp.testEnv == 'yes') {
-							scData.env = 'test';
-						}
 
-						sfc = SafeCharge(scData);
+				var html_upos = '';
+				var html_apms = '';
+				var pMethods  = resp.data['paymentMethods'];
 
-						// prepare fields
-						scFields = sfc.fields({
-							locale: resp.langCode
-						});
-					} catch (exception) {
-						alert(scTrans.missData);
-						console.error(exception);
-						jQuery('#custom_loader').hide();
-						return;
+				for (var i in pMethods) {
+					var pmMsg = '';
+					if (
+						pMethods[i]['paymentMethodDisplayName'].length > 0
+						&& typeof pMethods[i]['paymentMethodDisplayName'][0].message != 'undefined'
+					) {
+						pmMsg = pMethods[i]['paymentMethodDisplayName'][0].message;
+					}
+					// fix when there is no display name
+					else if (pMethods[i]['paymentMethod'] != '') {
+						pmMsg = pMethods[i]['paymentMethod'].replace('apmgw_', '');
+						pmMsg = pmMsg.replace(/_/g, ' ');
 					}
 
-					var html_upos = '';
-					var html_apms = '';
-					var pMethods  = resp.data['paymentMethods'];
-					
-					for (var i in pMethods) {
-						var pmMsg = '';
-						if (
-							pMethods[i]['paymentMethodDisplayName'].length > 0
-							&& typeof pMethods[i]['paymentMethodDisplayName'][0].message != 'undefined'
-						) {
-							pmMsg = pMethods[i]['paymentMethodDisplayName'][0].message;
-						}
-						// fix when there is no display name
-						else if (pMethods[i]['paymentMethod'] != '') {
-							pmMsg = pMethods[i]['paymentMethod'].replace('apmgw_', '');
-							pmMsg = pmMsg.replace(/_/g, ' ');
-						}
+					var newImg = pmMsg;
 
-						var newImg = pmMsg;
-						
-						if ('cc_card' == pMethods[i]['paymentMethod']) {
-							newImg = '<img src="'+ scTrans.plugin_dir_url
-								+'icons/visa_mc_maestro.svg" alt="'+ pmMsg +'" style="height: 26px;" />';
-						} else if (typeof pMethods[i]['logoURL'] != 'undefined') {
-							newImg = '<img src="'+ pMethods[i]['logoURL'].replace('/svg/', '/svg/solid-white/')
-								+'" alt="'+ pmMsg +'" />';
-						} else {
-							newImg = '<img src="#" alt="'+ pmMsg +'" />';
-						}
-						
+					if ('cc_card' == pMethods[i]['paymentMethod']) {
+						newImg = '<img src="'+ scTrans.plugin_dir_url
+							+'icons/visa_mc_maestro.svg" alt="'+ pmMsg +'" style="height: 26px;" />';
+					} else if (typeof pMethods[i]['logoURL'] != 'undefined') {
+						newImg = '<img src="'+ pMethods[i]['logoURL'].replace('/svg/', '/svg/solid-white/')
+							+'" alt="'+ pmMsg +'" />';
+					} else {
+						newImg = '<img src="#" alt="'+ pmMsg +'" />';
+					}
+
+					html_apms +=
+						'<li class="apm_container">'
+							+ '<div class="apm_title">'
+								+ newImg
+								+ '<input id="sc_payment_method_'+ pMethods[i].paymentMethod +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ pMethods[i].paymentMethod +'" />'
+								+ '<span class=""></span>'
+							+ '</div>';
+
+					if (pMethods[i].paymentMethod == 'cc_card' || pMethods[i].paymentMethod == 'dc_card') {
 						html_apms +=
-							'<li class="apm_container">'
-								+ '<div class="apm_title">'
-									+ newImg
-									+ '<input id="sc_payment_method_'+ pMethods[i].paymentMethod +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ pMethods[i].paymentMethod +'" />'
-									+ '<span class=""></span>'
-								+ '</div>';
+							'<div class="apm_fields" id="sc_'+ pMethods[i].paymentMethod +'">'
+								+ '<div class="apm_field">'
+									+ '<input type="text" id="sc_card_holder_name" name="'+ pMethods[i].paymentMethod
+										+'[cardHolderName]" placeholder="Card holder name" />'
+								+ '</div>'
 
-						if (pMethods[i].paymentMethod == 'cc_card' || pMethods[i].paymentMethod == 'dc_card') {
-							html_apms +=
-								'<div class="apm_fields" id="sc_'+ pMethods[i].paymentMethod +'">'
-									+ '<div class="apm_field">'
-										+ '<input type="text" id="sc_card_holder_name" name="'+ pMethods[i].paymentMethod
-											+'[cardHolderName]" placeholder="Card holder name" />'
-									+ '</div>'
-									
-									
-									+'<div class="apm_field">'
-										+ '<div id="sc_card_number"></div>'
-									+'</div>'
-							
-									 +'<div class="apm_field">'
-										+ '<div id="sc_card_expiry"></div>'
-									+'</div>'
-									
-									+'<div class="apm_field">'
-										+ '<div id="sc_card_cvc"></div>'
-									+'</div>';
-						} else {
-							html_apms +=
-								'<div class="apm_fields">';
-						
-							// create fields for the APM
-							if (pMethods[i].fields.length > 0) {
-								for (var j in pMethods[i].fields) {
-									var pattern = '';
-									try {
-										pattern = pMethods[i].fields[j].regex;
-										if (pattern === undefined) {
-											pattern = '';
-										}
-									} catch (e) {
+
+								+'<div class="apm_field">'
+									+ '<div id="sc_card_number"></div>'
+								+'</div>'
+
+								 +'<div class="apm_field">'
+									+ '<div id="sc_card_expiry"></div>'
+								+'</div>'
+
+								+'<div class="apm_field">'
+									+ '<div id="sc_card_cvc"></div>'
+								+'</div>';
+					} else {
+						html_apms +=
+							'<div class="apm_fields">';
+
+						// create fields for the APM
+						if (pMethods[i].fields.length > 0) {
+							for (var j in pMethods[i].fields) {
+								var pattern = '';
+								try {
+									pattern = pMethods[i].fields[j].regex;
+									if (pattern === undefined) {
+										pattern = '';
 									}
-
-									var placeholder = '';
-									try {
-										if (typeof pMethods[i].fields[j].caption[0] == 'undefined') {
-											placeholder = pMethods[i].fields[j].name;
-											placeholder = placeholder.replace(/_/g, ' ');
-										} else {
-											placeholder = pMethods[i].fields[j].caption[0].message;
-										}
-									} catch (e) {
-										placeholder = '';
-									}
-
-									var fieldErrorMsg = '';
-									try {
-										fieldErrorMsg = pMethods[i].fields[j].validationmessage[0].message;
-										if (fieldErrorMsg === undefined) {
-											fieldErrorMsg = '';
-										}
-									} catch (e) {
-									}
-
-									html_apms +=
-											'<div class="apm_field">'
-												+'<input id="'+ pMethods[i].paymentMethod +'_'+ pMethods[i].fields[j].name 
-													+'" name="'+ pMethods[i].paymentMethod +'['+ pMethods[i].fields[j].name 
-													+']" type="'+ pMethods[i].fields[j].type 
-													+'" pattern="'+ pattern 
-													+ '" placeholder="'+ placeholder 
-													+'" autocomplete="new-password" '
-													+ ('' == fieldErrorMsg ? 'style="width: 100%;"' : '')
-													+' />';
-
-									if ('' != fieldErrorMsg) {
-										html_apms +=
-												'<span class="question_mark" onclick="showErrorLikeInfo(\'sc_'+ pMethods[i].fields[j].name +'\')"><span class="tooltip-icon"></span></span>'
-												+'<div class="apm_error" id="error_sc_'+ pMethods[i].fields[j].name +'">'
-													+'<label>'+fieldErrorMsg+'</label>'
-												+'</div>';
-									}
-
-									html_apms +=
-											'</div>';
+								} catch (e) {
 								}
+
+								var placeholder = '';
+								try {
+									if (typeof pMethods[i].fields[j].caption[0] == 'undefined') {
+										placeholder = pMethods[i].fields[j].name;
+										placeholder = placeholder.replace(/_/g, ' ');
+									} else {
+										placeholder = pMethods[i].fields[j].caption[0].message;
+									}
+								} catch (e) {
+									placeholder = '';
+								}
+
+								var fieldErrorMsg = '';
+								try {
+									fieldErrorMsg = pMethods[i].fields[j].validationmessage[0].message;
+									if (fieldErrorMsg === undefined) {
+										fieldErrorMsg = '';
+									}
+								} catch (e) {
+								}
+
+								html_apms +=
+										'<div class="apm_field">'
+											+'<input id="'+ pMethods[i].paymentMethod +'_'+ pMethods[i].fields[j].name 
+												+'" name="'+ pMethods[i].paymentMethod +'['+ pMethods[i].fields[j].name 
+												+']" type="'+ pMethods[i].fields[j].type 
+												+'" pattern="'+ pattern 
+												+ '" placeholder="'+ placeholder 
+												+'" autocomplete="new-password" '
+												+ ('' == fieldErrorMsg ? 'style="width: 100%;"' : '')
+												+' />';
+
+								if ('' != fieldErrorMsg) {
+									html_apms +=
+											'<span class="question_mark" onclick="showErrorLikeInfo(\'sc_'+ pMethods[i].fields[j].name +'\')"><span class="tooltip-icon"></span></span>'
+											+'<div class="apm_error" id="error_sc_'+ pMethods[i].fields[j].name +'">'
+												+'<label>'+fieldErrorMsg+'</label>'
+											+'</div>';
+								}
+
+								html_apms +=
+										'</div>';
 							}
 						}
-
-						html_apms +=
-								'</div>'
-							+ '</li>';
 					}
-					
-					html_apms += '<input type="hidden" name="sc_transaction_id" id="sc_transaction_id" value="" />';
-					html_apms += '<input type="hidden" name="lst" id="lst" value="'+ resp.sessionToken +'" />';
-					
+
+					html_apms +=
+							'</div>'
+						+ '</li>';
+				}
+
+				html_apms += '<input type="hidden" name="sc_transaction_id" id="sc_transaction_id" value="" />';
+				html_apms += '<input type="hidden" name="lst" id="lst" value="'+ resp.sessionToken +'" />';
+
+				print_apms_options(html_upos, html_apms);
+
+				// WP js trigger - wait until checkout is updated, but because it not always fired
+				// print the APMs one more time befor it
+				jQuery( document.body ).on( 'updated_checkout', function() {
 					print_apms_options(html_upos, html_apms);
-					
-					// WP js trigger - wait until checkout is updated, but because it not always fired
-					// print the APMs one more time befor it
-					jQuery( document.body ).on( 'updated_checkout', function() {
-						print_apms_options(html_upos, html_apms);
-					});
-					
-					jQuery('#custom_loader').hide();
+				});
+
+				jQuery('#custom_loader').hide();
+			}
+			// show some error
+			else if (resp.status == 0) {
+				jQuery('#place_order')
+					.attr('type', 'submit')
+					.attr('onclick', '');
+				
+				var scErrorMsg = scTrans.proccessError;
+				
+				if(resp.hasOwnProperty('message') && '' != resp.message) {
+					scErrorMsg = resp.message;
 				}
-				// show some error
-				else if (resp.status == 0) {
-					jQuery('form.woocommerce-checkout').prepend(
-						'<ul class="woocommerce-error" role="alert">'
-							+'<li><strong>'+ scTrans.proccessError +'</strong></li>'
-						+'</ul>'
-					);
-			
-					window.location.hash = '#main';
-					jQuery('#custom_loader').hide();
-				}
-			});
-	}
+				
+				
+				jQuery('form.woocommerce-checkout').prepend(
+					'<ul class="woocommerce-error" role="alert">'
+						+'<li><strong>'+ scErrorMsg +'</strong></li>'
+					+'</ul>'
+				);
+
+				window.location.hash = '#main';
+				jQuery('#custom_loader').hide();
+				jQuery('.custom_loaders').remove();
+			}
+		});
 }
 
 /**
@@ -505,11 +463,36 @@ function print_apms_options(upos, apms) {
 			});
 			cardCvc.attach('#sc_card_cvc');
 		});
+}
 
-	// change submit button type and behavior
-	jQuery('form.woocommerce-checkout button[type=submit]')
-		.attr('type', 'button')
-		.attr('onclick', 'scValidateAPMFields()')
+function checkoutStep2AddLoader() {
+	jQuery('.blockUI.blockOverlay').remove();
+	
+	jQuery('#customer_details .col-1, #customer_details .col-2, .woocommerce-form-coupon-toggle')
+		.css('position', 'relative')
+		.append('<div class="blockOverlay custom_loaders"></div>');
+
+	jQuery('#order_review .woocommerce-checkout-review-order-table')
+		.css('position', 'relative')
+		.append('<div class="blockOverlay custom_loaders"></div>');
+
+	jQuery('.wc_payment_methods .wc_payment_method').each(function(){
+		if(!jQuery(this).hasClass('payment_method_sc')) {
+			jQuery(this).append('<div class="blockOverlay custom_loaders"></div>');
+		}
+	});
+}
+
+// after click on Go back button
+function checkoutGoBackStep() {
+	jQuery('.custom_loaders').remove();
+	jQuery('#sc_go_back').hide();
+	jQuery('.payment_method_sc b, .payment_method_sc #sc_apms_list').remove();
+	
+	jQuery('#place_order')
+		.html(jQuery('#place_order').attr('data-sc-text'))
+		.attr('type', 'submit')
+		.attr('onclick', '')
 		.prop('disabled', false);
 }
 
@@ -523,23 +506,11 @@ jQuery(function() {
 		jQuery('#custom_loader_2').parent('div').show();
 	}
 	
-	if (jQuery('#sc_apms_list').length == 0) {
-		jQuery('#place_order').prop('disabled', true);
-		getAPMs();
-	}
-
 	jQuery('#custom_loader_2').parent('div').hide();
 	// Prepare REST payment END
 	
 	jQuery('#payment').append('<div id="custom_loader" class="blockUI"></div>');
 	
-	billing_country_first_val = jQuery("#billing_country").val();
-	
-	// if user change the billing country get new payment methods
-	jQuery("#billing_country ,#billing_email").on('change', function() {
-		getAPMs();
-	});
-
 	// when click on APM payment method
 	jQuery('form.woocommerce-checkout').on('click', '.apm_title', function() {
 		// hide all check marks 
@@ -573,25 +544,47 @@ jQuery(function() {
 		// hide errors
 		jQuery('.apm_error').hide();
 	});
+	
+	// on last step modify Place order button
+	jQuery(document.body).on('checkout_error', function () {
+		if (jQuery('.woocommerce-error').attr('id') == 'sc_fake_error') { // Validation Passed (Just the Fake Error Exists)
+			jQuery( 'html, body' ).stop(); // stop scroll to the errors
+			
+			checkoutStep2AddLoader();
+			getAPMs();
+			
+			jQuery('form.woocommerce-checkout button[type=submit]')
+				.attr('type', 'button')
+				.attr('onclick', 'scValidateAPMFields()')
+				.prop('disabled', false)
+				.html(jQuery('#place_order').attr('data-default-text'));
+		
+			if(jQuery('#sc_go_back').length == 0) {
+				jQuery('<button type="button" class="button alt" id="sc_go_back" onclick="checkoutGoBackStep()" style="margin-bottom: 5px;">'+ scTrans.goBack +'</button>')
+					.insertBefore(jQuery('#place_order'));
+			}
+			else {
+				jQuery('#sc_go_back').show();
+			}
+		}
+    });
+	
+	jQuery('form.woocommerce-checkout').on('checkout_place_order', function () {
+		if (jQuery('#confirm-order-flag').length == 0) {
+			jQuery(this).append('<input type="hidden" id="confirm-order-flag" name="confirm-order-flag" value="1">');
+		}
+		return true;
+	});
+	
+	// change text on Place order button
+	jQuery('form.woocommerce-checkout').on('change', 'input[name=payment_method]', function(){
+		if(jQuery('input[name=payment_method]:checked').val() == 'sc') {
+			jQuery('#place_order').html(jQuery('#place_order').attr('data-sc-text'));
+		}
+		else if(jQuery('#place_order').html() == jQuery('#place_order').attr('data-sc-text')) {
+			jQuery('#place_order').html(jQuery('#place_order').attr('data-default-text'));
+		}
+	});
+	
 });
 // document ready function END
-
-/**
- * Try to catch the changes in Order total, then create new Open Order request
- */
-jQuery(document).ajaxStop(function() {
-	if (
-		jQuery('#billing_country').length > 0
-		&& jQuery('#billing_email').length > 0
-		&& !jQuery('#billing_country').closest('p').hasClass('woocommerce-invalid')
-		&& !jQuery('#billing_email').closest('p').hasClass('woocommerce-invalid')
-	) {
-		var orderTotal = scGetOrderTotal();
-		console.log('after ajax order total is: ', orderTotal)
-		
-		if ('' != orderTotal && orderTotal != scOrderAmount) {
-			console.log('after ajax call getAPMs()')
-			getAPMs();
-		}
-	}
-});
