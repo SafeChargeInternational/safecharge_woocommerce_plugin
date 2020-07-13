@@ -1,15 +1,15 @@
 <?php
 /*
- * Plugin Name: SafeCharge Payments
- * Plugin URI: http://www.safecharge.com
- * Description: SafeCharge gateway for WooCommerce
+ * Plugin Name: Nuvei Payments
+ * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
+ * Description: Nuvei gateway for WooCommerce
  * Version: 3.0
- * Author: SafeCharge
- * Author URI: http://safecharge.com
+ * Author: Nuvei
+ * Author URI: https://nuvei.com
  * Require at least: 4.7
  * Tested up to: 5.4.1
  * WC requires at least: 3.0
- * WC tested up to: 4.1.0
+ * WC tested up to: 4.2.0
 */
 
 defined('ABSPATH') || die('die');
