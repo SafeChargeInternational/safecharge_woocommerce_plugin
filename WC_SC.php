@@ -1069,35 +1069,6 @@ class WC_SC extends WC_Payment_Gateway {
 	}
 	
 	/**
-	 * Function checkout_open_order
-	 * On Checkout page when the user use REST API, prepare
-	 * and open an order.
-	 *
-	 * @global type $woocommerce
-	 * 
-	 * @deprecated
-	 */
-	public function checkout_open_order() {
-		global $woocommerce;
-		
-		if (empty($woocommerce->cart->get_totals())) {
-			echo
-				'<script type="text/javascript">'
-					. 'alert("Error with you Cart data. Please try again later!");'
-				. '</script>';
-			
-			return;
-		}
-		
-		$cart_totals = $woocommerce->cart->get_totals();
-		
-		echo
-			'<script type="text/javascript">'
-				. 'scOrderAmount = ' . esc_js(round(floatval($cart_totals['total']), 2)) . '; '
-			. '</script>';
-	}
-	
-	/**
 	 * Function create_void
 	 * 
 	 * @param int $order_id
