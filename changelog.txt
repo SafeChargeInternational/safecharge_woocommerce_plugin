@@ -1,5 +1,10 @@
 *** WooCommerce Extension Template Changelog ***
 
+2020-07-14 - version 3.0.1
+* Replaced SafeCharge name with Nuvei;
+* Start prepare UPOs usage;
+* Fix for the problem when the client select other Payment Provider than Nuvei.
+
 2020-02-12 - version 3.0
 * New - new keys and values of SC Order meta data. Added few more SC meta fields.
 Please, complete all you existing Orders before apply this update!
