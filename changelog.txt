@@ -1,5 +1,8 @@
 *** WooCommerce Extension Template Changelog ***
 
+2020-07-14 - version 3.1.0
+* Use webSDK for Direct APMs
+
 2020-07-14 - version 3.0.1
 * Replaced SafeCharge name with Nuvei;
 * Start prepare UPOs usage;

@@ -59,6 +59,15 @@ function scValidateAPMFields() {
 	}
 	
 	if (typeof selectedPM != 'undefined' && selectedPM != '') {
+		var nuveiPaymentParams = {
+			sessionToken    : scOpenOrderToken,
+			merchantId      : scMerchantId,
+			merchantSiteId  : scMerchantSiteId,
+			currency        : scOrderCurr,
+			amount          : scOrderAmount,
+			webMasterId		: scTrans.webMasterId
+		};
+		
 		// use cards
 		if (selectedPM == 'cc_card' || selectedPM == 'dc_card') {
 			if (
@@ -73,58 +82,22 @@ function scValidateAPMFields() {
 				return;
 			}
 			
+			nuveiPaymentParams.cardHolderName	= document.getElementById('sc_card_holder_name').value;
+			nuveiPaymentParams.paymentOption	= sfcFirstField;
+			
 			// create payment with WebSDK
-			sfc.createPayment({
-				sessionToken    : scOpenOrderToken,
-				merchantId      : scMerchantId,
-				merchantSiteId  : scMerchantSiteId,
-				currency        : scOrderCurr,
-				amount          : scOrderAmount,
-				cardHolderName  : document.getElementById('sc_card_holder_name').value,
-				paymentOption   : sfcFirstField,
-				webMasterId		: scTrans.webMasterId
-			}, function(resp){
-				console.log(resp);
-
-				if (typeof resp.result != 'undefined') {
-					console.log(resp.result)
-					
-					if (resp.result == 'APPROVED' && resp.transactionId != 'undefined') {
-						jQuery('#sc_transaction_id').val(resp.transactionId);
-						jQuery('form.woocommerce-checkout').submit();
-					}
-					else if (resp.result == 'DECLINED') {
-						scFormFalse(scTrans.paymentDeclined);
-						
-						jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
-						scCard = null;
-						getAPMs();
-					}
-					else {
-						if (resp.errorDescription != 'undefined' && resp.errorDescription != '') {
-							scFormFalse(resp.errorDescription);
-						} else {
-							scFormFalse(scTrans.paymentError);
-						}
-						
-						jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
-						scCard = null;
-						getAPMs();
-					}
-				}
-				else {
-					scFormFalse(scTrans.unexpectedError);
-					console.error('Error with SDK response: ' + resp);
-					
-					jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
-					scCard = null;
-					getAPMs();
-					return;
-				}
+			sfc.createPayment(nuveiPaymentParams, function(resp) {
+				afterSdkResponse(resp);
 			});
 		}
 		// use APM data
 		else {
+			nuveiPaymentParams.paymentOption = {
+				alternativePaymentMethod: {
+					paymentMethod: selectedPM
+				}
+			};
+			
 			var checkId = 'sc_payment_method_' + selectedPM;
 
 			// iterate over payment fields
@@ -149,6 +122,8 @@ function scValidateAPMFields() {
 				} else if (apmField.val() == '') {
 					formValid = false;
 				}
+				
+				nuveiPaymentParams.paymentOption.alternativePaymentMethod[apmField.attr('name')] = apmField.val();
 			});
 
 			if (!formValid) {
@@ -156,7 +131,17 @@ function scValidateAPMFields() {
 				jQuery('#custom_loader').hide();
 				return;
 			}
+			
+			// direct APMs can use the SDK
+			if(jQuery('input[name="sc_payment_method"]:checked').attr('data-nuvei-is-direct') == 'true') {
+				sfc.createPayment(nuveiPaymentParams, function(resp){
+					afterSdkResponse(resp);
+				});
+				
+				return;
+			}
 
+			// if not using SDK submit form
 			jQuery('#custom_loader').hide();
 			jQuery('form.woocommerce-checkout').submit();
 		}
@@ -164,6 +149,46 @@ function scValidateAPMFields() {
 	else {
 		scFormFalse();
 		jQuery('#custom_loader').hide();
+		return;
+	}
+}
+
+function afterSdkResponse(resp) {
+	console.log(resp);
+
+	if (typeof resp.result != 'undefined') {
+		console.log(resp.result)
+
+		if (resp.result == 'APPROVED' && resp.transactionId != 'undefined') {
+			jQuery('#sc_transaction_id').val(resp.transactionId);
+			jQuery('form.woocommerce-checkout').submit();
+		}
+		else if (resp.result == 'DECLINED') {
+			scFormFalse(scTrans.paymentDeclined);
+
+			jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
+			scCard = null;
+			getAPMs();
+		}
+		else {
+			if (resp.errorDescription != 'undefined' && resp.errorDescription != '') {
+				scFormFalse(resp.errorDescription);
+			} else {
+				scFormFalse(scTrans.paymentError);
+			}
+
+			jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
+			scCard = null;
+			getAPMs();
+		}
+	}
+	else {
+		scFormFalse(scTrans.unexpectedError);
+		console.error('Error with SDK response: ' + resp);
+
+		jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
+		scCard = null;
+		getAPMs();
 		return;
 	}
 }
@@ -329,7 +354,7 @@ function getAPMs() {
 						'<li class="apm_container">'
 							+ '<div class="apm_title">'
 								+ newImg
-								+ '<input id="sc_payment_method_'+ pMethods[i].paymentMethod +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ pMethods[i].paymentMethod +'" />'
+								+ '<input id="sc_payment_method_'+ pMethods[i].paymentMethod +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ pMethods[i].paymentMethod +'" data-nuvei-is-direct="' + pMethods[i].isDirect + '" />'
 								+ '<span class=""></span>'
 							+ '</div>';
 
@@ -393,8 +418,10 @@ function getAPMs() {
 								html_apms +=
 										'<div class="apm_field">'
 											+'<input id="'+ pMethods[i].paymentMethod +'_'+ pMethods[i].fields[j].name 
-												+'" name="'+ pMethods[i].paymentMethod +'['+ pMethods[i].fields[j].name 
-												+']" type="'+ pMethods[i].fields[j].type 
+//												+'" name="'+ pMethods[i].paymentMethod +'['+ pMethods[i].fields[j].name 
+												+'" name="'+ pMethods[i].fields[j].name 
+												+'" type="'+ pMethods[i].fields[j].type 
+//												+']" type="'+ pMethods[i].fields[j].type 
 												+'" pattern="'+ pattern 
 												+ '" placeholder="'+ placeholder 
 												+'" autocomplete="new-password" '

@@ -301,7 +301,7 @@ class WC_SC extends WC_Payment_Gateway {
 		// reset it
 		$_SESSION['sc_order_details'] = array();
 		
-		// in case of webSDK payment (cc_card)
+		# in case of webSDK payment (cc_card)
 		if (!empty($sc_transaction_id)) {
 			SC_CLASS::create_log('Process webSDK Order, transaction ID #' . $sc_transaction_id);
 			
@@ -313,6 +313,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'redirect'  => $return_success_url
 			);
 		}
+		# in case of webSDK payment (cc_card) END
 		
 		SC_CLASS::create_log('Process Rest APM Order.');
 		
@@ -400,18 +401,20 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		$params['paymentMethod'] = $this->get_param('sc_payment_method');
-		$post_sc_payment_fields  = $this->get_param('paymentMethod', 'array');
+		$post_sc_payment_fields  = $this->get_param($params['paymentMethod'], 'arrayPost');
 		
 		if (!empty($post_sc_payment_fields) && is_array($post_sc_payment_fields)) {
 			$params['userAccountDetails'] = $post_sc_payment_fields;
 		}
-
+		
 		$endpoint_url = 'no' === $this->test ? SC_LIVE_PAYMENT_URL : SC_TEST_PAYMENT_URL;
 		
 		$resp = SC_CLASS::call_rest_api($endpoint_url, $params);
 		
 		if (!$resp) {
-			$order->add_order_note(__('There is no response for the Order.', 'sc'));
+			$msg = __('There is no response for the Order.', 'sc');
+			
+			$order->add_order_note($msg);
 			$order->save();
 			
 			return array(
@@ -448,9 +451,13 @@ class WC_SC extends WC_Payment_Gateway {
 				$error_txt .= ': ' . $resp['errCode'] . ' - ' . $resp['reason'] . '.';
 			} elseif (!empty($resp['threeDReason'])) {
 				$error_txt .= ': ' . $resp['threeDReason'] . '.';
+			} elseif (!empty($resp['message'])) {
+				$error_txt .= ': ' . $resp['message'] . '.';
 			}
 			
-			$order->add_order_note(__($error_txt, 'sc'));
+			$msg = __($error_txt, 'sc');
+			
+			$order->add_order_note($msg);
 			$order->save();
 			
 			return array(
