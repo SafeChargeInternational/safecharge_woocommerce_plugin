@@ -344,7 +344,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'city'              => $this->get_param('shipping_city'),
 				'country'           => $this->get_param('shipping_country'),
 				'state'             => '',
-				'email'             => '',
+				'email'             => $this->get_param('shipping_email', 'mail', $params['userDetails']['email']),
 				'shippingCounty'    => '',
 			),
 			'urlDetails'        => array(

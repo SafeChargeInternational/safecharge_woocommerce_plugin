@@ -4,6 +4,7 @@
 * Replaced SafeCharge name with Nuvei;
 * Start prepare UPOs usage;
 * Fix for the problem when the client select other Payment Provider than Nuvei.
+* Fixed the problem with missing Shipping Email.
 
 2020-02-12 - version 3.0
 * New - new keys and values of SC Order meta data. Added few more SC meta fields.

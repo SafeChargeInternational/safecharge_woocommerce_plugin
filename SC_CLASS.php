@@ -146,7 +146,7 @@ class SC_CLASS {
 		// directly check the mails
 		if(isset($params['billingAddress']['email'])) {
 			if(!filter_var($params['billingAddress']['email'], self::$params_validation_email['flag'])) {
-				self::create_log('REST API ERROR: The parameter Billing Address Email is not valid.');
+				self::create_log($params,'REST API ERROR: The parameter Billing Address Email is not valid.');
 				
 				return array(
 					'status' => 'ERROR',
@@ -155,7 +155,7 @@ class SC_CLASS {
 			}
 			
 			if(strlen($params['billingAddress']['email']) > self::$params_validation_email['length']) {
-				self::create_log('REST API ERROR: The parameter Billing Address Email must be maximum '
+				self::create_log($params, 'REST API ERROR: The parameter Billing Address Email must be maximum '
 					. self::$params_validation_email['length'] . ' symbols.');
 				
 				return array(
@@ -168,7 +168,7 @@ class SC_CLASS {
 		
 		if(isset($params['shippingAddress']['email'])) {
 			if(!filter_var($params['shippingAddress']['email'], self::$params_validation_email['flag'])) {
-				self::create_log('REST API ERROR: The parameter Shipping Address Email is not valid.');
+				self::create_log($params, 'REST API ERROR: The parameter Shipping Address Email is not valid.');
 				
 				return array(
 					'status' => 'ERROR',
@@ -177,7 +177,7 @@ class SC_CLASS {
 			}
 			
 			if(strlen($params['shippingAddress']['email']) > self::$params_validation_email['length']) {
-				self::create_log('REST API ERROR: The parameter Shipping Address Email must be maximum '
+				self::create_log($params, 'REST API ERROR: The parameter Shipping Address Email must be maximum '
 					. self::$params_validation_email['length'] . ' symbols.');
 				
 				return array(
