@@ -4,7 +4,7 @@
  * SC_CLASS Class
  *
  * @year 2020
- * @author SafeCharge
+ * @author Nuvei
  */
 class SC_CLASS {
 	

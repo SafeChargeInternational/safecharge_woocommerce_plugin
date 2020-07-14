@@ -263,6 +263,42 @@ function getAPMs() {
 				var html_apms = '';
 				var pMethods  = resp.data['paymentMethods'];
 
+				// prepare UPOs
+				for (var j in resp.data['upos']) {
+					if ('cc_card' === resp.data['upos'][j].paymentMethodName) {
+						var upoImg = '<img src="'+ scTrans.plugin_dir_url
+							+'icons/visa_mc_maestro.svg" alt="'+ resp.data['upos'][j].name +'" style="height: 26px;" />';
+					}
+					else {
+						var upoImg = '<img src="'+ resp.data['upos'][j].logoURL.replace('/svg/', '/svg/solid-white/')
+							+'" alt="'+ resp.data['upos'][j].name +'" />';
+					}
+					
+					html_upos +=
+						'<li class="upo_container">'
+							+ '<div class="upo_title">'
+								+ upoImg
+								+ '<input id="sc_payment_method_'+ resp.data['upos'][j].userPaymentOptionId +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ resp.data['upos'][j].userPaymentOptionId +'" />'
+								+ '<span class=""></span>'
+							+ '</div>';
+					
+					if('cc_card' === resp.data['upos'][j].paymentMethodName) {
+						html_upos +=
+							'<div class="upo_fields" id="sc_'+ resp.data['upos'][j].userPaymentOptionId +'">'
+
+								+'<div class="apm_field">'
+									+ '<div id="sc_upo_'+ resp.data['upos'][j].userPaymentOptionId +'_cvc"></div>'
+								+'</div>'
+							'</div>';
+					}
+					
+					
+					html_upos +=
+						'</li>';
+				}
+				// prepare UPOs END
+
+				// prepare APMs
 				for (var i in pMethods) {
 					var pmMsg = '';
 					if (
@@ -383,6 +419,7 @@ function getAPMs() {
 							'</div>'
 						+ '</li>';
 				}
+				// prepare APMs END
 
 				html_apms += '<input type="hidden" name="sc_transaction_id" id="sc_transaction_id" value="" />';
 				html_apms += '<input type="hidden" name="lst" id="lst" value="'+ resp.sessionToken +'" />';
@@ -431,6 +468,15 @@ function getAPMs() {
  * @param {string} apms - html code for the APMs
  */
 function print_apms_options(upos, apms) {
+	// apend UPOs holder
+//	if (jQuery('form.woocommerce-checkout').find('#sc_upos_list').length == 0) {
+//		jQuery('div.payment_method_sc').append(
+//			'<b>'+ scTrans.chooseUPO +':</b><ul id="sc_upos_list"></div>');
+//	} else {
+//		// remove old upos
+//		jQuery('#sc_upos_list').html('');
+//	}
+	
 	// apend APMs holder
 	if (jQuery('form.woocommerce-checkout').find('#sc_apms_list').length == 0) {
 		jQuery('div.payment_method_sc').append(
@@ -441,6 +487,8 @@ function print_apms_options(upos, apms) {
 	}
 	
 	// insert the html
+//	jQuery('#sc_upos_list').append(upos);
+	
 	jQuery('#sc_apms_list')
 		.append(apms)
 		.promise()

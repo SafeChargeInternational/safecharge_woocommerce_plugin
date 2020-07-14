@@ -3,11 +3,11 @@
 /**
  * WC_SC Class
  *
- * Main class for the SafeCharge Plugin
+ * Main class for the Nuvei Plugin
  *
  * 2018
  *
- * @author SafeCharge
+ * @author Nuvei
  */
 
 if (!session_id()) {
@@ -38,18 +38,19 @@ class WC_SC extends WC_Payment_Gateway {
 
 		$this->init_settings();
 		
-		$this->title          = @$this->settings['title'] ? $this->settings['title'] : '';
-		$this->description    = @$this->settings['description'] ? $this->settings['description'] : '';
-		$this->merchantId     = @$this->settings['merchantId'] ? $this->settings['merchantId'] : '';
-		$this->merchantSiteId = @$this->settings['merchantSiteId'] ? $this->settings['merchantSiteId'] : '';
-		$this->secret         = @$this->settings['secret'] ? $this->settings['secret'] : '';
-		$this->test           = @$this->settings['test'] ? $this->settings['test'] : 'yes';
-		$this->use_http       = @$this->settings['use_http'] ? $this->settings['use_http'] : 'yes';
-		$this->save_logs      = @$this->settings['save_logs'] ? $this->settings['save_logs'] : 'yes';
-		$this->hash_type      = @$this->settings['hash_type'] ? $this->settings['hash_type'] : 'sha256';
-		$this->payment_action = @$this->settings['payment_action'] ? $this->settings['payment_action'] : 'Auth';
-		$this->rewrite_dmn    = @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
-		$this->webMasterId   .= WOOCOMMERCE_VERSION;
+		$this->title			= @$this->settings['title'] ? $this->settings['title'] : '';
+		$this->description		= @$this->settings['description'] ? $this->settings['description'] : '';
+		$this->merchantId		= @$this->settings['merchantId'] ? $this->settings['merchantId'] : '';
+		$this->merchantSiteId	= @$this->settings['merchantSiteId'] ? $this->settings['merchantSiteId'] : '';
+		$this->secret			= @$this->settings['secret'] ? $this->settings['secret'] : '';
+		$this->test				= @$this->settings['test'] ? $this->settings['test'] : 'yes';
+		$this->use_http			= @$this->settings['use_http'] ? $this->settings['use_http'] : 'yes';
+		$this->save_logs		= @$this->settings['save_logs'] ? $this->settings['save_logs'] : 'yes';
+		$this->hash_type		= @$this->settings['hash_type'] ? $this->settings['hash_type'] : 'sha256';
+		$this->payment_action	= @$this->settings['payment_action'] ? $this->settings['payment_action'] : 'Auth';
+		$this->use_upos			= @$this->settings['use_upos'] ? $this->settings['use_upos'] : 1;
+		$this->rewrite_dmn		= @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
+		$this->webMasterId		.= WOOCOMMERCE_VERSION;
 		
 		$_SESSION['SC_Variables']['sc_create_logs'] = $this->save_logs;
 		
@@ -89,7 +90,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'title' => __('Default title:', 'sc'),
 				'type'=> 'text',
 				'description' => __('This is the payment method which the user sees during checkout.', 'sc'),
-				'default' => __('Secure Payment with SafeCharge', 'sc')
+				'default' => __('Secure Payment with Nuvei', 'sc')
 			),
 			'description' => array(
 				'title' => __('Description:', 'sc'),
@@ -124,10 +125,17 @@ class WC_SC extends WC_Payment_Gateway {
 			'payment_action' => array(
 				'title' => __('Payment action', 'sc'),
 				'type' => 'select',
-		//              'description' => __('Choose Hash type provided by ' . SC_GATEWAY_TITLE, 'sc'),
 				'options' => array(
 					'Sale' => 'Authorize and Capture',
 					'Auth' => 'Authorize',
+				)
+			),
+			'use_upos' => array(
+				'title' => __('Allow client to use UPOs', 'sc'),
+				'type' => 'select',
+				'options' => array(
+					1 => 'Yes',
+					0 => 'No',
 				)
 			),
 			'notify_url' => array(
@@ -273,9 +281,6 @@ class WC_SC extends WC_Payment_Gateway {
 			SC_CLASS::create_log('Order is false for order id ' . $order_id);
 			return array('result' => 'error');
 		}
-		
-		//      $order_status = strtolower($order->get_status());
-		//      $order->update_status('processing');
 		
 		$return_success_url	= add_query_arg(
 			array('key' => $order->get_order_key()),
@@ -435,9 +440,7 @@ class WC_SC extends WC_Payment_Gateway {
 			'ERROR' === $this->get_request_status($resp)
 			|| ( isset($resp['transactionStatus']) && 'ERROR' === $resp['transactionStatus'] )
 		) {
-			//          if ('pending' === $order_status) {
-				$order->set_status('failed');
-			//          }
+			$order->set_status('failed');
 
 			$error_txt = 'Payment error';
 
@@ -1184,7 +1187,6 @@ class WC_SC extends WC_Payment_Gateway {
 			'merchantSiteId'    => $this->merchantSiteId,
 			'clientRequestId'   => $time . '_' . uniqid(),
 			'clientUniqueId'	=> $time . '_' . uniqid(),
-//			'amount'            => $amount,
 			'amount'            => $woocommerce->cart->get_totals()['total'],
 			'currency'          => get_woocommerce_currency(),
 			'timeStamp'         => $time,
@@ -1194,7 +1196,6 @@ class WC_SC extends WC_Payment_Gateway {
 			),
 			
 			'deviceDetails'     => SC_CLASS::get_device_details(),
-//			'userTokenId'       => $user_mail,
 			'userTokenId'       => $this->get_param('billing_email', 'mail', '', $_SESSION['sc_order_details']),
 			
 			'billingAddress'    => array(
@@ -1223,6 +1224,8 @@ class WC_SC extends WC_Payment_Gateway {
 			'paymentOption'		=> array('card' => array('threeD' => array('isDynamic3D' => 1))),
 			'transactionType'	=> $this->payment_action,
 		);
+		
+		$oo_params['userDetails'] = $oo_params['billingAddress'];
 
 		$oo_params['checksum'] = hash(
 			$this->hash_type,
@@ -1275,7 +1278,7 @@ class WC_SC extends WC_Payment_Gateway {
 			? SC_TEST_REST_PAYMENT_METHODS_URL : SC_LIVE_REST_PAYMENT_METHODS_URL;
 
 		$apms_data = SC_CLASS::call_rest_api($endpoint_url, $apms_params);
-
+		
 		if (!is_array($apms_data) || empty($apms_data['paymentMethods'])) {
 			wp_send_json(array(
 				'status' => 0,
@@ -1289,8 +1292,57 @@ class WC_SC extends WC_Payment_Gateway {
 		# get APMs END
 
 		# get UPOs
-		$upos  = array();
-		$icons = array();
+		$icons			= array();
+		$upos			= array();
+		$user_token_id	= $oo_params['userTokenId'];
+
+		// get them only for registred users when there are APMs
+		if(
+			$this->use_upos == 1
+			&& is_user_logged_in()
+			&& !empty($payment_methods)
+		) {
+			$upo_params = array(
+				'merchantId'		=> $apms_params['merchantId'],
+				'merchantSiteId'	=> $apms_params['merchantSiteId'],
+				'userTokenId'		=> $oo_params['userTokenId'],
+				'clientRequestId'	=> $apms_params['clientRequestId'],
+				'timeStamp'			=> $time,
+			);
+
+			$upo_params['checksum'] = hash($this->hash_type, implode('', $upo_params) . $this->secret);
+
+			$upo_res = SC_CLASS::call_rest_api(
+				$this->test == 'yes' ? SC_TEST_USER_UPOS_URL : SC_LIVE_USER_UPOS_URL,
+				$upo_params
+			);
+			
+			if(!empty($upo_res['paymentMethods']) && is_array($upo_res['paymentMethods'])) {
+				foreach($upo_res['paymentMethods'] as $data) {
+					// chech if it is not expired
+					if(!empty($data['expiryDate']) && date('Ymd') > $data['expiryDate']) {
+						continue;
+					}
+
+					if(empty($data['upoStatus']) || $data['upoStatus'] !== 'enabled') {
+						continue;
+					}
+
+					// search for same method in APMs, use this UPO only if it is available there
+					foreach($payment_methods as $pm_data) {
+						// found it
+						if($pm_data['paymentMethod'] === $data['paymentMethodName']) {
+							$data['logoURL']	= @$pm_data['logoURL'];
+							$data['name']		= @$pm_data['paymentMethodDisplayName'][0]['message'];
+
+							$upos[] = $data;
+							break;
+						}
+					}
+				}
+			}
+		}
+		# get UPOs END
 		
 		wp_send_json(array(
 			'status'            => 1,
@@ -1375,7 +1427,7 @@ class WC_SC extends WC_Payment_Gateway {
 					// set flag that order has some refunds
 					$this->sc_order->update_meta_data(SC_ORDER_HAS_REFUND, 1);
 				} elseif ('Auth' === $transactionType) {
-					$message = __('The amount has been authorized and wait to for Settle.', 'sc') . $gw_data;
+					$message = __('The amount has been authorized and wait for Settle.', 'sc') . $gw_data;
 					$status  = 'pending';
 				} elseif (in_array($transactionType, array('Settle', 'Sale'), true)) {
 					$message = __('The amount has been authorized and captured by ', 'sc') . SC_GATEWAY_TITLE . '.' . $gw_data;

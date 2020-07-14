@@ -5,7 +5,7 @@
  *
  * 2018
  *
- * SafeCharge
+ * Nuvei
  */
 
 define('SC_GATEWAY_TITLE', 'Nuvei');

@@ -3,7 +3,7 @@
  * Plugin Name: Nuvei Payments
  * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
  * Description: Nuvei gateway for WooCommerce
- * Version: 3.0
+ * Version: 3.0.1
  * Author: Nuvei
  * Author URI: https://nuvei.com
  * Require at least: 4.7
@@ -55,18 +55,18 @@ function woocommerce_sc_init() {
 		
 		if( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
 			$_SESSION['sc_order_details'] = $data;
-		}
-		
-		if ($_POST['confirm-order-flag'] == "1") {
-			wp_send_json(array(
-				'result' => 'failure',
-				'refresh' => false,
-				'reload' => false,
-				'messages' => '<ul id="sc_fake_error" class="woocommerce-error" style="display: none;" role="alert"><li></li></ul>'
-			));
 			
-			wp_die();
-		} 
+			if ($_POST['confirm-order-flag'] == "1") {
+				wp_send_json(array(
+					'result' => 'failure',
+					'refresh' => false,
+					'reload' => false,
+					'messages' => '<ul id="sc_fake_error" class="woocommerce-error" style="display: none;" role="alert"><li></li></ul>'
+				));
+
+				wp_die();
+			} 
+		}
 	}, 9999, 2);
 	
 	// use this to change button text, because of the cache the jQuery not always works
