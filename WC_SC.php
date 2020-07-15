@@ -401,11 +401,13 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		$params['paymentMethod'] = $this->get_param('sc_payment_method');
-		$post_sc_payment_fields  = $this->get_param($params['paymentMethod'], 'arrayPost');
 		
-		if (!empty($post_sc_payment_fields) && is_array($post_sc_payment_fields)) {
-			$params['userAccountDetails'] = $post_sc_payment_fields;
-		}
+		
+//		$post_sc_payment_fields  = $this->get_param($params['paymentMethod'], 'arrayPost');
+//		
+//		if (!empty($post_sc_payment_fields) && is_array($post_sc_payment_fields)) {
+//			$params['userAccountDetails'] = $post_sc_payment_fields;
+//		}
 		
 		$endpoint_url = 'no' === $this->test ? SC_LIVE_PAYMENT_URL : SC_TEST_PAYMENT_URL;
 		

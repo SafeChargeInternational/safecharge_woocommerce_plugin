@@ -82,6 +82,35 @@ function scValidateAPMFields() {
 				return;
 			}
 			
+			if(jQuery('#sc_card_holder_name').val() == '') {
+				scFormFalse(scTrans.CCNameIsEmpty);
+				return;
+			}
+			
+			if(
+				jQuery('#sc_card_number.empty').length > 0
+				|| jQuery('#sc_card_number.sfc-complete').length == 0
+			) {
+				scFormFalse(scTrans.CCNumError);
+				return;
+			}
+			
+			if(
+				jQuery('#sc_card_expiry.empty').length > 0
+				|| jQuery('#sc_card_expiry.sfc-complete').length == 0
+			) {
+				scFormFalse(scTrans.CCExpDateError);
+				return;
+			}
+			
+			if(
+				jQuery('#sc_card_cvc.empty').length > 0
+				|| jQuery('#sc_card_cvc.sfc-complete').length == 0
+			) {
+				scFormFalse(scTrans.CCCvcError);
+				return;
+			}
+			
 			nuveiPaymentParams.cardHolderName	= document.getElementById('sc_card_holder_name').value;
 			nuveiPaymentParams.paymentOption	= sfcFirstField;
 			
@@ -113,11 +142,7 @@ function scValidateAPMFields() {
 
 					// SHOW error
 					if (apmField.val() == '' || regex.test(apmField.val()) == false) {
-						apmField.parent('.apm_field').find('.apm_error').show();
-
 						formValid = false;
-					} else {
-						apmField.parent('.apm_field').find('.apm_error').hide();
 					}
 				} else if (apmField.val() == '') {
 					formValid = false;
@@ -207,7 +232,7 @@ function scFormFalse(text) {
 	   +'</div>'
 	);
 
-//	jQuery('#custom_loader').hide();
+	jQuery('#custom_loader').hide();
 	window.location.hash = '#masthead';
 }
  
@@ -311,9 +336,11 @@ function getAPMs() {
 						html_upos +=
 							'<div class="upo_fields" id="sc_'+ resp.data['upos'][j].userPaymentOptionId +'">'
 
-								+'<div class="apm_field">'
+//								+'<div class="apm_field">'
+								+'<p class="">'
 									+ '<div id="sc_upo_'+ resp.data['upos'][j].userPaymentOptionId +'_cvc"></div>'
-								+'</div>'
+//								+'</div>'
+								+'</p>'
 							'</div>';
 					}
 					
@@ -353,92 +380,49 @@ function getAPMs() {
 					html_apms +=
 						'<li class="apm_container">'
 							+ '<div class="apm_title">'
+								+ '<input id="sc_payment_method_'+ pMethods[i].paymentMethod +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ pMethods[i].paymentMethod +'" data-nuvei-is-direct="' + pMethods[i].isDirect + '" />&nbsp;'
 								+ newImg
-								+ '<input id="sc_payment_method_'+ pMethods[i].paymentMethod +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ pMethods[i].paymentMethod +'" data-nuvei-is-direct="' + pMethods[i].isDirect + '" />'
-								+ '<span class=""></span>'
 							+ '</div>';
 
 					if (pMethods[i].paymentMethod == 'cc_card' || pMethods[i].paymentMethod == 'dc_card') {
 						html_apms +=
 							'<div class="apm_fields" id="sc_'+ pMethods[i].paymentMethod +'">'
-								+ '<div class="apm_field">'
-									+ '<input type="text" id="sc_card_holder_name" name="'+ pMethods[i].paymentMethod
-										+'[cardHolderName]" placeholder="Card holder name" />'
-								+ '</div>'
+								+ '<input type="text" id="sc_card_holder_name" name="'+ pMethods[i].paymentMethod +'[cardHolderName]" placeholder="Card holder name" />'
 
-
-								+'<div class="apm_field">'
-									+ '<div id="sc_card_number"></div>'
-								+'</div>'
-
-								 +'<div class="apm_field">'
-									+ '<div id="sc_card_expiry"></div>'
-								+'</div>'
-
-								+'<div class="apm_field">'
-									+ '<div id="sc_card_cvc"></div>'
-								+'</div>';
-					} else {
+								+ '<div id="sc_card_number"></div>'
+								+ '<div id="sc_card_expiry"></div>'
+								+ '<div id="sc_card_cvc"></div>';
+					}
+					else if (pMethods[i].fields.length > 0) {
 						html_apms +=
 							'<div class="apm_fields">';
 
-						// create fields for the APM
-						if (pMethods[i].fields.length > 0) {
-							for (var j in pMethods[i].fields) {
-								var pattern = '';
-								try {
-									pattern = pMethods[i].fields[j].regex;
-									if (pattern === undefined) {
-										pattern = '';
-									}
-								} catch (e) {
+						for (var j in pMethods[i].fields) {
+							var pattern = '';
+							try {
+								pattern = pMethods[i].fields[j].regex;
+								if (pattern === undefined) {
+									pattern = '';
 								}
+							} catch (e) {}
 
-								var placeholder = '';
-								try {
-									if (typeof pMethods[i].fields[j].caption[0] == 'undefined') {
-										placeholder = pMethods[i].fields[j].name;
-										placeholder = placeholder.replace(/_/g, ' ');
-									} else {
-										placeholder = pMethods[i].fields[j].caption[0].message;
-									}
-								} catch (e) {
-									placeholder = '';
+							var placeholder = '';
+							try {
+								if (typeof pMethods[i].fields[j].caption[0] == 'undefined') {
+									placeholder = pMethods[i].fields[j].name;
+									placeholder = placeholder.replace(/_/g, ' ');
+								} else {
+									placeholder = pMethods[i].fields[j].caption[0].message;
 								}
+							} catch (e) {}
 
-								var fieldErrorMsg = '';
-								try {
-									fieldErrorMsg = pMethods[i].fields[j].validationmessage[0].message;
-									if (fieldErrorMsg === undefined) {
-										fieldErrorMsg = '';
-									}
-								} catch (e) {
-								}
-
-								html_apms +=
-										'<div class="apm_field">'
-											+'<input id="'+ pMethods[i].paymentMethod +'_'+ pMethods[i].fields[j].name 
-//												+'" name="'+ pMethods[i].paymentMethod +'['+ pMethods[i].fields[j].name 
-												+'" name="'+ pMethods[i].fields[j].name 
-												+'" type="'+ pMethods[i].fields[j].type 
-//												+']" type="'+ pMethods[i].fields[j].type 
-												+'" pattern="'+ pattern 
-												+ '" placeholder="'+ placeholder 
-												+'" autocomplete="new-password" '
-												+ ('' == fieldErrorMsg ? 'style="width: 100%;"' : '')
-												+' />';
-
-								if ('' != fieldErrorMsg) {
-									html_apms +=
-											'<span class="question_mark" onclick="showErrorLikeInfo(\'sc_'+ pMethods[i].fields[j].name +'\')"><span class="tooltip-icon"></span></span>'
-											+'<div class="apm_error" id="error_sc_'+ pMethods[i].fields[j].name +'">'
-												+'<label>'+fieldErrorMsg+'</label>'
-											+'</div>';
-								}
-
-								html_apms +=
-										'</div>';
-							}
+							html_apms +=
+								'<input id="'+ pMethods[i].paymentMethod +'_'+ pMethods[i].fields[j].name 
+									+'" name="'+ pMethods[i].fields[j].name 
+									+'" type="'+ pMethods[i].fields[j].type 
+									+'" pattern="'+ pattern 
+									+ '" placeholder="'+ placeholder 
+									+'" autocomplete="new-password" />';
 						}
 					}
 
@@ -537,6 +521,8 @@ function print_apms_options(upos, apms) {
 				,style: fieldsStyle
 			});
 			cardCvc.attach('#sc_card_cvc');
+			
+			jQuery('.SfcField').addClass('input-text');
 		});
 }
 
@@ -588,9 +574,6 @@ jQuery(function() {
 	
 	// when click on APM payment method
 	jQuery('form.woocommerce-checkout').on('click', '.apm_title', function() {
-		// hide all check marks 
-		jQuery('#sc_apms_list').find('.apm_title span').removeClass('apm_selected');
-		
 		// hide all containers with fields
 		jQuery('#sc_apms_list').find('.apm_fields').each(function(){
 			var self = jQuery(this);
@@ -598,9 +581,6 @@ jQuery(function() {
 				self.slideToggle('slow');
 			}
 		});
-		
-		// mark current payment method
-		jQuery(this).find('span').addClass('apm_selected');
 		
 		// hide bottom border of apm_fields if the container is empty
 		if (jQuery(this).parent('li').find('.apm_fields').html() == '') {
@@ -615,9 +595,6 @@ jQuery(function() {
 		jQuery('form.woocommerce-checkout').find('sc_payment_method_field').attr('checked', false);
 		// check current radio
 		jQuery(this).find('input').attr('checked', true);
-		
-		// hide errors
-		jQuery('.apm_error').hide();
 	});
 	
 	// on last step modify Place order button
