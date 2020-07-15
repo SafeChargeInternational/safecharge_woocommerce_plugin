@@ -1,10 +1,10 @@
 <?php
 /*
- * Plugin Name: Nuvei Payments
+ * Plugin Name: SafeCharge Payments
  * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
- * Description: Nuvei gateway for WooCommerce
+ * Description: SafeCharge gateway for WooCommerce
  * Version: 3.1.0
- * Author: Nuvei
+ * Author: SafeCharge
  * Author URI: https://nuvei.com
  * Require at least: 4.7
  * Tested up to: 5.4.1

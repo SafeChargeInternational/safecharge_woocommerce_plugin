@@ -3,11 +3,11 @@
 /**
  * WC_SC Class
  *
- * Main class for the Nuvei Plugin
+ * Main class for the SafeCharge Plugin
  *
  * 2018
  *
- * @author Nuvei
+ * @author SafeCharge
  */
 
 if (!session_id()) {
@@ -90,7 +90,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'title' => __('Default title:', 'sc'),
 				'type'=> 'text',
 				'description' => __('This is the payment method which the user sees during checkout.', 'sc'),
-				'default' => __('Secure Payment with Nuvei', 'sc')
+				'default' => __('Secure Payment with SafeCharge', 'sc')
 			),
 			'description' => array(
 				'title' => __('Description:', 'sc'),

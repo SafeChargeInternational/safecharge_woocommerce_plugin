@@ -4,7 +4,7 @@
  * SC_CLASS Class
  *
  * @year 2020
- * @author Nuvei
+ * @author SaefCharge
  */
 class SC_CLASS {
 	

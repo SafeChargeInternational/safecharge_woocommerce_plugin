@@ -4,9 +4,8 @@
 * Use webSDK for Direct APMs
 
 2020-07-14 - version 3.0.1
-* Replaced SafeCharge name with Nuvei;
 * Start prepare UPOs usage;
-* Fix for the problem when the client select other Payment Provider than Nuvei.
+* Fix for the problem when the client select other Payment Provider than SafeCharge.
 * Fixed the problem with missing Shipping Email.
 
 2020-02-12 - version 3.0

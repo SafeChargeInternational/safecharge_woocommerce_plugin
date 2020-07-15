@@ -5,10 +5,10 @@
  *
  * 2018
  *
- * Nuvei
+ * SafeCharge
  */
 
-define('SC_GATEWAY_TITLE', 'Nuvei');
+define('SC_GATEWAY_TITLE', 'SafeCharge');
 
 // list of endpoints Test URLs
 //$sc_test_endpoint_host = 'http://192.168.103.237:8080';

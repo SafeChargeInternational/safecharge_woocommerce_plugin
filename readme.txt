@@ -1,6 +1,6 @@
-=== Nuvei Payments ===
+=== SafeCharge Payments ===
 
-Tags: credit card, nuvei, woocommerce
+Tags: credit card, SafeCharge, woocommerce
 Wordpress requirements: 
 	- minimum v4.7
 	- tested up to v5.4.2
@@ -11,7 +11,7 @@ Stable tag: 3.0
 
 == Description ==
 
-Nuvei offers major international credit and debit cards enabling you to accept payments from your global customers. 
+SafeCharge offers major international credit and debit cards enabling you to accept payments from your global customers. 
 
 A wide selection of region-specific payment methods can help your business grow in new markets. Other popular payment methods from mobile payments to eWallets, can be easily implemented at your checkout page.
 
