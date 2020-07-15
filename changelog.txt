@@ -1,7 +1,21 @@
 *** WooCommerce Extension Template Changelog ***
 
+2020-07-14 - version 3.1.0
+* Use webSDK for Direct APMs
+
+2020-07-14 - version 3.0.1
+* Replaced SafeCharge name with Nuvei;
+* Start prepare UPOs usage;
+* Fix for the problem when the client select other Payment Provider than Nuvei.
+* Fixed the problem with missing Shipping Email.
+
+2020-02-12 - version 3.0
+* New - new keys and values of SC Order meta data. Added few more SC meta fields.
+Please, complete all you existing Orders before apply this update!
+* Added validations in SC_CLASS for some of the request parameters;
+
 2020-02-04 - version 2.4
-* Fix for Guest user Order. 
+* Fix for Guest user Order. Fix for the case when user changes the shipping method, and this changes the Order Total.
 * New - add new icon for the CC method.
 
 2020-01-03 - version 2.3

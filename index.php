@@ -1,11 +1,15 @@
 <?php
 /*
-Plugin Name: SafeCharge Payments
-Plugin URI: http://www.safecharge.com
-Description: SafeCharge gateway for WooCommerce
-Version: 2.4
-Author: SafeCharge
-Author URI: http://safecharge.com
+ * Plugin Name: Nuvei Payments
+ * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
+ * Description: Nuvei gateway for WooCommerce
+ * Version: 3.1.0
+ * Author: Nuvei
+ * Author URI: https://nuvei.com
+ * Require at least: 4.7
+ * Tested up to: 5.4.1
+ * WC requires at least: 3.0
+ * WC tested up to: 4.2.0
 */
 
 defined('ABSPATH') || die('die');
@@ -16,7 +20,7 @@ if (!session_id()) {
 
 require_once 'sc_config.php';
 require_once 'SC_Versions_Resolver.php';
-require_once 'SC_HELPER.php';
+require_once 'SC_CLASS.php';
 
 $wc_sc = null;
 
@@ -37,17 +41,36 @@ function woocommerce_sc_init() {
 	add_action('init', 'sc_enqueue');
 	// load WC styles
 	add_filter( 'woocommerce_enqueue_styles', 'sc_enqueue_wo_files' );
-	// replace the text at thank you page
-	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
 	// add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
 	add_action('woocommerce_order_item_add_action_buttons',	'sc_add_buttons');
-	// on the checkout page get the order total amount
-	add_action('woocommerce_checkout_before_order_review', array($wc_sc, 'checkout_open_order'));
-	// show custom final text
-	add_action('woocommerce_thankyou_order_received_text', 'sc_show_final_text');
-	// handle Ajax calls
+	
+	// handle custom Ajax calls
 	add_action('wp_ajax_sc-ajax-action', 'sc_ajax_action');
 	add_action('wp_ajax_nopriv_sc-ajax-action', 'sc_ajax_action');
+	
+	// if validation success get order details
+	add_action('woocommerce_after_checkout_validation', function($data, $errors) {
+		SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
+		SC_CLASS::create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
+		
+		if( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
+			$_SESSION['sc_order_details'] = $data;
+			
+			if ($_POST['confirm-order-flag'] == "1") {
+				wp_send_json(array(
+					'result' => 'failure',
+					'refresh' => false,
+					'reload' => false,
+					'messages' => '<ul id="sc_fake_error" class="woocommerce-error" style="display: none;" role="alert"><li></li></ul>'
+				));
+
+				wp_die();
+			} 
+		}
+	}, 9999, 2);
+	
+	// use this to change button text, because of the cache the jQuery not always works
+	add_filter('woocommerce_order_button_text', 'sc_edit_order_buttons' );
 	
 	// those actions are valid only when the plugin is enabled
 	if ('yes' == $wc_sc->settings['enabled']) {
@@ -83,22 +106,6 @@ function sc_ajax_action() {
 		wp_die('Invalid site mode.');
 	}
 	
-	// set parameters
-	$country = '';
-	if (isset($_POST['country'])) {
-		$country = sanitize_text_field($_POST['country']);
-	}
-
-	$amount = '';
-	if (isset($_POST['amount'])) {
-		$amount = sanitize_text_field($_POST['amount']);
-	}
-
-	$userMail = '';
-	if (isset($_POST['userMail'])) {
-		$userMail = sanitize_text_field($_POST['userMail']);
-	}
-
 	$payment_method_sc = '';
 	if (isset($_POST['payment_method_sc'])) {
 		$payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
@@ -116,8 +123,8 @@ function sc_ajax_action() {
 	}
 
 	// when we use the REST - Open order and get APMs
-	if (!empty($country) && !empty($amount) && !empty($userMail)) {
-		$wc_sc->prepare_rest_payment($amount, $userMail, $country);
+	if (!empty($_POST['sc_request']) && 'OpenOrder' === $_POST['sc_request']) {
+		$wc_sc->prepare_rest_payment();
 	}
 
 	wp_die();
@@ -133,6 +140,7 @@ function woocommerce_add_sc_gateway( $methods) {
 
 function sc_enqueue_wo_files( $styles) {
 	global $wc_sc;
+	global $wpdb;
 	
 	$plugin_dir = basename(dirname(__FILE__));
 	$plugin_url = WP_PLUGIN_URL;
@@ -172,7 +180,30 @@ function sc_enqueue_wo_files( $styles) {
 		array('jquery'),
 		'1'
 	);
+	
+	// get selected WC price separators
+	$wcThSep  = '';
+	$wcDecSep = '';
+	
+	$res = $wpdb->get_results(
+		'SELECT option_name, option_value '
+			. "FROM {$wpdb->prefix}options "
+			. "WHERE option_name LIKE 'woocommerce%_sep' ;",
+		ARRAY_N
+	);
+			
+	if (!empty($res)) {
+		foreach ($res as $row) {
+			if (false != strpos($row[0], 'thousand_sep') && !empty($row[1])) {
+				$wcThSep = $row[1];
+			}
 
+			if (false != strpos($row[0], 'decimal_sep') && !empty($row[1])) {
+				$wcDecSep = $row[1];
+			}
+		}
+	}
+	
 	// put translations here into the array
 	wp_localize_script(
 		'sc_js_public',
@@ -183,17 +214,24 @@ function sc_enqueue_wo_files( $styles) {
 			'webMasterId'		=> 'WooCommerce ' . WOOCOMMERCE_VERSION,
 			'sourceApplication'	=> SC_SOURCE_APPLICATION,
 			'plugin_dir_url'	=> plugin_dir_url(__FILE__),
+			'wcThSep'			=> $wcThSep,
+			'wcDecSep'			=> $wcDecSep,
 			
-			'paymentDeclined'	=> __('Your Payment was DECLINED. Please try another payment method!'),
-			'paymentError'		=> __('Error with your Payment. Please try again later!'),
-			'unexpectedError'	=> __('Unexpected error, please try again later!'),
-			'choosePM'			=> __('Please, choose payment method, and fill all fields!'),
-			'fillFields'		=> __('Please fill all fields marked with * !'),
-			'errorWithPMs'		=> __('Error when try to get the Payment Methods. Please try again later or use different Payment Option!'),
-			'missData'			=> __('Mandatory data is missing, please try again later!'),
-			'proccessError'		=> __('Error in the proccess. Please, try again later!'),
-			'chooseUPO'			=> __('Choose from you prefered payment methods'),
-			'chooseAPM'			=> __('Choose from the other payment methods'),
+			'paymentDeclined'	=> __('Your Payment was DECLINED. Please try another payment method!', 'nuvei'),
+			'paymentError'		=> __('Error with your Payment. Please try again later!', 'nuvei'),
+			'unexpectedError'	=> __('Unexpected error, please try again later!', 'nuvei'),
+			'choosePM'			=> __('Please, choose payment method, and fill all fields!', 'nuvei'),
+			'fillFields'		=> __('Please fill all fields marked with * !', 'nuvei'),
+			'errorWithPMs'		=> __('Error when try to get the Payment Methods. Please try again later or use different Payment Option!', 'nuvei'),
+			'missData'			=> __('Mandatory data is missing, please try again later!', 'nuvei'),
+			'proccessError'		=> __('Error in the proccess. Please, try again later!', 'nuvei'),
+			'chooseUPO'			=> __('Choose from you prefered payment methods', 'nuvei'),
+			'chooseAPM'			=> __('Choose from the payment options', 'nuvei'),
+			'goBack'			=> __('Go back', 'nuvei'),
+			'CCNameIsEmpty'		=> __('Card Holder Name is empty.', 'nuvei'),
+			'CCNumError'		=> __('Card Number is empty or wrong.', 'nuvei'),
+			'CCExpDateError'	=> __('Card Expiry Date is not correct.', 'nuvei'),
+			'CCCvcError'		=> __('Card CVC is not correct.', 'nuvei'),
 		)
 	);
 
@@ -255,56 +293,15 @@ function sc_show_final_text() {
 	global $woocommerce;
 	global $wc_sc;
 	
-	$msg = __('Thank you. Your payment process is completed. Your order status will be updated soon.', 'sc');
+	$msg = __('Your payment is being processed. Your order status will be updated soon.', 'sc');
    
-	// Cashier
+	// REST API tahnk you page handler
 	if (
-		!empty($_REQUEST['invoice_id'])
-		&& !empty($_REQUEST['ppp_status'])
-		&& $wc_sc->checkAdvancedCheckSum()
-	) {
-		try {
-			$arr      = explode('_', sanitize_text_field($_REQUEST['invoice_id']));
-			$order_id = $arr[0];
-			$order    = new WC_Order($order_id);
-
-			if (strtolower(sanitize_text_field($_REQUEST['ppp_status'])) == 'fail') {
-				$order->add_order_note('User order failed.');
-				$order->update_status('failed', 'User order failed.');
-
-				$msg = __('Your payment failed. Please, try again.', 'sc');
-			} else {
-				$TransactionID = '';
-				if (isset($_REQUEST['TransactionID'])) {
-					$TransactionID = sanitize_text_field($_REQUEST['TransactionID']);
-				}
-				
-				$transactionId = 'TransactionId = ' . $TransactionID;
-
-				$PPPTransactionId = '';
-				if (isset($_REQUEST['PPP_TransactionID'])) {
-					$PPPTransactionId = sanitize_text_field($_REQUEST['PPP_TransactionID']);
-				}
-				
-				$pppTransactionId = '; PPPTransactionId = ' . $PPPTransactionId;
-
-				$order->add_order_note('User returned from Safecharge Payment page; ' . $transactionId . $pppTransactionId);
-				$woocommerce->cart->empty_cart();
-			}
-			
-			$order->save();
-		} catch (Exception $ex) {
-			SC_HELPER::create_log($ex->getMessage(), 'Cashier handle exception error: ');
-		}
+		!empty($_REQUEST['Status'])
+		&& 'error' == sanitize_text_field($_REQUEST['Status'])) {
+		$msg = __('Your payment failed. Please, try again.', 'sc');
 	} else {
-		// REST API tahnk you page handler
-		if (
-			!empty($_REQUEST['Status'])
-			&& 'error' == sanitize_text_field($_REQUEST['Status'])) {
-			$msg = __('Your payment failed. Please, try again.', 'sc');
-		} else {
-			$woocommerce->cart->empty_cart();
-		}
+		$woocommerce->cart->empty_cart();
 	}
 	
 	// clear session variables for the order
@@ -323,12 +320,15 @@ function sc_add_buttons() {
 	}
 	
 	try {
-		$order                = new WC_Order($order_id);
+		$order                = wc_get_order($order_id);
 		$order_status         = strtolower($order->get_status());
 		$order_payment_method = $order->get_meta('_paymentMethod');
 		
 		// hide Refund Button
-		if (!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))) {
+		if (
+			!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))
+			|| 'processing' == $order_status
+		) {
 			echo '<script type="text/javascript">jQuery(\'.refund-items\').prop("disabled", true);</script>';
 		}
 	} catch (Exception $ex) {
@@ -338,7 +338,7 @@ function sc_add_buttons() {
 	}
 	
 	// to show SC buttons we must be sure the order is paid via SC Paygate
-	if (!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_GW_TRANS_ID_KEY)) {
+	if (!$order->get_meta(SC_AUTH_CODE_KEY) || !$order->get_meta(SC_TRANS_ID)) {
 		return;
 	}
 	
@@ -346,8 +346,8 @@ function sc_add_buttons() {
 		global $wc_sc;
 
 		$time             = gmdate('YmdHis', time());
-		$order_tr_id      = $order->get_meta(SC_GW_TRANS_ID_KEY);
-		$order_has_refund = $order->get_meta('_scHasRefund');
+		$order_tr_id      = $order->get_meta(SC_TRANS_ID);
+		$order_has_refund = $order->get_meta(SC_ORDER_HAS_REFUND);
 		$notify_url       = $wc_sc->set_notify_url();
 		
 		// Show VOID button
@@ -360,7 +360,7 @@ function sc_add_buttons() {
 		}
 		
 		// show SETTLE button ONLY if P3D resonse transaction_type IS Auth
-		if ('pending' == $order_status && 'Auth' == $order->get_meta(SC_GW_P3D_RESP_TR_TYPE)) {
+		if ('pending' == $order_status && 'Auth' == $order->get_meta(SC_RESP_TRANS_TYPE)) {
 			echo 
 				'<button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
 				. esc_html__('Are you sure, you want to Settle Order #' . $order_id . '?', 'sc') . '\', '
@@ -369,7 +369,7 @@ function sc_add_buttons() {
 		}
 		
 		// add loading screen
-		//echo '<div id="custom_loader" class="blockUI blockOverlay"></div>';
+		echo '<div id="custom_loader" class="blockUI blockOverlay" style="height: 100%; position: absolute; top: 0px; width: 100%; z-index: 10; background-color: rgba(255,255,255,0.5); display: none;"></div>';
 	}
 }
 
@@ -432,7 +432,28 @@ function sc_wpml_thank_you_page( $order_received_url, $order) {
 	$lang_code          = get_post_meta($order->id, 'wpml_language', true);
 	$order_received_url = apply_filters('wpml_permalink', $order_received_url, $lang_code);
 	
-	SC_HELPER::create_log($order_received_url, 'sc_wpml_thank_you_page: ');
+	SC_CLASS::create_log($order_received_url, 'sc_wpml_thank_you_page: ');
  
 	return $order_received_url;
+}
+
+function sc_edit_order_buttons() {
+	$default_text			= __( 'Place order', 'woocommerce' );
+	$sc_continue_text		= __( 'Continue', 'woocommerce' ); 
+    $chosen_payment_method	= WC()->session->get('chosen_payment_method');
+	
+	// save default text into button attribute
+	?><script>
+		(function($){
+			$('#place_order')
+				.attr('data-default-text', '<?= $default_text; ?>')
+				.attr('data-sc-text', '<?= $sc_continue_text; ?>');
+		})(jQuery);
+	</script><?php
+
+    if( 'sc' == $chosen_payment_method ){
+		return $sc_continue_text;
+    }
+
+    return $default_text;
 }

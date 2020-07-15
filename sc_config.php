@@ -5,10 +5,10 @@
  *
  * 2018
  *
- * SafeCharge
+ * Nuvei
  */
 
-define('SC_GATEWAY_TITLE', 'SafeCharge');
+define('SC_GATEWAY_TITLE', 'Nuvei');
 
 // list of endpoints Test URLs
 //$sc_test_endpoint_host = 'http://192.168.103.237:8080';
@@ -129,15 +129,16 @@ define('SC_DEVICES', json_encode(array('iphone', 'ipad', 'android', 'silk', 'bla
 define('SC_BROWSERS', json_encode(array('ucbrowser', 'firefox', 'chrome', 'opera', 'msie', 'edge', 'safari', 'blackberry', 'trident')));
 
 // list of devices types
-define('SC_DEVICES_TYPES', json_encode(array('tablet', 'mobile', 'tv', 'windows', 'linux')));
+define('SC_DEVICES_TYPES', json_encode(array('macintosh', 'tablet', 'mobile', 'tv', 'windows', 'linux', 'tv', 'smarttv', 'googletv', 'appletv', 'hbbtv', 'pov_tv', 'netcast.tv', 'bluray')));
 
 // list of devices OSs
 define('SC_DEVICES_OS', json_encode(array('android', 'windows', 'linux', 'mac os')));
 
 // some keys for order metadata, we make them hiden when starts with underscore
 define('SC_AUTH_CODE_KEY', '_authCode');
-define('SC_GW_TRANS_ID_KEY', '_relatedTransactionId');
-define('SC_GW_P3D_RESP_TR_TYPE', '_p3dRespTransactionType');
-define('SC_SOURCE_APPLICATION', 'WOOCOMMERCE_PLUGIN');
-
+define('SC_TRANS_ID', '_transactionId');
+define('SC_RESP_TRANS_TYPE', '_transactionType');
+define('SC_PAYMENT_METHOD', '_paymentMethod');
+define('SC_ORDER_HAS_REFUND', '_scHasRefund');
+define('SC_SOURCE_APPLICATION',	'WOOCOMMERCE_PLUGIN');
 define('SC_LOGS_DIR', dirname(__FILE__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR);

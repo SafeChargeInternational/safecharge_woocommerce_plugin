@@ -3,7 +3,7 @@
  * A try to get what we need when work with different versions of WooCommers.
  * For the moment the plugin lowest support version is 3.0.0
  *
- * SafeCharge
+ * Nuvei
  * 2018-08
  */
 class SC_Versions_Resolver {
