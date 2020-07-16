@@ -5,14 +5,16 @@ var manualChangedCountry      = false;
 var selectedPM                = '';
 var billing_country_first_val = '';
 // for the fields
-var sfc           = null;
-var scFields      = null;
-var sfcFirstField = null;
-var scCard        = null;
-var cardNumber    = null;
-var cardExpiry    = null;
-var cardCvc       = null;
-var scData        = {};
+var sfc				= null;
+var scFields		= null;
+var sfcFirstField	= null;
+var scCard			= null;
+var cardNumber		= null;
+var cardExpiry		= null;
+var cardCvc			= null;
+var scData			= {};
+var lastCvcHolder	= '';
+
 // set some classes for the Fields
 var elementClasses = {
 	focus	: 'focus',
@@ -326,24 +328,17 @@ function getAPMs() {
 					
 					html_upos +=
 						'<li class="upo_container">'
-							+ '<div class="upo_title">'
+							+ '<div class="apm_title">'
+								+ '<input id="sc_payment_method_'+ resp.data['upos'][j].userPaymentOptionId +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ resp.data['upos'][j].userPaymentOptionId +'" data-upo-name="'+ resp.data['upos'][j].paymentMethodName +'" />'
 								+ upoImg
-								+ '<input id="sc_payment_method_'+ resp.data['upos'][j].userPaymentOptionId +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ resp.data['upos'][j].userPaymentOptionId +'" />'
-								+ '<span class=""></span>'
 							+ '</div>';
 					
 					if('cc_card' === resp.data['upos'][j].paymentMethodName) {
 						html_upos +=
-							'<div class="upo_fields" id="sc_'+ resp.data['upos'][j].userPaymentOptionId +'">'
-
-//								+'<div class="apm_field">'
-								+'<p class="">'
-									+ '<div id="sc_upo_'+ resp.data['upos'][j].userPaymentOptionId +'_cvc"></div>'
-//								+'</div>'
-								+'</p>'
+							'<div class="apm_fields" id="sc_'+ resp.data['upos'][j].userPaymentOptionId +'">'
+								+ '<div id="sc_upo_'+ resp.data['upos'][j].userPaymentOptionId +'_cvc"></div>'
 							'</div>';
 					}
-					
 					
 					html_upos +=
 						'</li>';
@@ -480,13 +475,13 @@ function getAPMs() {
  */
 function print_apms_options(upos, apms) {
 	// apend UPOs holder
-//	if (jQuery('form.woocommerce-checkout').find('#sc_upos_list').length == 0) {
-//		jQuery('div.payment_method_sc').append(
-//			'<b>'+ scTrans.chooseUPO +':</b><ul id="sc_upos_list"></div>');
-//	} else {
-//		// remove old upos
-//		jQuery('#sc_upos_list').html('');
-//	}
+	if (jQuery('form.woocommerce-checkout').find('#sc_upos_list').length == 0) {
+		jQuery('div.payment_method_sc').append(
+			'<b>'+ scTrans.chooseUPO +':</b><ul id="sc_upos_list"></div>');
+	} else {
+		// remove old upos
+		jQuery('#sc_upos_list').html('');
+	}
 	
 	// apend APMs holder
 	if (jQuery('form.woocommerce-checkout').find('#sc_apms_list').length == 0) {
@@ -498,31 +493,31 @@ function print_apms_options(upos, apms) {
 	}
 	
 	// insert the html
-//	jQuery('#sc_upos_list').append(upos);
+	jQuery('#sc_upos_list').append(upos);
 	
 	jQuery('#sc_apms_list')
 		.append(apms)
 		.promise()
 		.done(function(){
-			cardNumber = sfcFirstField = scFields.create('ccNumber', {
-				classes: elementClasses
-				,style: fieldsStyle
-			});
-			cardNumber.attach('#sc_card_number');
-
-			cardExpiry = scFields.create('ccExpiration', {
-				classes: elementClasses
-				,style: fieldsStyle
-			});
-			cardExpiry.attach('#sc_card_expiry');
-
-			cardCvc = scFields.create('ccCvc', {
-				classes: elementClasses
-				,style: fieldsStyle
-			});
-			cardCvc.attach('#sc_card_cvc');
-			
-			jQuery('.SfcField').addClass('input-text');
+//			cardNumber = sfcFirstField = scFields.create('ccNumber', {
+//				classes: elementClasses
+//				,style: fieldsStyle
+//			});
+//			cardNumber.attach('#sc_card_number');
+//
+//			cardExpiry = scFields.create('ccExpiration', {
+//				classes: elementClasses
+//				,style: fieldsStyle
+//			});
+//			cardExpiry.attach('#sc_card_expiry');
+//
+//			cardCvc = scFields.create('ccCvc', {
+//				classes: elementClasses
+//				,style: fieldsStyle
+//			});
+//			cardCvc.attach('#sc_card_cvc');
+//			
+//			jQuery('.SfcField').addClass('input-text');
 		});
 }
 
@@ -574,27 +569,73 @@ jQuery(function() {
 	
 	// when click on APM payment method
 	jQuery('form.woocommerce-checkout').on('click', '.apm_title', function() {
+		// unchck SC payment methods
+		jQuery('form.woocommerce-checkout').find('sc_payment_method_field').attr('checked', false);
+		
+		// check current radio
+		var currInput = jQuery(this).find('input');
+		currInput.attr('checked', true);
+		
+		// reset sc fields holders
+		cardNumber = sfcFirstField = cardExpiry = cardCvc = null;
+		if(lastCvcHolder !== '') {
+			jQuery(lastCvcHolder).html('');
+		}
+		
+		// load webSDK fields
+		if(currInput.val() == 'cc_card') {
+			jQuery('#sc_card_number').html('');
+			cardNumber = sfcFirstField = scFields.create('ccNumber', {
+				classes: elementClasses
+				,style: fieldsStyle
+			});
+			cardNumber.attach('#sc_card_number');
+
+			jQuery('#sc_card_expiry').html('');
+			cardExpiry = scFields.create('ccExpiration', {
+				classes: elementClasses
+				,style: fieldsStyle
+			});
+			cardExpiry.attach('#sc_card_expiry');
+
+			lastCvcHolder = '#sc_card_cvc';
+
+			jQuery(lastCvcHolder).html('');
+			cardCvc = scFields.create('ccCvc', {
+				classes: elementClasses
+				,style: fieldsStyle
+			});
+			cardCvc.attach(lastCvcHolder);
+		}
+		else if(
+			!isNaN(currInput.val())
+			&& typeof currInput.attr('data-upo-name') != 'undefined'
+			&& currInput.attr('data-upo-name') === 'cc_card'
+		) {
+			lastCvcHolder = '#sc_upo_' + currInput.val() + '_cvc';
+			
+			cardCvc = scFields.create('ccCvc', {
+				classes: elementClasses
+				,style: fieldsStyle
+			});
+			cardCvc.attach(lastCvcHolder);
+		}
+		
+		jQuery('.SfcField').addClass('input-text');
+		// load webSDK fields END
+		
 		// hide all containers with fields
-		jQuery('#sc_apms_list').find('.apm_fields').each(function(){
+		jQuery('#sc_apms_list, #sc_upos_list').find('.apm_fields').each(function(){
 			var self = jQuery(this);
 			if (self.css('display') == 'block') {
 				self.slideToggle('slow');
 			}
 		});
 		
-		// hide bottom border of apm_fields if the container is empty
-		if (jQuery(this).parent('li').find('.apm_fields').html() == '') {
-			jQuery(this).parent('li').find('.apm_fields').css('border-bottom', 0);
-		}
 		// expand payment fields
 		if (jQuery(this).parent('li').find('.apm_fields').css('display') == 'none') {
 			jQuery(this).parent('li').find('.apm_fields').slideToggle('slow');
 		}
-		
-		// unchck SC payment methods
-		jQuery('form.woocommerce-checkout').find('sc_payment_method_field').attr('checked', false);
-		// check current radio
-		jQuery(this).find('input').attr('checked', true);
 	});
 	
 	// on last step modify Place order button
