@@ -3,13 +3,13 @@
  * Plugin Name: SafeCharge Payments
  * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
  * Description: SafeCharge gateway for WooCommerce
- * Version: 3.1.0
+ * Version: 3.0.1
  * Author: SafeCharge
  * Author URI: https://nuvei.com
  * Require at least: 4.7
- * Tested up to: 5.4.1
+ * Tested up to: 5.4.2
  * WC requires at least: 3.0
- * WC tested up to: 4.2.0
+ * WC tested up to: 4.3.0
 */
 
 defined('ABSPATH') || die('die');
