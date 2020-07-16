@@ -5,7 +5,7 @@
  * Description: SafeCharge gateway for WooCommerce
  * Version: 3.0.1
  * Author: SafeCharge
- * Author URI: https://nuvei.com
+ * Author URI: https://safecharge.com
  * Require at least: 4.7
  * Tested up to: 5.4.2
  * WC requires at least: 3.0
