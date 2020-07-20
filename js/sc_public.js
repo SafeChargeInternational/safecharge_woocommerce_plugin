@@ -14,6 +14,7 @@ var cardExpiry		= null;
 var cardCvc			= null;
 var scData			= {};
 var lastCvcHolder	= '';
+var scDeleteUpoFlag = false;
 
 // set some classes for the Fields
 var elementClasses = {
@@ -52,131 +53,152 @@ function scValidateAPMFields() {
 	
 	jQuery('#confirm-order-flag').val(''); // reset the fake parameter flag
 	
-	var formValid = true;
-	selectedPM    = jQuery('input[name="sc_payment_method"]:checked').val();
-	
 	// WC check for the terms when try to submit the form, the idea is just to prevent webSDK call
 	if(jQuery('#terms').length > 0 && !jQuery('#terms').is(':checked')) {
 		selectedPM = 'dummy text';
 	}
 	
-	if (typeof selectedPM != 'undefined' && selectedPM != '') {
-		var nuveiPaymentParams = {
-			sessionToken    : scOpenOrderToken,
-			merchantId      : scMerchantId,
-			merchantSiteId  : scMerchantSiteId,
-			currency        : scOrderCurr,
-			amount          : scOrderAmount,
-			webMasterId		: scTrans.webMasterId
-		};
-		
-		// use cards
-		if (selectedPM == 'cc_card' || selectedPM == 'dc_card') {
-			if (
-				typeof scOpenOrderToken == 'undefined'
-				|| typeof scOrderAmount == 'undefined'
-				|| typeof scOrderCurr == 'undefined'
-				|| typeof scMerchantId == 'undefined'
-				|| typeof scMerchantSiteId == 'undefined'
-			) {
-				scFormFalse('Unexpected error, please try again later!');
-				console.error('Missing SDK parameters.');
-				return;
-			}
-			
-			if(jQuery('#sc_card_holder_name').val() == '') {
-				scFormFalse(scTrans.CCNameIsEmpty);
-				return;
-			}
-			
-			if(
-				jQuery('#sc_card_number.empty').length > 0
-				|| jQuery('#sc_card_number.sfc-complete').length == 0
-			) {
-				scFormFalse(scTrans.CCNumError);
-				return;
-			}
-			
-			if(
-				jQuery('#sc_card_expiry.empty').length > 0
-				|| jQuery('#sc_card_expiry.sfc-complete').length == 0
-			) {
-				scFormFalse(scTrans.CCExpDateError);
-				return;
-			}
-			
-			if(
-				jQuery('#sc_card_cvc.empty').length > 0
-				|| jQuery('#sc_card_cvc.sfc-complete').length == 0
-			) {
-				scFormFalse(scTrans.CCCvcError);
-				return;
-			}
-			
-			nuveiPaymentParams.cardHolderName	= document.getElementById('sc_card_holder_name').value;
-			nuveiPaymentParams.paymentOption	= sfcFirstField;
-			
-			// create payment with WebSDK
-			sfc.createPayment(nuveiPaymentParams, function(resp) {
-				afterSdkResponse(resp);
-			});
-		}
-		// use APM data
-		else {
-			nuveiPaymentParams.paymentOption = {
-				alternativePaymentMethod: {
-					paymentMethod: selectedPM
-				}
-			};
-			
-			var checkId = 'sc_payment_method_' + selectedPM;
-
-			// iterate over payment fields
-			jQuery('#' + checkId).closest('li.apm_container').find('.apm_fields input').each(function(){
-				var apmField = jQuery(this);
-
-				if (
-					typeof apmField.attr('pattern') != 'undefined'
-					&& apmField.attr('pattern') !== false
-					&& apmField.attr('pattern') != ''
-				) {
-					var regex = new RegExp(apmField.attr('pattern'), "i");
-
-					// SHOW error
-					if (apmField.val() == '' || regex.test(apmField.val()) == false) {
-						formValid = false;
-					}
-				} else if (apmField.val() == '') {
-					formValid = false;
-				}
-				
-				nuveiPaymentParams.paymentOption.alternativePaymentMethod[apmField.attr('name')] = apmField.val();
-			});
-
-			if (!formValid) {
-				scFormFalse();
-				jQuery('#custom_loader').hide();
-				return;
-			}
-			
-			// direct APMs can use the SDK
-			if(jQuery('input[name="sc_payment_method"]:checked').attr('data-nuvei-is-direct') == 'true') {
-				sfc.createPayment(nuveiPaymentParams, function(resp){
-					afterSdkResponse(resp);
-				});
-				
-				return;
-			}
-
-			// if not using SDK submit form
-			jQuery('#custom_loader').hide();
-			jQuery('form.woocommerce-checkout').submit();
-		}
-	}
-	else {
+	selectedPM = jQuery('input[name="sc_payment_method"]:checked').val();
+	
+	if (typeof selectedPM == 'undefined' || selectedPM == '') {
 		scFormFalse();
 		jQuery('#custom_loader').hide();
 		return;
+	}
+		
+	var formValid			= true;	
+	var nuveiPaymentParams	= {
+		sessionToken    : scOpenOrderToken,
+		merchantId      : scMerchantId,
+		merchantSiteId  : scMerchantSiteId,
+		currency        : scOrderCurr,
+		amount          : scOrderAmount,
+		webMasterId		: scTrans.webMasterId
+	};
+
+	// use cards
+	if (selectedPM == 'cc_card') {
+		if (
+			typeof scOpenOrderToken == 'undefined'
+			|| typeof scOrderAmount == 'undefined'
+			|| typeof scOrderCurr == 'undefined'
+			|| typeof scMerchantId == 'undefined'
+			|| typeof scMerchantSiteId == 'undefined'
+		) {
+			scFormFalse('Unexpected error, please try again later!');
+			console.error('Missing SDK parameters.');
+			return;
+		}
+
+		if(jQuery('#sc_card_holder_name').val() == '') {
+			scFormFalse(scTrans.CCNameIsEmpty);
+			return;
+		}
+
+		if(
+			jQuery('#sc_card_number.empty').length > 0
+			|| jQuery('#sc_card_number.sfc-complete').length == 0
+		) {
+			scFormFalse(scTrans.CCNumError);
+			return;
+		}
+
+		if(
+			jQuery('#sc_card_expiry.empty').length > 0
+			|| jQuery('#sc_card_expiry.sfc-complete').length == 0
+		) {
+			scFormFalse(scTrans.CCExpDateError);
+			return;
+		}
+
+		if(
+			jQuery('#sc_card_cvc.empty').length > 0
+			|| jQuery('#sc_card_cvc.sfc-complete').length == 0
+		) {
+			scFormFalse(scTrans.CCCvcError);
+			return;
+		}
+
+		nuveiPaymentParams.cardHolderName	= document.getElementById('sc_card_holder_name').value;
+		nuveiPaymentParams.paymentOption	= sfcFirstField;
+
+		// create payment with WebSDK
+		sfc.createPayment(nuveiPaymentParams, function(resp) {
+			afterSdkResponse(resp);
+		});
+	}
+	// use CC UPO
+	else if(
+		typeof jQuery('input[name="sc_payment_method"]:checked').attr('data-upo-name') != 'undefined'
+		&& 'cc_card' == jQuery('input[name="sc_payment_method"]:checked').attr('data-upo-name')
+	) {
+		if( ! jQuery('#sc_upo_'+ selectedPM +'_cvc.sfc-complete').length == 0) {
+			scFormFalse(scTrans.CCCvcError);
+			return;
+		}
+		
+		nuveiPaymentParams.paymentOption = {
+			userPaymentOptionId: selectedPM,
+			card: {
+				CVV: cardCvc
+			}
+		};
+		
+		// create payment with WebSDK
+		sfc.createPayment(nuveiPaymentParams, function(resp){
+			afterSdkResponse(resp);
+		});
+	}
+	// use APM data
+	else {
+		nuveiPaymentParams.paymentOption = {
+			alternativePaymentMethod: {
+				paymentMethod: selectedPM
+			}
+		};
+
+		var checkId = 'sc_payment_method_' + selectedPM;
+
+		// iterate over payment fields
+		jQuery('#' + checkId).closest('li.apm_container').find('.apm_fields input').each(function(){
+			var apmField = jQuery(this);
+
+			if (
+				typeof apmField.attr('pattern') != 'undefined'
+				&& apmField.attr('pattern') !== false
+				&& apmField.attr('pattern') != ''
+			) {
+				var regex = new RegExp(apmField.attr('pattern'), "i");
+
+				// SHOW error
+				if (apmField.val() == '' || regex.test(apmField.val()) == false) {
+					formValid = false;
+				}
+			} else if (apmField.val() == '') {
+				formValid = false;
+			}
+
+			nuveiPaymentParams.paymentOption.alternativePaymentMethod[apmField.attr('name')] = apmField.val();
+		});
+
+		if (!formValid) {
+			scFormFalse();
+			jQuery('#custom_loader').hide();
+			return;
+		}
+
+		// direct APMs can use the SDK
+		if(jQuery('input[name="sc_payment_method"]:checked').attr('data-nuvei-is-direct') == 'true') {
+			sfc.createPayment(nuveiPaymentParams, function(resp){
+				afterSdkResponse(resp);
+			});
+
+			return;
+		}
+
+		// if not using SDK submit form
+		jQuery('#custom_loader').hide();
+		jQuery('form.woocommerce-checkout').submit();
 	}
 }
 
@@ -327,17 +349,34 @@ function getAPMs() {
 					}
 					
 					html_upos +=
-						'<li class="upo_container">'
+						'<li class="upo_container" id="upo_cont_'+ resp.data['upos'][j].userPaymentOptionId +'">'
 							+ '<div class="apm_title">'
 								+ '<input id="sc_payment_method_'+ resp.data['upos'][j].userPaymentOptionId +'" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="'+ resp.data['upos'][j].userPaymentOptionId +'" data-upo-name="'+ resp.data['upos'][j].paymentMethodName +'" />'
-								+ upoImg
+								+ upoImg;
+						
+					html_upos +=
+								'&nbsp;<span>';
+						
+						// add upo identificator
+						if('cc_card' == resp.data['upos'][j].paymentMethodName) {
+							html_upos += resp.data['upos'][j].upoData.ccCardNumber;
+						}
+						else {
+							html_upos += resp.data['upos'][j].upoName;
+						}
+						
+						// add remove icon
+						html_upos +=
+								'</span>&nbsp;'
+								+ '<span id="#sc_remove_upo_'+ resp.data['upos'][j].userPaymentOptionId +'" onclick="deleteScUpo('+ resp.data['upos'][j].userPaymentOptionId +')" class="dashicons dashicons-trash"></span>'
+								+ '<div class="blockUI custom_loaders"></div>'
 							+ '</div>';
 					
 					if('cc_card' === resp.data['upos'][j].paymentMethodName) {
 						html_upos +=
 							'<div class="apm_fields" id="sc_'+ resp.data['upos'][j].userPaymentOptionId +'">'
 								+ '<div id="sc_upo_'+ resp.data['upos'][j].userPaymentOptionId +'_cvc"></div>'
-							'</div>';
+							+ '</div>';
 					}
 					
 					html_upos +=
@@ -437,8 +476,6 @@ function getAPMs() {
 				jQuery( document.body ).on( 'updated_checkout', function() {
 					print_apms_options(html_upos, html_apms);
 				});
-
-				jQuery('#custom_loader').hide();
 			}
 			// show some error
 			else if (resp.status == 0) {
@@ -499,26 +536,51 @@ function print_apms_options(upos, apms) {
 		.append(apms)
 		.promise()
 		.done(function(){
-//			cardNumber = sfcFirstField = scFields.create('ccNumber', {
-//				classes: elementClasses
-//				,style: fieldsStyle
-//			});
-//			cardNumber.attach('#sc_card_number');
-//
-//			cardExpiry = scFields.create('ccExpiration', {
-//				classes: elementClasses
-//				,style: fieldsStyle
-//			});
-//			cardExpiry.attach('#sc_card_expiry');
-//
-//			cardCvc = scFields.create('ccCvc', {
-//				classes: elementClasses
-//				,style: fieldsStyle
-//			});
-//			cardCvc.attach('#sc_card_cvc');
-//			
-//			jQuery('.SfcField').addClass('input-text');
+			jQuery('#custom_loader').hide();
 		});
+}
+
+function deleteScUpo(upoId) {
+	scDeleteUpoFlag = true;
+	
+	if(confirm(scTrans.AskDeleteUpo)) {
+		jQuery('#sc_remove_upo_' + upoId).closest('.apm_title').find('.custom_loaders').show();
+		jQuery('#sc_remove_upo_' + upoId).hide();
+
+		jQuery.ajax({
+			type: "POST",
+			dataType: "json",
+			url: scTrans.ajaxurl,
+			data: {
+				action      : 'sc-ajax-action',
+				security	: scTrans.security,
+				scUpoId		: upoId
+			}
+		})
+		.done(function(res) {
+			console.log('delete UPO response', res);
+
+			if(typeof res.status != 'undefined') {
+				if('success' == res.status) {
+					jQuery('form.woocommerce-checkout').find('#upo_cont_' + upoId).remove();
+				}
+				else {
+					jQuery('#sc_remove_upo_' + upoId).closest('.apm_title').find('.custom_loaders').hide();
+					jQuery('#sc_remove_upo_' + upoId).show();
+
+					scFormFalse(res.msg);
+				}
+			}
+			else {
+				jQuery('#sc_remove_upo_' + upoId).closest('.apm_title').find('.custom_loaders').hide();
+				jQuery('#sc_remove_upo_' + upoId).show();
+			}
+		})
+		.fail(function(e) {
+			jQuery('#sc_remove_upo_' + upoId).closest('.apm_title').find('.custom_loaders').hide();
+			jQuery('#sc_remove_upo_' + upoId).show();
+		});
+	}
 }
 
 function checkoutStep2AddLoader() {
@@ -569,6 +631,11 @@ jQuery(function() {
 	
 	// when click on APM payment method
 	jQuery('form.woocommerce-checkout').on('click', '.apm_title', function() {
+		if(scDeleteUpoFlag) {
+			scDeleteUpoFlag = false;
+			return;
+		}
+		
 		// unchck SC payment methods
 		jQuery('form.woocommerce-checkout').find('sc_payment_method_field').attr('checked', false);
 		

@@ -113,6 +113,24 @@ if (!empty($_SERVER['HTTP_HOST'])) {
 	} else {
 		define('SC_TEST_OPEN_ORDER_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/openOrder.do');
 	}
+	
+	// new payment URL
+	define('SC_LIVE_PAYMENT_NEW_URL', 'https://secure.safecharge.com/ppp/api/v1/payment.do');
+	if(strpos(sanitize_text_field($_SERVER['HTTP_HOST']), 'gw-4u.com') !== false) {
+		define('SC_TEST_PAYMENT_NEW_URL', $sc_test_endpoint_host . '/payment.do');
+	}
+	else {
+		define('SC_TEST_PAYMENT_NEW_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/payment.do');
+	}
+	
+	// delete user UPOs
+	define('SC_LIVE_DELETE_UPO_URL', 'https://secure.safecharge.com/ppp/api/v1/deleteUPO.do');
+	if(strpos(sanitize_text_field($_SERVER['HTTP_HOST']), 'gw-4u.com') !== false) {
+		define('SC_TEST_DELETE_UPO_URL', $sc_test_endpoint_host . '/deleteUPO.do');
+	}
+	else {
+		define('SC_TEST_DELETE_UPO_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/deleteUPO.do');
+	}
 }
 
 // user CPanel URLs

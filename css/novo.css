@@ -34,6 +34,8 @@ div.payment_method_sc {
 	width: 100%;
 }
 
+.apm_title span { vertical-align: middle; }
+
 .SfcField {
 	padding-top: 1em;
 	box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.125);
@@ -65,7 +67,6 @@ form.woocommerce-checkout #payment.woocommerce-checkout-payment { position: rela
 .custom_loaders {
 	left: 0;
 	right: 0;
-	display: block;
 }
 
 /* for the 3DS modal */

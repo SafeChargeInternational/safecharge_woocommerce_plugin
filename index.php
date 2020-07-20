@@ -3,7 +3,7 @@
  * Plugin Name: SafeCharge Payments
  * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
  * Description: SafeCharge gateway for WooCommerce
- * Version: 3.0.1
+ * Version: 3.1.0
  * Author: SafeCharge
  * Author URI: https://safecharge.com
  * Require at least: 4.7
@@ -126,6 +126,11 @@ function sc_ajax_action() {
 	if (!empty($_POST['sc_request']) && 'OpenOrder' === $_POST['sc_request']) {
 		$wc_sc->prepare_rest_payment();
 	}
+	
+	// delete UPO
+	if (!empty($_POST['scUpoId']) && is_numeric($_POST['scUpoId'])) {
+		$wc_sc->delete_user_upo();
+	}
 
 	wp_die();
 }
@@ -232,6 +237,7 @@ function sc_enqueue_wo_files( $styles) {
 			'CCNumError'		=> __('Card Number is empty or wrong.', 'nuvei'),
 			'CCExpDateError'	=> __('Card Expiry Date is not correct.', 'nuvei'),
 			'CCCvcError'		=> __('Card CVC is not correct.', 'nuvei'),
+			'AskDeleteUpo'		=> __('Do you want to delete this UPO?', 'nuvei'),
 		)
 	);
 
