@@ -73,8 +73,11 @@ function scValidateAPMFields() {
 		merchantSiteId  : scMerchantSiteId,
 		currency        : scOrderCurr,
 		amount          : scOrderAmount,
-		webMasterId		: scTrans.webMasterId
+		webMasterId		: scTrans.webMasterId,
+		userTokenId		: jQuery('#billing_email').val()
 	};
+
+	console.log(selectedPM)
 
 	// use cards
 	if (selectedPM == 'cc_card') {
@@ -132,7 +135,7 @@ function scValidateAPMFields() {
 		typeof jQuery('input[name="sc_payment_method"]:checked').attr('data-upo-name') != 'undefined'
 		&& 'cc_card' == jQuery('input[name="sc_payment_method"]:checked').attr('data-upo-name')
 	) {
-		if( ! jQuery('#sc_upo_'+ selectedPM +'_cvc.sfc-complete').length == 0) {
+		if(jQuery('#sc_upo_'+ selectedPM +'_cvc.sfc-complete').length == 0) {
 			scFormFalse(scTrans.CCCvcError);
 			return;
 		}
