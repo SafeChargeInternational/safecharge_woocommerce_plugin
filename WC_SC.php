@@ -448,8 +448,10 @@ class WC_SC extends WC_Payment_Gateway {
 			);
 		}
 
-		if(empty($resp['transactionStatus'])) {
-			$msg = __('There is no Transaction Status for the Order.', 'sc');
+//		if(empty($resp['transactionStatus'])) {
+		if(empty($this->get_request_status($resp))) {
+//			$msg = __('There is no Transaction Status for the Order.', 'sc');
+			$msg = __('There is no Status for the Order.', 'sc');
 			
 			$order->add_order_note($msg);
 			$order->save();
@@ -1482,6 +1484,38 @@ class WC_SC extends WC_Payment_Gateway {
 		wp_die();
 	}
 	
+	/**
+	 * Function get_request_status
+	 * We need this stupid function because as response request variable
+	 * we get 'Status' or 'status'...
+	 *
+	 * @return string
+	 */
+	public function get_request_status( $params = array()) {
+		$Status = $this->get_param('Status');
+		$status = $this->get_param('status');
+		
+		if (empty($params)) {
+			if ('' != $Status) {
+				return $Status;
+			}
+			
+			if ('' != $status) {
+				return $status;
+			}
+		} else {
+			if (isset($params['Status'])) {
+				return $params['Status'];
+			}
+
+			if (isset($params['status'])) {
+				return $params['status'];
+			}
+		}
+		
+		return '';
+	}
+	
 	private function sc_get_order_data( $TransactionID) {
 		global $wpdb;
 		
@@ -1652,38 +1686,6 @@ class WC_SC extends WC_Payment_Gateway {
 		), 'Order to update fields');
 		
 		$this->sc_order->save();
-	}
-	
-	/**
-	 * Function get_request_status
-	 * We need this stupid function because as response request variable
-	 * we get 'Status' or 'status'...
-	 *
-	 * @return string
-	 */
-	private function get_request_status( $params = array()) {
-		$Status = $this->get_param('Status');
-		$status = $this->get_param('status');
-		
-		if (empty($params)) {
-			if ('' != $Status) {
-				return $Status;
-			}
-			
-			if ('' != $status) {
-				return $status;
-			}
-		} else {
-			if (isset($params['Status'])) {
-				return $params['Status'];
-			}
-
-			if (isset($params['status'])) {
-				return $params['status'];
-			}
-		}
-		
-		return '';
 	}
 	
 	/**

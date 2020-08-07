@@ -9,7 +9,7 @@
  * Require at least: 4.7
  * Tested up to: 5.4.2
  * WC requires at least: 3.0
- * WC tested up to: 4.3.0
+ * WC tested up to: 4.3.1
 */
 
 defined('ABSPATH') || die('die');
@@ -86,6 +86,12 @@ function woocommerce_sc_init() {
 		if (isset($wc_sc->settings['rewrite_dmn']) && 'yes' == $wc_sc->settings['rewrite_dmn']) {
 			add_action('template_redirect', 'sc_rewrite_return_url'); // need WC_SC
 		}
+	}
+	
+	// change Thank-you page title and text
+	if('error' === strtolower($wc_sc->get_request_status())) {
+		add_filter( 'the_title', 'nuvei_change_title_order_received', 10, 2 );
+		add_filter('woocommerce_thankyou_order_received_text', 'nuvei_change_order_received_text', 10, 2 );
 	}
 }
 
@@ -462,4 +468,20 @@ function sc_edit_order_buttons() {
     }
 
     return $default_text;
+}
+
+function nuvei_change_title_order_received($title, $id) {
+	if (
+		function_exists( 'is_order_received_page' )
+		&& is_order_received_page()
+		&& get_the_ID() === $id
+	) {
+		$title = esc_html__('Order error', 'sc');
+	}
+	
+	return $title;
+}
+
+function nuvei_change_order_received_text($str, $order) {
+	return esc_html__('There is an error with your order. Please, check if the order was recieved or what is the status!', 'sc');
 }

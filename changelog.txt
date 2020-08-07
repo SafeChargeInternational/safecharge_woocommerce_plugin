@@ -1,10 +1,11 @@
 *** WooCommerce Extension Template Changelog ***
 
-2020-07-14 - version 3.0.1
+2020-08-07 - version 3.1
 * Start prepare UPOs usage;
 * Fix for the problem when the client select other Payment Provider than SafeCharge.
 * Fixed the problem with missing Shipping Email.
-* Use webSDK for Direct APMs
+* Use webSDK for Direct APMs.
+* Added error message on Order Confirm page in case of error.
 
 2020-02-12 - version 3.0
 * New - new keys and values of SC Order meta data. Added few more SC meta fields.
