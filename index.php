@@ -3,7 +3,7 @@
  * Plugin Name: SafeCharge Payments
  * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
  * Description: SafeCharge gateway for WooCommerce
- * Version: 3.1.0
+ * Version: 3.2.0
  * Author: SafeCharge
  * Author URI: https://safecharge.com
  * Require at least: 4.7
@@ -56,7 +56,10 @@ function woocommerce_sc_init() {
 		if( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
 			$_SESSION['sc_order_details'] = $data;
 			
-			if ($_POST['confirm-order-flag'] == "1") {
+//			if ($_POST['confirm-order-flag'] == "1") {
+			if (!isset($_POST['sc_payment_method']) || empty($_POST['sc_payment_method'])) {
+				SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
+				
 				wp_send_json(array(
 					'result' => 'failure',
 					'refresh' => false,

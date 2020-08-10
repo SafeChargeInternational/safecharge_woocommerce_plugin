@@ -732,12 +732,14 @@ jQuery(function() {
 		}
     });
 	
-	jQuery('form.woocommerce-checkout').on('checkout_place_order', function () {
-		if (jQuery('#confirm-order-flag').length == 0) {
-			jQuery(this).append('<input type="hidden" id="confirm-order-flag" name="confirm-order-flag" value="1">');
-		}
-		return true;
-	});
+//	jQuery('form.woocommerce-checkout').on('checkout_place_order', function () {
+////	jQuery('form.woocommerce-checkout').on('submit', function () {
+////	jQuery('button#place_order').on('click', function () {
+//		if (jQuery('#confirm-order-flag').length == 0) {
+//			jQuery(this).append('<input type="hidden" id="confirm-order-flag" name="confirm-order-flag" value="1">');
+//		}
+//		return true;
+//	});
 	
 	// change text on Place order button
 	jQuery('form.woocommerce-checkout').on('change', 'input[name=payment_method]', function(){

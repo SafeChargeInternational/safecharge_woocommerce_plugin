@@ -1,5 +1,8 @@
 *** WooCommerce Extension Template Changelog ***
 
+2020-08-10 - version 3.2.0
+* Do not use confirm-order-flag anymore. Instead check for sc_payment_method parameter;
+
 2020-08-07 - version 3.1
 * Start prepare UPOs usage;
 * Fix for the problem when the client select other Payment Provider than SafeCharge.

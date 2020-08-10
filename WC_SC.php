@@ -350,7 +350,7 @@ class WC_SC extends WC_Payment_Gateway {
 			),
 			'urlDetails'        => array(
 				'successUrl'        => $return_success_url,
-				'failureUrl'        => $return_success_url,
+				'failureUrl'        => $return_error_url,
 				'pendingUrl'        => $return_success_url,
 				'notificationUrl'   => $this->set_notify_url(),
 			),
