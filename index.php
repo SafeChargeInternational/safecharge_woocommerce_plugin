@@ -56,7 +56,6 @@ function woocommerce_sc_init() {
 		if( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
 			$_SESSION['sc_order_details'] = $data;
 			
-//			if ($_POST['confirm-order-flag'] == "1") {
 			if (!isset($_POST['sc_payment_method']) || empty($_POST['sc_payment_method'])) {
 				SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
 				
@@ -64,7 +63,7 @@ function woocommerce_sc_init() {
 					'result' => 'failure',
 					'refresh' => false,
 					'reload' => false,
-					'messages' => '<ul id="sc_fake_error" class="woocommerce-error" style="display: none;" role="alert"><li></li></ul>'
+					'messages' => '<ul id="sc_fake_error" class="woocommerce-error" style="display: none;" role="alert"><li><script>jQuery(function() { jQuery( "html, body" ).stop(); jQuery(window).unbind("scroll"); onScFakeError(); })</script></li></ul>'
 				));
 
 				wp_die();

@@ -541,6 +541,8 @@ function print_apms_options(upos, apms) {
 		.done(function(){
 			jQuery('#custom_loader').hide();
 		});
+		
+	jQuery("#payment_method_sc").get(0).scrollIntoView();
 }
 
 function deleteScUpo(upoId) {
@@ -615,6 +617,30 @@ function checkoutGoBackStep() {
 		.attr('type', 'submit')
 		.attr('onclick', '')
 		.prop('disabled', false);
+}
+
+function onScFakeError() {
+	console.log('onScFakeError');
+	
+	jQuery( 'html, body' ).stop(); // stop scroll to the errors
+	jQuery(window).unbind('scroll');
+
+	checkoutStep2AddLoader();
+	getAPMs();
+
+	jQuery('form.woocommerce-checkout button[type=submit]')
+		.attr('type', 'button')
+		.attr('onclick', 'scValidateAPMFields()')
+		.prop('disabled', false)
+		.html(jQuery('#place_order').attr('data-default-text'));
+
+	if(jQuery('#sc_go_back').length == 0) {
+		jQuery('<button type="button" class="button alt" id="sc_go_back" onclick="checkoutGoBackStep()" style="margin-bottom: 5px;">'+ scTrans.goBack +'</button>')
+			.insertBefore(jQuery('#place_order'));
+	}
+	else {
+		jQuery('#sc_go_back').show();
+	}
 }
 
 jQuery(function() {
@@ -710,26 +736,28 @@ jQuery(function() {
 	
 	// on last step modify Place order button
 	jQuery(document.body).on('checkout_error', function () {
-		if (jQuery('.woocommerce-error').attr('id') == 'sc_fake_error') { // Validation Passed (Just the Fake Error Exists)
-			jQuery( 'html, body' ).stop(); // stop scroll to the errors
-			
-			checkoutStep2AddLoader();
-			getAPMs();
-			
-			jQuery('form.woocommerce-checkout button[type=submit]')
-				.attr('type', 'button')
-				.attr('onclick', 'scValidateAPMFields()')
-				.prop('disabled', false)
-				.html(jQuery('#place_order').attr('data-default-text'));
+		console.log('checkout_error hook');
 		
-			if(jQuery('#sc_go_back').length == 0) {
-				jQuery('<button type="button" class="button alt" id="sc_go_back" onclick="checkoutGoBackStep()" style="margin-bottom: 5px;">'+ scTrans.goBack +'</button>')
-					.insertBefore(jQuery('#place_order'));
-			}
-			else {
-				jQuery('#sc_go_back').show();
-			}
-		}
+//		if (jQuery('.woocommerce-error').attr('id') == 'sc_fake_error') { // Validation Passed (Just the Fake Error Exists)
+//			jQuery( 'html, body' ).stop(); // stop scroll to the errors
+//			
+//			checkoutStep2AddLoader();
+//			getAPMs();
+//			
+//			jQuery('form.woocommerce-checkout button[type=submit]')
+//				.attr('type', 'button')
+//				.attr('onclick', 'scValidateAPMFields()')
+//				.prop('disabled', false)
+//				.html(jQuery('#place_order').attr('data-default-text'));
+//		
+//			if(jQuery('#sc_go_back').length == 0) {
+//				jQuery('<button type="button" class="button alt" id="sc_go_back" onclick="checkoutGoBackStep()" style="margin-bottom: 5px;">'+ scTrans.goBack +'</button>')
+//					.insertBefore(jQuery('#place_order'));
+//			}
+//			else {
+//				jQuery('#sc_go_back').show();
+//			}
+//		}
     });
 	
 //	jQuery('form.woocommerce-checkout').on('checkout_place_order', function () {
