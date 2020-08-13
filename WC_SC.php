@@ -719,7 +719,13 @@ class WC_SC extends WC_Payment_Gateway {
 			$this->get_return_url($order)
 		);
 		
-		$content =
+		$content = '';
+		
+		if (!empty(trim($this->merchant_style))) {
+			$content .= '<style>' . $this->merchant_style . '</style>';
+		}
+		
+		$content .=
 			'<form id="sc_second_step_form" method="post" action="' . get_site_url() . '/?wc-api=process-order&order_id=' . $order_id . '" enctype="multipart/form-data" novalidate="novalidate">'
 				. '<div id="sc_loader_background">'
 					. '<img src="' . $this->plugin_url . 'icons/loader.gif" alt="loading..." />'
