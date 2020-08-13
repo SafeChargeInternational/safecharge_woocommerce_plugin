@@ -30,7 +30,7 @@ var fieldsStyle = {
 		,color: '#43454b'
 		,fontSmoothing: 'antialiased'
 		,'::placeholder': {
-			color: '#52545A'
+			color: 'gray'
 		}
 	}
 };
@@ -110,6 +110,7 @@ function scValidateAPMFields() {
 		nuveiPaymentParams.paymentOption	= sfcFirstField;
 
 		// create payment with WebSDK
+		jQuery('#sc_loader_background').show();
 		sfc.createPayment(nuveiPaymentParams, function(resp) {
 			afterSdkResponse(resp);
 		});
@@ -132,6 +133,7 @@ function scValidateAPMFields() {
 		};
 		
 		// create payment with WebSDK
+		jQuery('#sc_loader_background').show();
 		sfc.createPayment(nuveiPaymentParams, function(resp){
 			afterSdkResponse(resp);
 		});
@@ -176,6 +178,7 @@ function scValidateAPMFields() {
 
 		// direct APMs can use the SDK
 		if(jQuery('input[name="sc_payment_method"]:checked').attr('data-nuvei-is-direct') == 'true') {
+			jQuery('#sc_loader_background').show();
 			sfc.createPayment(nuveiPaymentParams, function(resp){
 				afterSdkResponse(resp);
 			});
@@ -307,7 +310,7 @@ function getNewSessionToken() {
 			scFields	= sfc.fields({ locale: locale });
 			
 			jQuery('#sc_second_step_form .input-radio').prop('checked', false);
-			jQuery('.apm_fields').hide();
+			jQuery('.apm_fields, #sc_loader_background').hide();
 		});
 }
 
@@ -315,8 +318,8 @@ function deleteScUpo(upoId) {
 	scDeleteUpoFlag = true;
 	
 	if(confirm(scTrans.AskDeleteUpo)) {
-		jQuery('#sc_remove_upo_' + upoId).closest('.apm_title').find('.custom_loaders').show();
 		jQuery('#sc_remove_upo_' + upoId).hide();
+		jQuery('#sc_loader_background').show();
 
 		jQuery.ajax({
 			type: "POST",
@@ -340,14 +343,14 @@ function deleteScUpo(upoId) {
 				}
 			}
 			else {
-				jQuery('#sc_remove_upo_' + upoId).closest('.apm_title').find('.custom_loaders').hide();
 				jQuery('#sc_remove_upo_' + upoId).show();
 			}
 		})
 		.fail(function(e) {
-			jQuery('#sc_remove_upo_' + upoId).closest('.apm_title').find('.custom_loaders').hide();
 			jQuery('#sc_remove_upo_' + upoId).show();
 		});
+		
+		jQuery('#sc_loader_background').hide();
 	}
 }
 

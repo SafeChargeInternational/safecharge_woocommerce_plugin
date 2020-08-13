@@ -206,13 +206,13 @@ function sc_enqueue_wo_files( $styles) {
 		
 	// novo style
 	wp_register_style(
-		'novo_style',
-		$plugin_url . '/' . $plugin_dir . '/css/novo.css',
+		'sc_style',
+		$plugin_url . '/' . $plugin_dir . '/css/sc_style.css',
 		'',
 		'2.2',
 		'all'
 	);
-	wp_enqueue_style('novo_style');
+	wp_enqueue_style('sc_style');
 	
 	// WebSDK URL for integration and production
 	wp_register_script(

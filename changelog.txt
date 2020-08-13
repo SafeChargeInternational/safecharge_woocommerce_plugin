@@ -1,6 +1,10 @@
 *** WooCommerce Extension Template Changelog ***
 
-2020-08-10 - version 3.2.0
+2020-08-13 - version 3.3
+* Use custom 2 steps checkout;
+* Complete style for SC elements;
+
+2020-08-10 - version 3.2
 * Do not use confirm-order-flag anymore. Instead check for sc_payment_method parameter;
 
 2020-08-07 - version 3.1

@@ -38,18 +38,45 @@ class WC_SC extends WC_Payment_Gateway {
 
 		$this->init_settings();
 		
-		$this->title			= @$this->settings['title'] ? $this->settings['title'] : '';
-		$this->description		= @$this->settings['description'] ? $this->settings['description'] : '';
-		$this->merchantId		= @$this->settings['merchantId'] ? $this->settings['merchantId'] : '';
-		$this->merchantSiteId	= @$this->settings['merchantSiteId'] ? $this->settings['merchantSiteId'] : '';
-		$this->secret			= @$this->settings['secret'] ? $this->settings['secret'] : '';
-		$this->test				= @$this->settings['test'] ? $this->settings['test'] : 'yes';
-		$this->use_http			= @$this->settings['use_http'] ? $this->settings['use_http'] : 'yes';
-		$this->save_logs		= @$this->settings['save_logs'] ? $this->settings['save_logs'] : 'yes';
-		$this->hash_type		= @$this->settings['hash_type'] ? $this->settings['hash_type'] : 'sha256';
-		$this->payment_action	= @$this->settings['payment_action'] ? $this->settings['payment_action'] : 'Auth';
-		$this->use_upos			= @$this->settings['use_upos'] ? $this->settings['use_upos'] : 1;
-		$this->rewrite_dmn		= @$this->settings['rewrite_dmn'] ? $this->settings['rewrite_dmn'] : 'no';
+		$this->title			= !empty($this->settings['title'])
+			? $this->settings['title'] : '';
+		
+		$this->description		= !empty($this->settings['description'])
+			? $this->settings['description'] : '';
+		
+		$this->merchantId		= !empty($this->settings['merchantId'])
+			? $this->settings['merchantId'] : '';
+		
+		$this->merchantSiteId	= !empty($this->settings['merchantSiteId'])
+			? $this->settings['merchantSiteId'] : '';
+		
+		$this->secret			= !empty($this->settings['secret'])
+			? $this->settings['secret'] : '';
+		
+		$this->test				= isset($this->settings['test'])
+			? $this->settings['test'] : 'yes';
+		
+		$this->use_http			= isset($this->settings['use_http'])
+			? $this->settings['use_http'] : 'yes';
+		
+		$this->save_logs		= isset($this->settings['save_logs'])
+			? $this->settings['save_logs'] : 'yes';
+		
+		$this->hash_type		= isset($this->settings['hash_type'])
+			? $this->settings['hash_type'] : 'sha256';
+		
+		$this->payment_action	= isset($this->settings['payment_action'])
+			? $this->settings['payment_action'] : 'Auth';
+		
+		$this->use_upos			= isset($this->settings['use_upos'])
+			? $this->settings['use_upos'] : 1;
+		
+		$this->rewrite_dmn		= !empty($this->settings['rewrite_dmn'])
+			? $this->settings['rewrite_dmn'] : 'no';
+		
+		$this->merchant_style	= !empty($this->settings['merchant_style'])
+			? $this->settings['merchant_style'] : '';
+		
 		$this->webMasterId		.= WOOCOMMERCE_VERSION;
 		
 		$_SESSION['SC_Variables']['sc_create_logs'] = $this->save_logs;
@@ -137,6 +164,12 @@ class WC_SC extends WC_Payment_Gateway {
 					1 => 'Yes',
 					0 => 'No',
 				)
+			),
+			'merchant_style' => array(
+				'title' => __('Custom style', 'sc'),
+				'type' => 'textarea',
+				'default' => '',
+				'description' => 'Override the build-in style for the SafeCharge elements.'
 			),
 			'notify_url' => array(
 				'title' => __('Notify URL', 'sc'),
@@ -691,6 +724,9 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		$content =
 			'<form id="sc_second_step_form" method="post" action="'. get_site_url() .'/?wc-api=process-order&order_id='. $order_id .'" enctype="multipart/form-data" novalidate="novalidate">'
+				. '<div id="sc_loader_background">'
+					. '<img src="'. $this->plugin_url .'icons/loader.gif" alt="loading..." />'
+				. '</div>'
 				. '<div id="sc_checkout_messages"></div>';
 		
 		# OpenOrder
