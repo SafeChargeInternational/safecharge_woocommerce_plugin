@@ -40,39 +40,39 @@ function woocommerce_sc_init() {
 	
 	add_action('init', 'sc_enqueue');
 	// load WC styles
-	add_filter( 'woocommerce_enqueue_styles', 'sc_enqueue_wo_files' );
+	add_filter('woocommerce_enqueue_styles', 'sc_enqueue_wo_files');
 	// add void and/or settle buttons to completed orders, we check in the method is this order made via SC paygate
-	add_action('woocommerce_order_item_add_action_buttons',	'sc_add_buttons');
+	add_action('woocommerce_order_item_add_action_buttons', 'sc_add_buttons');
 	
 	// handle custom Ajax calls
 	add_action('wp_ajax_sc-ajax-action', 'sc_ajax_action');
 	add_action('wp_ajax_nopriv_sc-ajax-action', 'sc_ajax_action');
 	
 	// if validation success get order details
-//	add_action('woocommerce_after_checkout_validation', function($data, $errors) {
-//		SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
-//		SC_CLASS::create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
-//		
-//		if( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
-//			$_SESSION['sc_order_details'] = $data;
-//			
-//			if (!isset($_POST['sc_payment_method']) || empty($_POST['sc_payment_method'])) {
-//				SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
-//				
-//				wp_send_json(array(
-//					'result' => 'failure',
-//					'refresh' => false,
-//					'reload' => false,
-//					'messages' => '<ul id="sc_fake_error" class="woocommerce-error" style="display: none;" role="alert"><li><script>jQuery(function() { jQuery(window).unbind("scroll"); onScFakeError(); })</script></li></ul>'
-//				));
-//
-//				wp_die();
-//			} 
-//		}
-//	}, 9999, 2);
+	//	add_action('woocommerce_after_checkout_validation', function($data, $errors) {
+	//		SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
+	//		SC_CLASS::create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
+	//
+	//		if( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
+	//			$_SESSION['sc_order_details'] = $data;
+	//
+	//			if (!isset($_POST['sc_payment_method']) || empty($_POST['sc_payment_method'])) {
+	//				SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
+	//
+	//				wp_send_json(array(
+	//					'result' => 'failure',
+	//					'refresh' => false,
+	//					'reload' => false,
+	//					'messages' => '<ul id="sc_fake_error" class="woocommerce-error" style="display: none;" role="alert"><li><script>jQuery(function() { jQuery(window).unbind("scroll"); onScFakeError(); })</script></li></ul>'
+	//				));
+	//
+	//				wp_die();
+	//			}
+	//		}
+	//	}, 9999, 2);
 	
 	// use this to change button text, because of the cache the jQuery not always works
-	add_filter('woocommerce_order_button_text', 'sc_edit_order_buttons' );
+	add_filter('woocommerce_order_button_text', 'sc_edit_order_buttons');
 	
 	// those actions are valid only when the plugin is enabled
 	if ('yes' == $wc_sc->settings['enabled']) {
@@ -91,10 +91,10 @@ function woocommerce_sc_init() {
 	}
 	
 	// change Thank-you page title and text
-	if('error' === strtolower($wc_sc->get_request_status())) {
-		add_filter( 'the_title', function ($title, $id) {
+	if ('error' === strtolower($wc_sc->get_request_status())) {
+		add_filter('the_title', function ( $title, $id) {
 			if (
-				function_exists( 'is_order_received_page' )
+				function_exists('is_order_received_page')
 				&& is_order_received_page()
 				&& get_the_ID() === $id
 			) {
@@ -102,17 +102,24 @@ function woocommerce_sc_init() {
 			}
 
 			return $title;
-		}, 10, 2 );
+		}, 10, 2);
 		
 		add_filter(
-			'woocommerce_thankyou_order_received_text', function($str, $order) {
+			'woocommerce_thankyou_order_received_text',
+		
+			function ( $str, $order) {
 				return esc_html__('There is an error with your order. Please, check if the order was recieved or what is the status!', 'sc');
-			}, 10, 2);
-	}
-	elseif('canceled' === strtolower($wc_sc->get_request_status())) {
-		add_filter( 'the_title', function ($title, $id) {
+			},
+		
+			10,
+		
+			2
+		
+		);
+	} elseif ('canceled' === strtolower($wc_sc->get_request_status())) {
+		add_filter('the_title', function ( $title, $id) {
 			if (
-				function_exists( 'is_order_received_page' )
+				function_exists('is_order_received_page')
 				&& is_order_received_page()
 				&& get_the_ID() === $id
 			) {
@@ -120,15 +127,15 @@ function woocommerce_sc_init() {
 			}
 
 			return $title;
-		}, 10, 2 );
+		}, 10, 2);
 		
-		add_filter('woocommerce_thankyou_order_received_text', function($str, $order) {
-				return esc_html__('Please, check the order for details!', 'sc');
-			}, 10, 2 );
+		add_filter('woocommerce_thankyou_order_received_text', function ( $str, $order) {
+			return esc_html__('Please, check the order for details!', 'sc');
+		}, 10, 2);
 	}
 	
 	// replace content on Checkout second step
-	if(!empty($_GET['order_id']) && !empty($_GET['key'])) {
+	if (!empty($_GET['order_id']) && !empty($_GET['key'])) {
 		add_filter('the_content', array($wc_sc, 'checkoutSecondStep'));
 	}
 }
@@ -139,14 +146,14 @@ function woocommerce_sc_init() {
  */
 function sc_ajax_action() {
 	if (!check_ajax_referer('sc-security-nonce', 'security')) {
-		wp_send_json_error( __('Invalid security token sent.') );
+		wp_send_json_error(__('Invalid security token sent.'));
 		wp_die('Invalid security token sent');
 	}
 	
 	global $wc_sc;
 	
 	if (empty($wc_sc->test)) {
-		wp_send_json_error( __('Invalid site mode.') );
+		wp_send_json_error(__('Invalid site mode.'));
 		wp_die('Invalid site mode.');
 	}
 	
@@ -168,7 +175,7 @@ function sc_ajax_action() {
 
 	// when we use the REST - Open order and get APMs
 	if (!empty($_POST['sc_request']) && 'OpenOrder' === $_POST['sc_request']) {
-//		$wc_sc->prepare_rest_payment();
+		//		$wc_sc->prepare_rest_payment();
 		$wc_sc->sc_open_order();
 	}
 	
@@ -259,31 +266,31 @@ function sc_enqueue_wo_files( $styles) {
 		'sc_js_public',
 		'scTrans',
 		array(
-			'ajaxurl'			=> admin_url('admin-ajax.php'),
-			'security'			=> wp_create_nonce('sc-security-nonce'),
-			'webMasterId'		=> 'WooCommerce ' . WOOCOMMERCE_VERSION,
-			'sourceApplication'	=> SC_SOURCE_APPLICATION,
-			'plugin_dir_url'	=> plugin_dir_url(__FILE__),
-			'wcThSep'			=> $wcThSep,
-			'wcDecSep'			=> $wcDecSep,
+			'ajaxurl'            => admin_url('admin-ajax.php'),
+			'security'            => wp_create_nonce('sc-security-nonce'),
+			'webMasterId'        => 'WooCommerce ' . WOOCOMMERCE_VERSION,
+			'sourceApplication'    => SC_SOURCE_APPLICATION,
+			'plugin_dir_url'    => plugin_dir_url(__FILE__),
+			'wcThSep'            => $wcThSep,
+			'wcDecSep'            => $wcDecSep,
 			
-			'paymentDeclined'	=> __('Your Payment was DECLINED. Please try another payment method!', 'nuvei'),
-			'paymentError'		=> __('Error with your Payment. Please try again later!', 'nuvei'),
-			'unexpectedError'	=> __('Unexpected error, please try again later!', 'nuvei'),
-			'choosePM'			=> __('Please, choose payment method, and fill all fields!', 'nuvei'),
-			'fillFields'		=> __('Please fill all fields marked with * !', 'nuvei'),
-			'errorWithPMs'		=> __('Error when try to get the Payment Methods. Please try again later or use different Payment Option!', 'nuvei'),
-			'errorWithSToken'	=> __('Error when try to get the Session Token. Please try again later', 'nuvei'),
-			'missData'			=> __('Mandatory data is missing, please try again later!', 'nuvei'),
-			'proccessError'		=> __('Error in the proccess. Please, try again later!', 'nuvei'),
-//			'chooseUPO'			=> __('Choose from you preferred payment methods', 'nuvei'),
-//			'chooseAPM'			=> __('Choose from the payment options', 'nuvei'),
-			'goBack'			=> __('Go back', 'nuvei'),
-			'CCNameIsEmpty'		=> __('Card Holder Name is empty.', 'nuvei'),
-			'CCNumError'		=> __('Card Number is empty or wrong.', 'nuvei'),
-			'CCExpDateError'	=> __('Card Expiry Date is not correct.', 'nuvei'),
-			'CCCvcError'		=> __('Card CVC is not correct.', 'nuvei'),
-			'AskDeleteUpo'		=> __('Do you want to delete this UPO?', 'nuvei'),
+			'paymentDeclined'    => __('Your Payment was DECLINED. Please try another payment method!', 'nuvei'),
+			'paymentError'        => __('Error with your Payment. Please try again later!', 'nuvei'),
+			'unexpectedError'    => __('Unexpected error, please try again later!', 'nuvei'),
+			'choosePM'            => __('Please, choose payment method, and fill all fields!', 'nuvei'),
+			'fillFields'        => __('Please fill all fields marked with * !', 'nuvei'),
+			'errorWithPMs'        => __('Error when try to get the Payment Methods. Please try again later or use different Payment Option!', 'nuvei'),
+			'errorWithSToken'    => __('Error when try to get the Session Token. Please try again later', 'nuvei'),
+			'missData'            => __('Mandatory data is missing, please try again later!', 'nuvei'),
+			'proccessError'        => __('Error in the proccess. Please, try again later!', 'nuvei'),
+	//          'chooseUPO'         => __('Choose from you preferred payment methods', 'nuvei'),
+	//          'chooseAPM'         => __('Choose from the payment options', 'nuvei'),
+			'goBack'            => __('Go back', 'nuvei'),
+			'CCNameIsEmpty'        => __('Card Holder Name is empty.', 'nuvei'),
+			'CCNumError'        => __('Card Number is empty or wrong.', 'nuvei'),
+			'CCExpDateError'    => __('Card Expiry Date is not correct.', 'nuvei'),
+			'CCCvcError'        => __('Card CVC is not correct.', 'nuvei'),
+			'AskDeleteUpo'        => __('Do you want to delete this UPO?', 'nuvei'),
 		)
 	);
 
@@ -294,7 +301,7 @@ function sc_enqueue_wo_files( $styles) {
 }
 
 // first method we come in
-function sc_enqueue($hook) {
+function sc_enqueue( $hook) {
 	global $wc_sc;
 		
 	# DMNs catch
@@ -308,7 +315,7 @@ function sc_enqueue($hook) {
 		&& 'process-order' == $_REQUEST['wc-api']
 		&& !empty($_REQUEST['order_id'])
 	) {
-		$wc_sc->process_payment($_REQUEST['order_id']);
+		$wc_sc->process_payment($wc_sc->get_param('order_id', 'int', 0));
 	}
 	
 	# load external files
@@ -339,8 +346,8 @@ function sc_enqueue($hook) {
 			'sc_js_admin',
 			'scTrans',
 			array(
-				'ajaxurl'	=> admin_url('admin-ajax.php'),
-				'security'	=> wp_create_nonce('sc-security-nonce'),
+				'ajaxurl'    => admin_url('admin-ajax.php'),
+				'security'    => wp_create_nonce('sc-security-nonce'),
 			)
 		);
 		
@@ -413,7 +420,7 @@ function sc_add_buttons() {
 		
 		// Show VOID button
 		if ('1' != $order_has_refund && in_array($order_payment_method, array('cc_card', 'dc_card'))) {
-			echo 
+			echo
 				'<button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
 				. esc_html__('Are you sure, you want to Cancel Order #' . $order_id . '?', 'sc') . '\', '
 				. '\'void\', ' . esc_html($order_id) . ')" class="button generate-items">'
@@ -422,7 +429,7 @@ function sc_add_buttons() {
 		
 		// show SETTLE button ONLY if P3D resonse transaction_type IS Auth
 		if ('pending' == $order_status && 'Auth' == $order->get_meta(SC_RESP_TRANS_TYPE)) {
-			echo 
+			echo
 				'<button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
 				. esc_html__('Are you sure, you want to Settle Order #' . $order_id . '?', 'sc') . '\', '
 				. '\'settle\', \'' . esc_html($order_id) . '\')" class="button generate-items">'
@@ -499,29 +506,29 @@ function sc_wpml_thank_you_page( $order_received_url, $order) {
 }
 
 function sc_edit_order_buttons() {
-	$default_text			= __( 'Place order', 'woocommerce' );
-	$sc_continue_text		= __( 'Continue', 'woocommerce' ); 
-    $chosen_payment_method	= WC()->session->get('chosen_payment_method');
+	$default_text          = __('Place order', 'woocommerce');
+	$sc_continue_text      = __('Continue', 'woocommerce');
+	$chosen_payment_method = WC()->session->get('chosen_payment_method');
 	
-	// save default text into button attribute
-	?><script>
+	// save default text into button attribute ?><script>
 		(function($){
 			$('#place_order')
-				.attr('data-default-text', '<?= $default_text; ?>')
-				.attr('data-sc-text', '<?= $sc_continue_text; ?>');
+				.attr('data-default-text', '<?php echo esc_attr($default_text); ?>')
+				.attr('data-sc-text', '<?php echo esc_attr($sc_continue_text); ?>');
 		})(jQuery);
-	</script><?php
+	</script>
+	<?php
 
-    if( 'sc' == $chosen_payment_method ){
+	if ('sc' == $chosen_payment_method) {
 		return $sc_continue_text;
-    }
+	}
 
-    return $default_text;
+	return $default_text;
 }
 
-function nuvei_change_title_order_received($title, $id) {
+function nuvei_change_title_order_received( $title, $id) {
 	if (
-		function_exists( 'is_order_received_page' )
+		function_exists('is_order_received_page')
 		&& is_order_received_page()
 		&& get_the_ID() === $id
 	) {

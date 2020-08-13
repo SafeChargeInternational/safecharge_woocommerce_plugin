@@ -8,6 +8,7 @@
  */
 class SC_Versions_Resolver {
 
+
 	/**
 	 * Function process_admin_options
 	 * Add hook to save admin options

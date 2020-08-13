@@ -1,6 +1,5 @@
 {
-    "require-dev": {
-        "automattic/vipwpcs": "^2.0",
-        "dealerdirect/phpcodesniffer-composer-installer": "^0.5.0"
+    "require": {
+        "woocommerce/woocommerce-sniffs": "^0.1.0"
     }
 }

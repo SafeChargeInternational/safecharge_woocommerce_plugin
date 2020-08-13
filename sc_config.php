@@ -116,19 +116,17 @@ if (!empty($_SERVER['HTTP_HOST'])) {
 	
 	// new payment URL
 	define('SC_LIVE_PAYMENT_NEW_URL', 'https://secure.safecharge.com/ppp/api/v1/payment.do');
-	if(strpos(sanitize_text_field($_SERVER['HTTP_HOST']), 'gw-4u.com') !== false) {
+	if (strpos(sanitize_text_field($_SERVER['HTTP_HOST']), 'gw-4u.com') !== false) {
 		define('SC_TEST_PAYMENT_NEW_URL', $sc_test_endpoint_host . '/payment.do');
-	}
-	else {
+	} else {
 		define('SC_TEST_PAYMENT_NEW_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/payment.do');
 	}
 	
 	// delete user UPOs
 	define('SC_LIVE_DELETE_UPO_URL', 'https://secure.safecharge.com/ppp/api/v1/deleteUPO.do');
-	if(strpos(sanitize_text_field($_SERVER['HTTP_HOST']), 'gw-4u.com') !== false) {
+	if (strpos(sanitize_text_field($_SERVER['HTTP_HOST']), 'gw-4u.com') !== false) {
 		define('SC_TEST_DELETE_UPO_URL', $sc_test_endpoint_host . '/deleteUPO.do');
-	}
-	else {
+	} else {
 		define('SC_TEST_DELETE_UPO_URL', 'https://ppp-test.safecharge.com/ppp/api/v1/deleteUPO.do');
 	}
 }
@@ -158,5 +156,5 @@ define('SC_TRANS_ID', '_transactionId');
 define('SC_RESP_TRANS_TYPE', '_transactionType');
 define('SC_PAYMENT_METHOD', '_paymentMethod');
 define('SC_ORDER_HAS_REFUND', '_scHasRefund');
-define('SC_SOURCE_APPLICATION',	'WOOCOMMERCE_PLUGIN');
+define('SC_SOURCE_APPLICATION', 'WOOCOMMERCE_PLUGIN');
 define('SC_LOGS_DIR', dirname(__FILE__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR);
