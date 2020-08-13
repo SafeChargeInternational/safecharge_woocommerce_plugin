@@ -4,19 +4,17 @@ div.payment_method_sc {
 
 #sc_apms_list, #sc_upos_list {
 	margin: 0.5em 0 1.4em 0;
+	list-style: none;
 }
 
 .apm_container, .upo_container {
-	width: 100%;
-	cursor: pointer;
 	padding: 1rem 0 0 0;
-	background-color: #FFFFFF;
-	border-bottom: .1rem solid #9B9B9B !important;
 }
 
 .apm_title, .upo_title {
 	padding-left: 0.7em;
 	padding-bottom: 0.5em;
+	cursor: pointer;
 }
 
 .apm_title img, .upo_title img {
@@ -27,7 +25,11 @@ div.payment_method_sc {
 }
 
 .apm_title input, .upo_title input { vertical-align: middle; }
-.apm_fields, .upo_fields { display: none; }
+.apm_fields, .upo_fields {
+	display: none;
+	margin-top: 10px;
+	margin-left: 30px;
+}
 
 .apm_fields input, upo_fields input {
 	margin-bottom: 10px;
