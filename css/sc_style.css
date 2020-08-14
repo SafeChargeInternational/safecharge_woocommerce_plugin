@@ -31,10 +31,6 @@
 	margin-top: -32px;
 }
 
-#sc_second_step_form #sc_checkout_messages {
-	
-}
-
 #sc_second_step_form h3 {
 	color: #333333;
 	clear: both;
@@ -74,6 +70,7 @@
 #sc_second_step_form .apm_title span,
 #sc_second_step_form .upo_title input {
     vertical-align: middle;
+	width: auto;
 }
 
 #sc_second_step_form .apm_title img, #sc_second_step_form .upo_title img {
@@ -122,6 +119,7 @@
 	border: 1px solid gray;
 	background: none;
 	border-radius: 0;
+	padding: 0.6180469716em;
 }
 
 #sc_second_step_form a.button, #sc_second_step_form button#place_order {

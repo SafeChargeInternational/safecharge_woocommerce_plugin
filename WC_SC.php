@@ -857,7 +857,7 @@ class WC_SC extends WC_Payment_Gateway {
 				// add upo identificator
 				if ('cc_card' == $upo['paymentMethodName']) {
 					$content .= $upo['upoData']['ccCardNumber'];
-				} else {
+				} elseif (!empty($upo['upoName'])) {
 					$content .= $upo['upoName'];
 				}
 				
