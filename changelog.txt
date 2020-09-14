@@ -1,5 +1,8 @@
 *** WooCommerce Extension Template Changelog ***
 
+version 3.3.2
+* Fix for the Prod endpoint.
+
 2020-08-14 - version 3.3.1
 * Small style fixes;
 * Tested compatibility with WP 5.5 and WC 4.3.2
