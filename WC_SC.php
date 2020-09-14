@@ -2322,7 +2322,7 @@ class WC_SC extends WC_Payment_Gateway {
 			return 'https://ppp-test.safecharge.com/ppp/api/v1/';
 		}
 		
-		return 'https://ppp-test.safecharge.com/ppp/api/v1/';
+		return 'https://secure.safecharge.com/ppp/api/v1/';
 	}
 }
 
