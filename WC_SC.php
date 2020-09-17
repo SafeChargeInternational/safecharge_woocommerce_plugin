@@ -1732,6 +1732,9 @@ class WC_SC extends WC_Payment_Gateway {
 				. $oo_params['amount'] . $oo_params['currency'] . $time . $this->secret
 		);
 		
+		SC_CLASS::create_log($this->getEndPointBase(), 'getEndPointBase');
+		SC_CLASS::create_log($this->test, '$this->test');
+		
 		$resp = SC_CLASS::call_rest_api(
 			$this->getEndPointBase() . 'openOrder.do',
 			$oo_params
@@ -2098,9 +2101,9 @@ class WC_SC extends WC_Payment_Gateway {
 	 * Get request parameter by key
 	 *
 	 * @param string $key - request key
-	 * @param mixed $default - returnd value if fail
 	 * @param string $type - possible vaues: string, float, int, array, mail, other
-	 * @param string $array - array to search into
+	 * @param mixed $default - returnd value if fail
+	 * @param array $parent - optional list with parameters
 	 *
 	 * @return mixed
 	 */
@@ -2143,6 +2146,58 @@ class WC_SC extends WC_Payment_Gateway {
 				return !empty($arr[$key])
 					? filter_var($arr[$key], FILTER_DEFAULT) : $default;
 		}
+	}
+	
+	public function sc_reorder() {
+		global $woocommerce;
+		
+		$products_ids = json_decode($this->get_param('product_ids'), true);
+		
+		if (empty($products_ids) || !is_array($products_ids)) {
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => __('Problem with the Products IDs.', 'nuvei')
+			));
+			wp_die();
+		}
+		
+		$prod_factory  = new WC_Product_Factory();
+		$msg           = '';
+		$is_prod_added = false;
+		
+		foreach ($products_ids as $id) {
+			$product = $prod_factory->get_product($id);
+		
+			if ('in-stock' != $product->get_availability()['class'] ) {
+				$msg = __('Some of the Products are not availavle, and are not added in the new Order.', 'nuvei');
+				continue;
+			}
+
+			$is_prod_added = true;
+			$woocommerce->cart->add_to_cart($id);
+		}
+		
+		if (!$is_prod_added) {
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => __('There are no added Products to the Cart.', 'nuvei'),
+			));
+			wp_die();
+		}
+		
+		$cart_url = wc_get_cart_url();
+		
+		if (!empty($msg)) {
+			$cart_url .= strpos($cart_url, '?') !== false ? '&sc_msg=' : '?sc_msg=';
+			$cart_url .= urlencode($msg);
+		}
+		
+		wp_send_json(array(
+			'status'		=> 1,
+			'msg'			=> $msg,
+			'redirect_url'	=> wc_get_cart_url(),
+		));
+		wp_die();
 	}
 	
 	private function sc_get_order_data( $TransactionID) {
@@ -2322,7 +2377,7 @@ class WC_SC extends WC_Payment_Gateway {
 			return 'https://ppp-test.safecharge.com/ppp/api/v1/';
 		}
 		
-		return 'https://ppp-test.safecharge.com/ppp/api/v1/';
+		return 'https://secure.safecharge.com/ppp/api/v1/';
 	}
 }
 

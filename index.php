@@ -3,7 +3,7 @@
  * Plugin Name: SafeCharge Payments
  * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
  * Description: SafeCharge gateway for WooCommerce
- * Version: 3.2.0
+ * Version: 3.4
  * Author: SafeCharge
  * Author URI: https://safecharge.com
  * Require at least: 4.7
@@ -48,29 +48,6 @@ function woocommerce_sc_init() {
 	add_action('wp_ajax_sc-ajax-action', 'sc_ajax_action');
 	add_action('wp_ajax_nopriv_sc-ajax-action', 'sc_ajax_action');
 	
-	// if validation success get order details
-	//	add_action('woocommerce_after_checkout_validation', function($data, $errors) {
-	//		SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
-	//		SC_CLASS::create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
-	//
-	//		if( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
-	//			$_SESSION['sc_order_details'] = $data;
-	//
-	//			if (!isset($_POST['sc_payment_method']) || empty($_POST['sc_payment_method'])) {
-	//				SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
-	//
-	//				wp_send_json(array(
-	//					'result' => 'failure',
-	//					'refresh' => false,
-	//					'reload' => false,
-	//					'messages' => '<ul id="sc_fake_error" class="woocommerce-error" style="display: none;" role="alert"><li><script>jQuery(function() { jQuery(window).unbind("scroll"); onScFakeError(); })</script></li></ul>'
-	//				));
-	//
-	//				wp_die();
-	//			}
-	//		}
-	//	}, 9999, 2);
-	
 	// use this to change button text, because of the cache the jQuery not always works
 	add_filter('woocommerce_order_button_text', 'sc_edit_order_buttons');
 	
@@ -109,13 +86,7 @@ function woocommerce_sc_init() {
 		
 			function ( $str, $order) {
 				return esc_html__('There is an error with your order. Please, check if the order was recieved or what is the status!', 'sc');
-			},
-		
-			10,
-		
-			2
-		
-		);
+			}, 10, 2);
 	} elseif ('canceled' === strtolower($wc_sc->get_request_status())) {
 		add_filter('the_title', function ( $title, $id) {
 			if (
@@ -137,6 +108,12 @@ function woocommerce_sc_init() {
 	// replace content on Checkout second step
 	if (!empty($_GET['order_id']) && !empty($_GET['key'])) {
 		add_filter('the_content', array($wc_sc, 'checkoutSecondStep'));
+	}
+	
+	add_filter('woocommerce_pay_order_after_submit', 'nuvei_user_orders', 10, 2);
+	
+	if (!empty($_GET['sc_msg'])) {
+		add_filter('woocommerce_before_cart', 'nuvei_show_message_on_cart', 10, 2);
 	}
 }
 
@@ -175,13 +152,17 @@ function sc_ajax_action() {
 
 	// when we use the REST - Open order and get APMs
 	if (!empty($_POST['sc_request']) && 'OpenOrder' === $_POST['sc_request']) {
-		//		$wc_sc->prepare_rest_payment();
 		$wc_sc->sc_open_order();
 	}
 	
 	// delete UPO
 	if (!empty($_POST['scUpoId']) && is_numeric($_POST['scUpoId'])) {
 		$wc_sc->delete_user_upo();
+	}
+	
+	// when Reorder
+	if (!empty($_POST['sc_request']) && 'scReorder' === $_POST['sc_request']) {
+		$wc_sc->sc_reorder();
 	}
 
 	wp_die();
@@ -237,6 +218,15 @@ function sc_enqueue_wo_files( $styles) {
 		array('jquery'),
 		'1'
 	);
+	
+	// reorder js
+	wp_register_script(
+		'sc_js_reorder',
+		$plugin_url . '/' . $plugin_dir . '/js/sc_reorder.js',
+		array('jquery'),
+		'1'
+	);
+	wp_enqueue_script('sc_js_reorder');
 	
 	// get selected WC price separators
 	$wcThSep  = '';
@@ -536,4 +526,41 @@ function nuvei_change_title_order_received( $title, $id) {
 	}
 	
 	return $title;
+}
+
+function nuvei_user_orders() {
+	global $wp, $wc_sc, $woocommerce;
+	
+	$url_key              = $wc_sc->get_param('key');
+	$order                = wc_get_order($wp->query_vars['order-pay']);
+	$order_status         = strtolower($order->get_status());
+	$order_payment_method = $order->get_meta('_paymentMethod');
+	$order_key            = $order->get_order_key();
+	
+	if ('sc' != $order->get_payment_method()) {
+		return;
+	}
+	
+	if ($wc_sc->get_param('key') != $order_key) {
+		return;
+	}
+	
+	$prods_ids = array();
+	
+	foreach ($order->get_items() as $prod_id => $data) {
+		$prods_ids[] = $data->get_product_id();
+	}
+	
+	echo '<script>'
+		. 'var scProductsIdsToReorder = ' . wp_kses_post(json_encode($prods_ids)) . ';'
+		. 'scOnPayOrderPage();'
+	. '</script>';
+}
+
+// on reorder, show warning message to the cart if need to
+function nuvei_show_message_on_cart( $data) {
+	global $wc_sc;
+	
+	echo '<script>jQuery("#content .woocommerce:first").append("<div class=\'woocommerce-warning\'>'
+		. wp_kses_post($wc_sc->get_param('sc_msg')) . '</div>");</script>';
 }
