@@ -27,10 +27,10 @@ class SC_CLASS {
 			'length' => 255,
 			'flag'    => FILTER_DEFAULT
 		),
-		'ipAddress' => array(
-			'length' => 15,
-			'flag'    => FILTER_VALIDATE_IP
-		),
+		//'ipAddress' => array(
+			//'length' => 15,
+			//'flag'    => FILTER_VALIDATE_IP
+		//),
 		// deviceDetails END
 		
 		// userDetails, shippingAddress, billingAddress
@@ -351,6 +351,16 @@ class SC_CLASS {
 		}
 		if (!empty($ip_address)) {
 			$device_details['ipAddress'] = (string) $ip_address;
+		}
+		else {
+			self::create_log(
+				array(
+					'REMOTE_ADDR'			=> empty($_SERVER['REMOTE_ADDR']) ? '' : $_SERVER['REMOTE_ADDR'],
+					'HTTP_X_FORWARDED_FOR'	=> empty($_SERVER['HTTP_X_FORWARDED_FOR']) ? '' : $_SERVER['HTTP_X_FORWARDED_FOR'],
+					'HTTP_CLIENT_IP'		=> empty($_SERVER['HTTP_CLIENT_IP']) ? '' : $_SERVER['HTTP_CLIENT_IP'],
+				),
+				'Problem with IP holders:'
+			);
 		}
 			
 		return $device_details;
