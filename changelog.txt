@@ -1,5 +1,8 @@
 *** WooCommerce Extension Template Changelog ***
 
+version 3.3.3
+* Skip additional check for ipAddress parameter. It is checked when we get it.
+
 version 3.3.2
 * Fix for the Prod endpoint.
 
