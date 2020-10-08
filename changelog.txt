@@ -1,7 +1,23 @@
 *** WooCommerce Extension Template Changelog ***
 
+version 3.5
+* Code refactoring.
+* The Test Mode option was replaced with Side Mode dropdown.
+* In required dropdowns was add "Select an option..." option.
+* Mandatory settings are marked with *
+* Skip additional check for ipAddress parameter. It is checked when we get it.
+* Compatible with "WooCommerce Multi-Step Checkout" plugin
+* Removed Manual Refund button.
+* No need to create manual refund record after a Refund from CPanel.
+* Now refunds records in WC are saved after the Refund DMNs. The info for the Refunds is stored as Order meta data.
+* Update plugins settings hook was moved to WC_SC Class.
+* SC_Versions_Resolver Class will ne removed in next version
+
 version 3.4
 * Now user can reorder Failed Orders form My account > Orders
+
+version 3.3.3
+* Skip additional check for ipAddress parameter. It is checked when we get it.
 
 version 3.3.2
 * Fix for the Prod endpoint.

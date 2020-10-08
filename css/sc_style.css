@@ -138,7 +138,7 @@
 	padding: 0.6180469716em;
 }
 
-#sc_second_step_form a.button, #sc_second_step_form button#place_order {
+#sc_second_step_form a.button, #sc_second_step_form button {
 	width: auto;
 	line-height: 0.6;
 	font-size: 15px;
@@ -153,10 +153,21 @@
 	color: #333333;
 }
 
-#sc_second_step_form button#place_order {
+#sc_second_step_form button {
+	background-color: #333333;
+	border-color: #333333;
+	color: #ffffff;
+	width: 100%;
+	font: inherit;
+    font-weight: inherit;
+	font-weight: 600;
+	font-size: 1.41575em;
+}
+
+#sc_second_step_form button:hover {
 	background-color: #1a1a1a;
-	border-color: #1a1a1a;
-	color: white;
+	border-color: #2c2d33;
+	color: #ffffff;
 }
 
 /* for the 3DS modal */

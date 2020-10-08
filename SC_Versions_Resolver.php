@@ -7,27 +7,14 @@
  * 2018-08
  */
 class SC_Versions_Resolver {
-
-
-	/**
-	 * Function process_admin_options
-	 * Add hook to save admin options
-	 *
-	 * @param WC_SC $_this - object of type WC_SC
-	 */
-	public static function process_admin_options( $_this) {
-		add_action(
-			'woocommerce_update_options_payment_gateways_' . $_this->id,
-			array( &$_this, 'process_admin_options' )
-		);
-	}
-	
 	/**
 	 * Function get_order_data
 	 * Extract the data from the order
 	 *
 	 * @param WC_Order $order
 	 * @param string $key - a key name to extract
+	 * 
+	 * @deprecated
 	 */
 	public static function get_order_data( $order, $key = 'completed_date') {
 		switch ($key) {
@@ -124,6 +111,8 @@ class SC_Versions_Resolver {
 	 *
 	 * @param WC_Customer $client
 	 * @return string
+	 * 
+	 * @deprecated
 	 */
 	public static function get_client_country( $client) {
 		if (version_compare(WOOCOMMERCE_VERSION, '3.0.0', '>')) {
@@ -133,6 +122,9 @@ class SC_Versions_Resolver {
 		}
 	}
 	
+	/**
+	 * @deprecated
+	 */
 	public static function get_shipping( $order) {
 		if (version_compare(WOOCOMMERCE_VERSION, '3.0.0', '>')) {
 			return $order->get_shipping_total();

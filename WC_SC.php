@@ -37,51 +37,48 @@ class WC_SC extends WC_Payment_Gateway {
 
 		$this->init_settings();
 		
-		$this->title = !empty($this->settings['title'])
-			? $this->settings['title'] : '';
+		// required for the Store
+		$this->title		= $this->sc_get_setting('title', '');
+		$this->description	= $this->sc_get_setting('description', '');
 		
-		$this->description = !empty($this->settings['description'])
-			? $this->settings['description'] : '';
+		$this->test			= $this->sc_get_setting('test', '');
+		$this->rewrite_dmn	= $this->sc_get_setting('rewrite_dmn', 'no');
 		
-		$this->merchantId = !empty($this->settings['merchantId'])
-			? $this->settings['merchantId'] : '';
+		// replace usage of this with method sc_get_setting()
+//		$this->merchantId = !empty($this->settings['merchantId'])
+//			? $this->settings['merchantId'] : '';
 		
-		$this->merchantSiteId = !empty($this->settings['merchantSiteId'])
-			? $this->settings['merchantSiteId'] : '';
+//		$this->merchantSiteId = !empty($this->settings['merchantSiteId'])
+//			? $this->settings['merchantSiteId'] : '';
 		
-		$this->secret = !empty($this->settings['secret'])
-			? $this->settings['secret'] : '';
+//		$this->secret = !empty($this->settings['secret'])
+//			? $this->settings['secret'] : '';
 		
-		$this->test = isset($this->settings['test'])
-			? $this->settings['test'] : 'yes';
+//		$this->use_http = isset($this->settings['use_http'])
+//			? $this->settings['use_http'] : 'yes';
 		
-		$this->use_http = isset($this->settings['use_http'])
-			? $this->settings['use_http'] : 'yes';
+//		$this->save_logs = isset($this->settings['save_logs'])
+//			? $this->settings['save_logs'] : 'yes';
 		
-		$this->save_logs = isset($this->settings['save_logs'])
-			? $this->settings['save_logs'] : 'yes';
+//		$this->hash_type = isset($this->settings['hash_type'])
+//			? $this->settings['hash_type'] : 'sha256';
 		
-		$this->hash_type = isset($this->settings['hash_type'])
-			? $this->settings['hash_type'] : 'sha256';
+//		$this->payment_action = isset($this->settings['payment_action'])
+//			? $this->settings['payment_action'] : 'Auth';
 		
-		$this->payment_action = isset($this->settings['payment_action'])
-			? $this->settings['payment_action'] : 'Auth';
+//		$this->use_upos = isset($this->settings['use_upos'])
+//			? $this->settings['use_upos'] : 1;
 		
-		$this->use_upos = isset($this->settings['use_upos'])
-			? $this->settings['use_upos'] : 1;
-		
-		$this->rewrite_dmn = !empty($this->settings['rewrite_dmn'])
-			? $this->settings['rewrite_dmn'] : 'no';
-		
-		$this->merchant_style = !empty($this->settings['merchant_style'])
-			? $this->settings['merchant_style'] : '';
+//		$this->merchant_style = !empty($this->settings['merchant_style'])
+//			? $this->settings['merchant_style'] : '';
+		// replace usage of this with method sc_get_setting() END
 		
 		$this->webMasterId .= WOOCOMMERCE_VERSION;
 		
-		$_SESSION['SC_Variables']['sc_create_logs'] = $this->save_logs;
+		$_SESSION['SC_Variables']['sc_create_logs'] = $this->sc_get_setting('save_logs');
 		
 		$this->use_wpml_thanks_page =
-			@$this->settings['use_wpml_thanks_page'] ? $this->settings['use_wpml_thanks_page'] : 'no';
+			!empty($this->settings['use_wpml_thanks_page']) ? $this->settings['use_wpml_thanks_page'] : 'no';
 		
 		$this->supports[] = 'refunds'; // to enable auto refund support
 		
@@ -90,11 +87,11 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->msg['message'] = '';
 		$this->msg['class']   = '';
 		
-		SC_Versions_Resolver::process_admin_options($this);
+		add_action(
+			'woocommerce_update_options_payment_gateways_' . $this->id,
+			array( &$this, 'process_admin_options' )
+		);
 		
-		/* Refun hook, when create refund from WC, we do not want this to be activeted from DMN,
-		we check in the method is this order made via SC paygate */
-		add_action('woocommerce_create_refund', array($this, 'create_refund_in_wc'));
 		// This crash Refund action
 		add_action('woocommerce_order_after_calculate_totals', array($this, 'sc_return_sc_settle_btn'));
 		add_action('woocommerce_order_status_refunded', array($this, 'sc_restock_on_refunded_status'));
@@ -124,34 +121,51 @@ class WC_SC extends WC_Payment_Gateway {
 				'description' => __('This controls the description which the user sees during checkout.', 'sc'),
 				'default' => 'Place order to get to our secured payment page to select your payment option'
 			),
+			'test' => array(
+				'title' => __('Site Mode', 'sc') . ' *',
+				'type' => 'select',
+				'required' => 'required',
+				'options' => array(
+					'' => __('Select an option...'),
+					'yes' => 'Sandbox',
+					'no' => 'Production',
+				),
+			),
 			'merchantId' => array(
-				'title' => __('Merchant ID', 'sc'),
+				'title' => __('Merchant ID', 'sc') . ' *',
 				'type' => 'text',
+				'required' => true,
 				'description' => __('Merchant ID is provided by ' . SC_GATEWAY_TITLE . '.')
 			),
 			'merchantSiteId' => array(
-				'title' => __('Merchant Site ID', 'sc'),
+				'title' => __('Merchant Site ID', 'sc') . ' *',
 				'type' => 'text',
+				'required' => true,
 				'description' => __('Merchant Site ID is provided by ' . SC_GATEWAY_TITLE . '.')
 			),
 			'secret' => array(
-				'title' => __('Secret key', 'sc'),
+				'title' => __('Secret key', 'sc') . ' *',
 				'type' => 'text',
+				'required' => true,
 				'description' =>  __('Secret key is provided by ' . SC_GATEWAY_TITLE, 'sc'),
 			),
 			'hash_type' => array(
-				'title' => __('Hash type', 'sc'),
+				'title' => __('Hash type', 'sc') . ' *',
 				'type' => 'select',
+				'required' => true,
 				'description' => __('Choose Hash type provided by ' . SC_GATEWAY_TITLE, 'sc'),
 				'options' => array(
+					'' => __('Select an option...'),
 					'sha256' => 'sha256',
 					'md5' => 'md5',
 				)
 			),
 			'payment_action' => array(
-				'title' => __('Payment action', 'sc'),
+				'title' => __('Payment action', 'sc') . ' *',
 				'type' => 'select',
+				'required' => true,
 				'options' => array(
+					'' => __('Select an option...'),
 					'Sale' => 'Authorize and Capture',
 					'Auth' => 'Authorize',
 				)
@@ -160,8 +174,8 @@ class WC_SC extends WC_Payment_Gateway {
 				'title' => __('Allow client to use UPOs', 'sc'),
 				'type' => 'select',
 				'options' => array(
-					1 => 'Yes',
 					0 => 'No',
+					1 => 'Yes',
 				)
 			),
 			'merchant_style' => array(
@@ -176,12 +190,6 @@ class WC_SC extends WC_Payment_Gateway {
 				'default' => '',
 				'description' => $this->set_notify_url(),
 				'type' => 'hidden'
-			),
-			'test' => array(
-				'title' => __('Test mode', 'sc'),
-				'type' => 'checkbox',
-				'label' => __('Enable test mode', 'sc'),
-				'default' => 'no'
 			),
 			'use_http' => array(
 				'title' => __('Use HTTP', 'sc'),
@@ -321,26 +329,6 @@ class WC_SC extends WC_Payment_Gateway {
 			);
 		}
 		
-		# Redirect to second step
-		if (
-			$this->get_param('payment_method') == 'sc'
-			&& empty($this->get_param('sc_payment_method'))
-		) {
-			return array(
-				'result'    => 'success',
-				'redirect'  => add_query_arg(
-					array(
-						'order_id'    => $order_id,
-						'key'        => $order->get_order_key()
-					),
-					wc_get_checkout_url()
-				)
-			);
-		}
-		
-		# Process order
-		//		$order_key = $order->get_order_key();
-		
 		$return_success_url = add_query_arg(
 			array('key' => $order->get_order_key()),
 			$this->get_return_url($order)
@@ -357,9 +345,6 @@ class WC_SC extends WC_Payment_Gateway {
 		if ('sc' !== $order->get_payment_method()) {
 			SC_CLASS::create_log('Process payment Error - Order payment method is not "sc".');
 			
-			wp_redirect($return_error_url);
-			exit;
-			
 			return array(
 				'result'    => 'success',
 				'redirect'  => array(
@@ -373,9 +358,6 @@ class WC_SC extends WC_Payment_Gateway {
 		// when we have Approved from the SDK we complete the order here
 		$sc_transaction_id = $this->get_param('sc_transaction_id', 'int');
 		
-		// reset it
-		//		$_SESSION['sc_order_details'] = array();
-		
 		# in case of webSDK payment (cc_card)
 		if (!empty($sc_transaction_id)) {
 			SC_CLASS::create_log('Process webSDK Order, transaction ID #' . $sc_transaction_id);
@@ -383,13 +365,10 @@ class WC_SC extends WC_Payment_Gateway {
 			$order->update_meta_data(SC_TRANS_ID, $sc_transaction_id);
 			$order->save();
 			
-			wp_redirect($return_success_url);
-			exit;
-			
-			//			return array(
-			//              'result'    => 'success',
-			//              'redirect'  => $return_success_url
-			//          );
+			return array(
+				'result'    => 'success',
+				'redirect'  => $return_success_url
+			);
 		}
 		# in case of webSDK payment (cc_card) END
 		
@@ -399,8 +378,8 @@ class WC_SC extends WC_Payment_Gateway {
 		$time = gmdate('Ymdhis');
 		
 		$params = array(
-			'merchantId'        => $this->merchantId,
-			'merchantSiteId'    => $this->merchantSiteId,
+			'merchantId'        => $this->sc_get_setting('merchantId'),
+			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
 			'userTokenId'       => $order->get_billing_email(),
 			'clientUniqueId'    => $order_id,
 			'clientRequestId'   => $time . '_' . uniqid(),
@@ -461,9 +440,9 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		$params['checksum'] = hash(
-			$this->hash_type,
+			$this->sc_get_setting('hash_type'),
 			$params['merchantId'] . $params['merchantSiteId'] . $params['clientRequestId']
-				. $params['amount'] . $params['currency'] . $time . $this->secret
+				. $params['amount'] . $params['currency'] . $time . $this->sc_get_setting('secret')
 		);
 		
 		$sc_payment_method = $this->get_param('sc_payment_method');
@@ -489,30 +468,22 @@ class WC_SC extends WC_Payment_Gateway {
 			$order->add_order_note($msg);
 			$order->save();
 			
-			wp_redirect($return_error_url);
-			exit;
-			
-			//			return array(
-			//              'result'    => 'success',
-			//              'redirect'  => $return_error_url
-			//          );
+			return array(
+				'result'    => 'success',
+				'redirect'  => $return_error_url
+			);
 		}
 
-		//		if(empty($resp['transactionStatus'])) {
 		if (empty($this->get_request_status($resp))) {
-			//			$msg = __('There is no Transaction Status for the Order.', 'sc');
 			$msg = __('There is no Status for the Order.', 'sc');
 			
 			$order->add_order_note($msg);
 			$order->save();
 			
-			wp_redirect($return_error_url);
-			exit;
-			
-			//			return array(
-			//              'result'    => 'success',
-			//              'redirect'  => $return_error_url
-			//          );
+			return array(
+				'result'    => 'success',
+				'redirect'  => $return_error_url
+			);
 		}
 		
 		// If we get Transaction ID save it as meta-data
@@ -528,13 +499,10 @@ class WC_SC extends WC_Payment_Gateway {
 			$order->set_status('cancelled');
 			$order->save();
 			
-			wp_redirect($return_error_url);
-			exit;
-			
-			//			return array(
-			//              'result'    => 'success',
-			//              'redirect'  => $return_error_url
-			//          );
+			return array(
+				'result'    => 'success',
+				'redirect'  => $return_error_url
+			);
 		}
 		
 		if (
@@ -558,13 +526,10 @@ class WC_SC extends WC_Payment_Gateway {
 			$order->add_order_note($msg);
 			$order->save();
 			
-			wp_redirect($return_error_url);
-			exit;
-			
-			//			return array(
-			//              'result'    => 'success',
-			//              'redirect'  => $return_error_url
-			//          );
+			return array(
+				'result'    => 'success',
+				'redirect'  => $return_error_url
+			);
 		}
 		
 		// catch Error code or reason
@@ -577,29 +542,23 @@ class WC_SC extends WC_Payment_Gateway {
 			$order->add_order_note($msg);
 			$order->save();
 
-			wp_redirect($return_error_url);
-			exit;
-			
-			//			return array(
-			//              'result'    => 'success',
-			//              'redirect'  => $return_error_url
-			//          );
+			return array(
+				'result'    => 'success',
+				'redirect'  => $return_error_url
+			);
 		}
 		
 		// Success status
 		if (!empty($resp['redirectURL']) || !empty($resp['paymentOption']['redirectUrl'])) {
 			SC_CLASS::create_log('we have redirectURL');
 			
-			wp_redirect(!empty($resp['redirectURL']) ? $resp['redirectURL'] : $resp['paymentOption']['redirectUrl']);
-			exit;
-			
-			//			return array(
-			//              'result'    => 'success',
-			//              'redirect'    => add_query_arg(
-			//                  array(),
-			//                  !empty($resp['redirectURL']) ? $resp['redirectURL'] : $resp['paymentOption']['redirectUrl']
-			//              )
-			//          );
+			return array(
+				'result'    => 'success',
+				'redirect'    => add_query_arg(
+					array(),
+					!empty($resp['redirectURL']) ? $resp['redirectURL'] : $resp['paymentOption']['redirectUrl']
+				)
+			);
 		}
 
 		if (isset($resp['transactionId']) && '' !== $resp['transactionId']) {
@@ -615,142 +574,54 @@ class WC_SC extends WC_Payment_Gateway {
 
 		$order->save();
 		
-		wp_redirect($return_success_url);
-		exit;
-		
-		//		return array(
-		//          'result'    => 'success',
-		//          'redirect'  => $return_success_url
-		//      );
+		return array(
+			'result'    => 'success',
+			'redirect'  => $return_success_url
+		);
 	}
 	
-	public function checkoutSecondStep( $content) {
-		if (!is_checkout()) {
-			return $content;
-		}
+	public function sc_insert_merchant_style($data) {
+		ob_start();
+		require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'templates/sc_second_step_form.php';
+		$html = ob_get_contents();
+		ob_clean();
 		
-		$order_id = $this->get_param('order_id', 'int', 0);
-		$key      = $this->get_param('key');
+		echo $html;
+	}
+	
+	public function sc_get_payment_methods( $content) {
+		global $woocommerce;
 		
-		if (0 == $order_id) {
-			SC_CLASS::create_log('checkoutSecondStep Error - order id is 0');
-			
-			return array(
-				'result'    => 'success',
-				'redirect'  => array(
-					'Status'    => 'error',
-					'key'        => $order->get_order_key()
-				),
-				wc_get_checkout_url() . 'order-received/'
-			);
-		}
+		$resp_data	= array();
+		$content	= '';
 		
-		if (empty($key)) {
-			SC_CLASS::create_log('checkoutSecondStep Error - order key is empty.');
-			
-			return array(
-				'result'    => 'success',
-				'redirect'  => array(
-					'Status'    => 'error',
-				),
-				wc_get_checkout_url() . 'order-received/' . $order_id . '/'
-			);
-		}
-		
-		$order = wc_get_order($order_id);
-		
-		if (!$order) {
-			SC_CLASS::create_log('checkoutSecondStep Error - Order is false for order id ' . $order_id);
-			
-			return array(
-				'result'    => 'success',
-				'redirect'  => array(
-					'Status'    => 'error',
-					'key'        => $key
-				),
-				wc_get_checkout_url() . 'order-received/' . $order_id . '/'
-			);
-		}
-		
-		if ('sc' !== $order->get_payment_method()) {
-			SC_CLASS::create_log('checkoutSecondStep Error - Order payment method is not "sc".');
-			
-			return array(
-				'result'    => 'success',
-				'redirect'  => array(
-					'Status'    => 'error',
-					'key'        => $key
-				),
-				wc_get_checkout_url() . 'order-received/' . $order_id . '/'
-			);
-		}
-		
-		$order_key = $order->get_order_key();
-		
-		if ($order_key !== $key) {
-			SC_CLASS::create_log(
-				array(
-					'order key'        => $order_key,
-					'request key'    => $key
-				),
-				'checkoutSecondStep Error - Order key is different than request key'
-			);
-			
-			return array(
-				'result'    => 'success',
-				'redirect'  => array(
-					'Status'    => 'error',
-					'key'        => $key
-				),
-				wc_get_checkout_url() . 'order-received/' . $order_id . '/'
-			);
-		}
-		
-		$return_success_url = add_query_arg(
-			array('key' => $order->get_order_key()),
-			$this->get_return_url($order)
-		);
-		
-		$return_error_url = add_query_arg(
-			array(
-				'Status'    => 'error',
-				'key'        => $order->get_order_key()
-			),
-			$this->get_return_url($order)
-		);
-		
-		$content = '';
-		
-		if (!empty(trim($this->merchant_style))) {
-			$content .= '<style>' . $this->merchant_style . '</style>';
-		}
-		
-		$content .=
-			'<form id="sc_second_step_form" method="post" action="' . get_site_url() . '/?wc-api=process-order&order_id=' . $order_id . '" enctype="multipart/form-data" novalidate="novalidate">'
-				. '<div id="sc_loader_background">'
-					. '<img src="' . $this->plugin_url . 'icons/loader.gif" alt="loading..." />'
-				. '</div>'
-				. '<div id="sc_checkout_messages"></div>';
+		SC_CLASS::create_log($_POST, '$_POST');
 		
 		# OpenOrder
-		$oo_data = $this->sc_open_order($order);
+		$oo_data = $this->sc_create_open_order($order);
 		
 		if (!$oo_data) {
-			return array(
-				'result'    => 'success',
-				'redirect'    => $return_error_url
-			);
+			wp_send_json(array(
+				'result'	=> 'failure',
+				'refresh'	=> false,
+				'reload'	=> false,
+				'messages'	=> '<ul id="sc_fake_error" class="woocommerce-error" role="alert"><li>'. __('Unexpected error, please try again later!', 'nuvei') .'</li></ul>'
+			));
+
+			wp_die();
 		}
 		
 		$oo_params = $oo_data['oo_params'];
 		$resp      = $oo_data['resp'];
 		$time      = $oo_data['time'];
+		
+		$resp_data['sessonToken'] = $resp['sessionToken'];
 		# OpenOrder END
 		
 		# get APMs
 		$apms_params = array(
-			'merchantId'        => $this->merchantId,
-			'merchantSiteId'    => $this->merchantSiteId,
+			'merchantId'        => $this->sc_get_setting('merchantId'),
+			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
 			'clientRequestId'   => $time . '_' . uniqid(),
 			'timeStamp'         => $time,
 			'sessionToken'      => $resp['sessionToken'],
@@ -760,9 +631,9 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		$apms_params['checksum'] = hash(
-			$this->hash_type,
-			$this->merchantId . $this->merchantSiteId . $apms_params['clientRequestId']
-				. $time . $this->secret
+			$this->sc_get_setting('hash_type'),
+			$this->sc_get_setting('merchantId') . $this->sc_get_setting('merchantSiteId') . $apms_params['clientRequestId']
+				. $time . $this->sc_get_setting('secret')
 		);
 
 		$apms_data = SC_CLASS::call_rest_api(
@@ -771,11 +642,17 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		if (!is_array($apms_data) || empty($apms_data['paymentMethods'])) {
-			return array(
-				'result'    => 'success',
-				'redirect'    => $return_error_url
-			);
+			wp_send_json(array(
+				'result'	=> 'failure',
+				'refresh'	=> false,
+				'reload'	=> false,
+				'messages'	=> '<ul id="sc_fake_error" class="woocommerce-error" role="alert"><li>'. __('Can not obtain Payment Methods, please try again later!', 'nuvei') .'</li></ul>'
+			));
+
+			wp_die();
 		}
+		
+		$resp_data['apms'] = $apms_data['paymentMethods'];
 		# get APMs END
 		
 		# get UPOs
@@ -785,7 +662,7 @@ class WC_SC extends WC_Payment_Gateway {
 
 		// get them only for registred users when there are APMs
 		if (
-			1 == $this->use_upos
+			1 == $this->sc_get_setting('use_upos')
 			&& is_user_logged_in()
 			&& !empty($apms_data['paymentMethods'])
 		) {
@@ -797,7 +674,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'timeStamp'            => $time,
 			);
 
-			$upo_params['checksum'] = hash($this->hash_type, implode('', $upo_params) . $this->secret);
+			$upo_params['checksum'] = hash($this->sc_get_setting('hash_type'), implode('', $upo_params) . $this->sc_get_setting('secret'));
 
 			$upo_res = SC_CLASS::call_rest_api(
 				$this->getEndPointBase() . 'getUserUPOs.do',
@@ -829,175 +706,23 @@ class WC_SC extends WC_Payment_Gateway {
 				}
 			}
 		}
+		
+		$resp_data['upos'] = $upos;
 		# get UPOs END
 		
-		# prepare the content
-		// add UPOs
-		if (!empty($upos)) {
-			$content .=
-				'<h3>' . __('Choose from you preferred payment methods', 'nuvei') . ':</h3>'
-				. '<ul id="sc_upos_list">';
+		$resp_data['orderAmount']	= WC()->cart->total;
+		$resp_data['userTokenId']	= $this->get_param('billing_email', 'mail');
+		$resp_data['pluginUrl']		= $this->plugin_url;
+		$resp_data['siteUrl']		= get_site_url();
 			
-			foreach ($upos as $upo) {
-				if ('cc_card' == $upo['paymentMethodName']) {
-					$img = '<img src="' . $this->plugin_url . 'icons/visa_mc_maestro.svg" alt="'
-						. $upo['name'] . '" style="height: 36px;" />';
-				} else {
-					$img = '<img src="' . str_replace('/svg/', '/svg/solid-white/', $upo['logoURL'])
-						. '" alt="' . $upo['name'] . '" />';
-				}
-				
-				$content .=
-					'<li class="upo_container" id="upo_cont_' . $upo['userPaymentOptionId'] . '">'
-						. '<label class="apm_title">'
-							. '<input id="sc_payment_method_' . $upo['userPaymentOptionId'] . '" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="' . $upo['userPaymentOptionId'] . '" data-upo-name="' . $upo['paymentMethodName'] . '" />&nbsp;'
-							. $img . '&nbsp;&nbsp;'
-							. '<span>';
-				
-				// add upo identificator
-				if ('cc_card' == $upo['paymentMethodName']) {
-					$content .= $upo['upoData']['ccCardNumber'];
-				} elseif (!empty($upo['upoName'])) {
-					$content .= $upo['upoName'];
-				}
-				
-				$content .=
-							'</span>&nbsp;&nbsp;';
-				
-				// add remove icon
-				$content .=
-							'<span id="#sc_remove_upo_' . $upo['userPaymentOptionId'] . '" class="dashicons dashicons-trash" data-upo-id="' . $upo['userPaymentOptionId'] . '"></span>'
-						. '</label>';
-				
-				if ('cc_card' === $upo['paymentMethodName']) {
-					$content .=
-						'<div class="apm_fields" id="sc_' . $upo['userPaymentOptionId'] . '">'
-							. '<div id="sc_upo_' . $upo['userPaymentOptionId'] . '_cvc"></div>'
-						. '</div>';
-				}
-				
-				$content .=
-					'</li>';
-			}
-			
-			$content .=
-				'</ul>';
-		}
-		// add UPOs END
-		
-		// add APMs
-		$content .=
-				'<h3>' . __('Choose from the payment options', 'nuvei') . ':</h3>'
-				. '<ul id="sc_apms_list">';
-		
-		foreach ($apms_data['paymentMethods'] as $apm) {
-			$pmMsg = '';
-			
-			if (!empty($apm['paymentMethodDisplayName'][0]['message'])) {
-				$pmMsg = $apm['paymentMethodDisplayName'][0]['message'];
-			} elseif (!empty($apm['paymentMethod'])) {
-				// fix when there is no display name
-				$pmMsg = str_replace('apmgw_', '', $apm['paymentMethod']);
-				$pmMsg = str_replace('_', ' ', $pmMsg);
-			}
-			
-			$newImg = $pmMsg;
-			
-			if ('cc_card' == $apm['paymentMethod']) {
-				$newImg = '<img src="' . $this->plugin_url . 'icons/visa_mc_maestro.svg" alt="'
-					. $pmMsg . '" style="height: 36px;" />';
-			} elseif (!empty($apm['logoURL'])) {
-				$newImg = '<img src="' . str_replace('/svg/', '/svg/solid-white/', $apm['logoURL'])
-					. '" alt="' . $pmMsg . '" />';
-			} else {
-				$newImg = '<img src="#" alt="' . $pmMsg . '" />';
-			}
-			
-			$content .=
-					'<li class="apm_container">'
-						. '<label class="apm_title">'
-							. '<input id="sc_payment_method_' . $apm['paymentMethod'] . '" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="' . $apm['paymentMethod'] . '" data-nuvei-is-direct="' . ( isset($apm['isDirect']) ? $apm['isDirect'] : 'false' ) . '" />&nbsp;'
-							. $newImg
-						. '</label>';
-			
-			if ('cc_card' == $apm['paymentMethod']) {
-				$content .=
-						'<div class="apm_fields" id="sc_' . $apm['paymentMethod'] . '">'
-							. '<input type="text" id="sc_card_holder_name" name="' . $apm['paymentMethod'] . '[cardHolderName]" placeholder="Card holder name" />'
+		wp_send_json(array(
+			'result'	=> 'failure',
+			'refresh'	=> false,
+			'reload'	=> false,
+			'messages'	=> '<script>scPrintApms('. json_encode($resp_data).');</script>'
+		));
 
-							. '<div id="sc_card_number"></div>'
-							. '<div id="sc_card_expiry"></div>'
-							. '<div id="sc_card_cvc"></div>';
-			} elseif (count($apm['fields']) > 0) {
-				$content .=
-						'<div class="apm_fields">';
-
-				foreach ($apm['fields'] as $field) {
-					$pattern = '';
-					if (!empty($field['regex'])) {
-						$pattern = $field['regex'];
-					}
-
-					$placeholder = '';
-					if (!empty($field['caption'][0]['message'])) {
-						$placeholder = $field['caption'][0]['message'];
-					} else {
-						$placeholder = str_replace('_', ' ', $field['name']);
-					}
-					
-					$content .=
-							'<input id="' . $apm['paymentMethod'] . '_' . $field['name']
-								. '" name="' . $field['name']
-								. '" type="' . $field['type']
-								. '" pattern="' . $pattern
-								. '" placeholder="' . $placeholder
-								. '" autocomplete="new-password" />';
-				}
-				
-				$content .=
-						'</div>';
-			}
-			
-			$content .=
-					'</li>';
-		}
-		
-		$content .=
-				'</ul>'
-				. '<input type="hidden" name="sc_transaction_id" id="sc_transaction_id" value="" />'
-				. '<input type="hidden" name="lst" id="lst" value="' . $resp['sessionToken'] . '" />'
-				. '<a class="button" href="' . wc_get_checkout_url() . '">' . __('Back') . '</a>&nbsp;'
-				. '<button type="button" onclick="scValidateAPMFields()" class="button alt" name="woocommerce_checkout_place_order" id="place_order" value="' . __('Pay') . '" data-value="Continue" data-default-text="Place order">' . __('Pay') . '</button>';
-		// add APMs END
-		
-		$content .=
-			'</form>'
-				. '<script>'
-					. 'jQuery("#site-header-cart").remove();'
-					. 'var orderId		= ' . $order_id . ';'
-					. 'var locale		= "' . $apms_params['languageCode'] . '";'
-					. 'scOpenOrderToken	= "' . $resp['sessionToken'] . '";'
-					. 'scOrderCurr		= "' . $oo_params['currency'] . '";'
-					. 'scMerchantId		= scData.merchantId = "' . $this->merchantId . '";'
-					. 'scMerchantSiteId	= scData.merchantSiteId = "' . $this->merchantSiteId . '";'
-					. 'scOrderAmount	= "' . $oo_params['amount'] . '";'
-					. 'scUserTokenId	= "' . $oo_params['userTokenId'] . '";'
-
-					. 'scData.sessionToken		= "' . $resp['sessionToken'] . '";'
-					. 'scData.sourceApplication	= scTrans.webMasterId;';
-
-		if ('yes' == $this->test) {
-			$content .=
-					'scData.env = "test";';
-		}
-		
-		$content .=
-					'sfc = SafeCharge(scData);'
-					. 'scFields = sfc.fields({ locale: "' . $apms_params['languageCode'] . '" });'
-				. '</script>';
-		# prepare the content
-		
-		return $content;
+		wp_die();
 	}
 
 	/**
@@ -1055,26 +780,7 @@ class WC_SC extends WC_Payment_Gateway {
 				&& $this->get_param('TransactionID', 'int') != 0
 			) {
 				SC_CLASS::create_log('DMN for WebSDK');
-				// try to get Order ID by its meta key
-				$tries = 0;
-				
-				do {
-					$tries++;
-
-					$res = $this->sc_get_order_data($TransactionID);
-
-					if (empty($res[0]->post_id)) {
-						sleep(3);
-					}
-				} while ($tries <= 10 && empty($res[0]->post_id));
-				
-				if (empty($res[0]->post_id)) {
-					SC_CLASS::create_log('The DMN didn\'t wait for the Order creation. Exit.');
-					echo 'The DMN didn\'t wait for the Order creation. Exit.';
-					exit;
-				}
-				
-				$order_id = $res[0]->post_id;
+				$order_id = $this->sc_get_order_by_tans_id($TransactionID);
 			} else {
 				// REST
 				SC_CLASS::create_log('DMN for REST call.');
@@ -1141,26 +847,16 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		# Refund
-		// see https://www.safecharge.com/docs/API/?json#refundTransaction -> Output Parameters
-		// when we refund form CPanel we get transactionType = Credit and Status = 'APPROVED'
-		if (
-			'refund' == $action
-			|| in_array($transactionType, array('Credit', 'Refund'), true)
-		) {
-			$this->sc_order = wc_get_order($order_id);
-			
-			if (!$this->sc_order) {
-				SC_CLASS::create_log('Order gets False.');
-				echo esc_html('DMN error - Order gets False.');
-				exit;
+		if (in_array($transactionType, array('Credit', 'Refund'), true)) {
+			if(0 == $order_id) {
+				$order_id = $this->sc_get_order_by_tans_id($this->get_param('relatedTransactionId', 'int'));
 			}
 			
+			$this->sc_create_refund_record($order_id);
+			
 			$this->change_order_status(
-			
 				$order_id,
-			
 				$req_status,
-			
 				$transactionType,
 				array(
 					'resp_id'       => $clientUniqueId,
@@ -1199,19 +895,19 @@ class WC_SC extends WC_Payment_Gateway {
 	 */
 	public function checkAdvancedCheckSum() {
 		$str = hash(
-			$this->hash_type,
-			$this->secret . $this->get_param('totalAmount', 'float')
+			$this->sc_get_setting('hash_type'),
+			$this->sc_get_setting('secret') . $this->get_param('totalAmount')
 				. $this->get_param('currency') . $this->get_param('responseTimeStamp')
-				. $this->get_param('PPP_TransactionID', 'int') . $this->get_request_status()
+				. $this->get_param('PPP_TransactionID') . $this->get_request_status()
 				. $this->get_param('productId')
 		);
 		
-		//      var_dump($this->secret . $this->get_param('totalAmount', 'float')
-		//              . $this->get_param('currency') . $this->get_param('responseTimeStamp')
-		//              . $this->get_param('PPP_TransactionID', 'int') . $this->get_request_status()
-		//              . $this->get_param('productId'));
+//		var_dump($this->sc_get_setting('secret') . $this->get_param('totalAmount')
+//			. $this->get_param('currency') . $this->get_param('responseTimeStamp')
+//			. $this->get_param('PPP_TransactionID') . $this->get_request_status()
+//			. $this->get_param('productId'));
 		
-		//      var_dump($this->get_param('totalAmount', 'float'));
+//		var_dump($this->get_param('totalAmount', 'float'));
 		
 		if (strval($str) == $this->get_param('advanceResponseChecksum')) {
 			return true;
@@ -1232,7 +928,7 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		// force Notification URL protocol to http
-		if (isset($this->use_http) && 'yes' === $this->use_http && false !== strpos($url, 'https://')) {
+		if ('yes' === $this->sc_get_setting('use_http') && false !== strpos($url, 'https://')) {
 			$url = str_replace('https://', '', $url);
 			$url = 'http://' . $url;
 		}
@@ -1247,6 +943,8 @@ class WC_SC extends WC_Payment_Gateway {
 	 *
 	 * @param WC_Order $order
 	 * @param string $key - a key name to extract
+	 * 
+	 * @deprecated - to be removed in version 3.5+
 	 */
 	public function get_order_data( $order, $key = 'completed_date') {
 		switch ($key) {
@@ -1354,87 +1052,55 @@ class WC_SC extends WC_Payment_Gateway {
 	 * Function create_refund
 	 * Create Refund in SC by Refund from WC, after the merchant
 	 * click refund button or set Status to Refunded
-	 *
-	 * @param object $refund_data
 	 */
-	public function create_refund_in_wc( $refund) {
-		$order_id = $this->get_param('order_id');
-		$post_ID  = $this->get_param('post_ID', 'int');
-		
-		if (empty($this->get_param('api_refund')) || !$refund) {
-			return false;
+	public function create_refund_request($order_id, $ref_amount) {
+		if($order_id < 1) {
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => __('Post parameter is less than 1.', 'nuvei'),
+				'data' => array($_POST['post'], $order_id)
+			));
+			wp_die();
 		}
 		
-		// get order refunds
-		try {
-			$refund_data = $refund->get_data();
-			
-			// the hooks calling this method, fired twice when change status
-			// to Refunded, but we do not want to try more than one SC Refunds
-			if (isset($_SESSION['sc_last_refund_id'])) {
-				if (intval($_SESSION['sc_last_refund_id']) === intval($refund_data['id'])) {
-					unset($_SESSION['sc_last_refund_id']);
-					return;
-				} else {
-					$_SESSION['sc_last_refund_id'] = $refund_data['id'];
-				}
-			} else {
-				$_SESSION['sc_last_refund_id'] = $refund_data['id'];
-			}
-			
-			// when we set status to Refunded
-			if ('' != $post_ID) {
-				$order_id = $post_ID;
-			}
-			
-			$order = wc_get_order($order_id);
-			
-			$order_meta_data = array(
-				'order_tr_id'   => $order->get_meta(SC_TRANS_ID),
-				'auth_code'     => $order->get_meta(SC_AUTH_CODE_KEY),
-			);
-		} catch (Exception $ex) {
-			SC_CLASS::create_log($ex->getMessage(), 'sc_create_refund() Exception: ');
-			return;
+		$ref_amount = round($ref_amount, 2);
+		if($ref_amount < 0) {
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => __('Invalid Refund amount.', 'nuvei')));
+			wp_die();
 		}
 		
-		if (!$order_meta_data['order_tr_id'] && !$order_meta_data['auth_code']) {
-			$order->add_order_note(__('Missing Auth code and Transaction ID.', 'sc'));
-			$order->save();
-			
-			return;
-		}
-
-		if (!is_array($refund_data)) {
-			$order->add_order_note(__('There is no refund data. If refund was made, delete it manually!', 'sc'));
-			$order->save();
-			
-			return;
-		}
-
-		$notify_url  = $this->set_notify_url();
-		$notify_url .= '&action=refund&order_id=' . $order_id;
+		$order = wc_get_order($order_id);
 		
-		$refund_url = SC_TEST_REFUND_URL;
-		$cpanel_url = SC_TEST_CPANEL_URL;
-
-		if ('no' === $this->settings['test']) {
-			$refund_url = SC_LIVE_REFUND_URL;
-			$cpanel_url = SC_LIVE_CPANEL_URL;
+		if(!is_a($order, 'WC_Order')) {
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => __('There is no Order with ID ', 'nuvei') . $order_id));
+			wp_die();
 		}
 		
-		$time = gmdate('YmdHis', time());
+		$tr_id = $order->get_meta(SC_TRANS_ID);
+		
+		if (empty($tr_id)) {
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => __('The Order missing Transaction ID.', 'nuvei')));
+			wp_die();
+		}
+		
+		$notify_url	= $this->set_notify_url();
+		$time		= gmdate('YmdHis', time());
 		
 		$ref_parameters = array(
 			'merchantId'            => $this->settings['merchantId'],
 			'merchantSiteId'        => $this->settings['merchantSiteId'],
 			'clientRequestId'       => $time . '_' . $order_meta_data['order_tr_id'],
-			'clientUniqueId'        => $refund_data['id'],
-			'amount'                => number_format($refund_data['amount'], 2, '.', ''),
+			'clientUniqueId'        => $time . '_' . uniqid(),
+			'amount'                => number_format($ref_amount, 2, '.', ''),
 			'currency'              => get_woocommerce_currency(),
-			'relatedTransactionId'  => $order_meta_data['order_tr_id'], // GW Transaction ID
-			'authCode'              => $order_meta_data['auth_code'],
-			'comment'               => $refund_data['reason'], // optional
+			'relatedTransactionId'  => $tr_id, // GW Transaction ID
+			'comment'               => '', // optional
 			'url'                   => $notify_url,
 			'timeStamp'             => $time,
 		);
@@ -1446,25 +1112,25 @@ class WC_SC extends WC_Payment_Gateway {
 			$checksum_str . $this->settings['secret']
 		);
 		
-		$ref_parameters['checksum']          = $checksum;
-		$ref_parameters['urlDetails']        = array('notificationUrl' => $notify_url);
-		$ref_parameters['webMasterId']       = $this->webMasterId;
-		$ref_parameters['sourceApplication'] = SC_SOURCE_APPLICATION;
+		$ref_parameters['checksum']				= $checksum;
+		$ref_parameters['urlDetails']			= array('notificationUrl' => $notify_url);
+		$ref_parameters['webMasterId']			= $this->webMasterId;
+		$ref_parameters['sourceApplication']	= SC_SOURCE_APPLICATION;
 		
-		$resp = SC_CLASS::call_rest_api($refund_url, $ref_parameters);
-
-		$msg        = '';
-		$error_note = 'Please manually delete request Refund #'
-			. $refund_data['id'] . ' form the order or login into <i>' . $cpanel_url
-			. '</i> and refund Transaction ID ' . $order_meta_data['order_tr_id'];
+		$resp	= SC_CLASS::call_rest_api($this->getEndPointBase() . 'refundTransaction.do', $ref_parameters);
+		$msg	= '';
 
 		if (false === $resp) {
-			$msg = 'The REST API retun false. ' . $error_note;
+			$msg = __('The REST API retun false.', 'nuvei');
 
-			$order->add_order_note(__($msg, 'sc'));
+			$order->add_order_note($msg);
 			$order->save();
 			
-			return;
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => $msg
+			));
+			wp_die();
 		}
 
 		$json_arr = $resp;
@@ -1473,33 +1139,57 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 
 		if (!is_array($json_arr)) {
-			$msg = 'Invalid API response. ' . $error_note;
+			$msg = __('Invalid API response.', 'nuvei');
 
-			$order->add_order_note(__($msg, 'sc'));
+			$order->add_order_note($msg);
 			$order->save();
 			
-			return;
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => $msg
+			));
+			wp_die();
 		}
 
+		if (!empty($json_arr['transactionStatus']) && 'APPROVED' == $json_arr['transactionStatus']) {
+			$order->update_status('processing');
+			
+			$this->sc_save_refund_meta_data($order, $json_arr['transactionId'], $ref_amount);
+			
+			wp_send_json(array('status' => 1));
+			wp_die();
+		}
+		
 		// in case we have message but without status
 		if (!isset($json_arr['status']) && isset($json_arr['msg'])) {
-			// save response message in the History
-			$msg = 'Request Refund #' . $refund_data['id'] . ' problem: ' . $json_arr['msg'];
+			$msg = __('Refund request problem: ', 'nuvei') . $json_arr['msg'];
 
-			$order->add_order_note(__($msg, 'sc'));
+			$order->add_order_note($msg);
 			$order->save();
 			
-			return;
-		}
+			SC_CLASS::create_log($msg);
 
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => $msg
+			));
+			wp_die();
+		}
+		
 		// the status of the request is ERROR
 		if (isset($json_arr['status']) && 'ERROR' === $json_arr['status']) {
-			$msg = 'Request ERROR - "' . $json_arr['reason'] . '" ' . $error_note;
+			$msg = __('Request ERROR: ', 'nuvei') . $json_arr['reason'];
 
-			$order->add_order_note(__($msg, 'sc'));
+			$order->add_order_note($msg);
 			$order->save();
 			
-			return;
+			SC_CLASS::create_log($msg);
+			
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => $msg
+			));
+			wp_die();
 		}
 
 		// the status of the request is SUCCESS, check the transaction status
@@ -1509,36 +1199,48 @@ class WC_SC extends WC_Payment_Gateway {
 			} elseif (isset($json_arr['paymentMethodErrorReason']) && !empty($json_arr['paymentMethodErrorReason'])) {
 				$msg = $json_arr['paymentMethodErrorReason'];
 			} else {
-				$msg = 'Transaction error';
+				$msg = __('Transaction error.', 'nuvei');
 			}
 
-			$msg .= '. ' . $error_note;
-
-			$order->add_order_note(__($msg, 'sc'));
+			$order->add_order_note($msg);
 			$order->save();
-			return;
+			
+			SC_CLASS::create_log($msg);
+			
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => $msg
+			));
+			wp_die();
 		}
 
 		if (isset($json_arr['transactionStatus']) && 'DECLINED' === $json_arr['transactionStatus']) {
-			$msg = 'The refund was declined. ' . $error_note;
+			$msg = __('The refund was declined.', 'nuvei');
 
-			$order->add_order_note(__($msg, 'sc'));
+			$order->add_order_note($msg);
 			$order->save();
 			
-			return;
+			SC_CLASS::create_log($msg);
+			
+			wp_send_json(array(
+				'status' => 0,
+				'msg' => $msg
+			));
+			wp_die();
 		}
 
-		if (isset($json_arr['transactionStatus']) && 'APPROVED' === $json_arr['transactionStatus']) {
-			$order->update_status('processing');
-			return;
-		}
-
-		$msg = 'The status of request - Refund #' . $refund_data['id'] . ', is UNKONOWN.';
+		$msg = __('The status of Refund request is UNKONOWN.', 'nuvei');
 
 		$order->add_order_note(__($msg, 'sc'));
 		$order->save();
 		
-		return;
+		SC_CLASS::create_log($msg);
+		
+		wp_send_json(array(
+			'status' => 0,
+			'msg' => $msg
+		));
+		wp_die();
 	}
 	
 	public function sc_return_sc_settle_btn( $args) {
@@ -1583,9 +1285,9 @@ class WC_SC extends WC_Payment_Gateway {
 		$time       = gmdate('YmdHis');
 		
 		if ('settle' == $action) {
-			$url = 'no' == $_SESSION['SC_Variables']['test'] ? SC_LIVE_SETTLE_URL : SC_TEST_SETTLE_URL;
+			$method = 'settleTransaction.do';
 		} else {
-			$url = 'no' == $this->test ? SC_LIVE_VOID_URL : SC_TEST_VOID_URL;
+			$method = 'voidTransaction.do';
 		}
 		
 		try {
@@ -1597,8 +1299,9 @@ class WC_SC extends WC_Payment_Gateway {
 			);
 			
 			$params = array(
-				'merchantId'            => $this->merchantId,
-				'merchantSiteId'        => $this->merchantSiteId,
+//				'merchantId'            => $this->merchantId,
+				'merchantId'            => $this->sc_get_setting('merchantId'),
+				'merchantSiteId'        => $this->sc_get_setting('merchantSiteId'),
 				'clientRequestId'        => $time . '_' . uniqid(),
 				'clientUniqueId'        => $order_id,
 				'amount'                => (string) $order->get_total(),
@@ -1615,15 +1318,15 @@ class WC_SC extends WC_Payment_Gateway {
 			);
 
 			$params['checksum'] = hash(
-				$this->hash_type,
+				$this->sc_get_setting('hash_type'),
 				$params['merchantId'] . $params['merchantSiteId'] . $params['clientRequestId']
 					. $params['clientUniqueId'] . $params['amount'] . $params['currency']
 					. $params['relatedTransactionId'] . $params['authCode']
 					. $params['urlDetails']['notificationUrl'] . $params['timeStamp']
-					. $this->secret
+					. $this->sc_get_setting('secret')
 			);
 
-			$resp = SC_CLASS::call_rest_api($url, $params);
+			$resp = SC_CLASS::call_rest_api($this->getEndPointBase() . $method, $params);
 		} catch (Exception $ex) {
 			SC_CLASS::create_log($ex->getMessage(), 'Create void exception:');
 			
@@ -1651,45 +1354,53 @@ class WC_SC extends WC_Payment_Gateway {
 		wp_die();
 	}
 	
-	public function sc_open_order( $order = null) {
-		$is_ajax = false;
+//	public function sc_create_open_order( $order = null) {
+	public function sc_create_open_order( $is_ajax = false ) {
+//		$is_ajax = false;
+//		
+//		if (is_null($order)) {
+//			$is_ajax  = true;
+//			$order_id = $this->get_param('order_id', 'int', false);
+//			
+//			if (!$order_id) {
+//				SC_CLASS::create_log('sc_create_open_order Error with the order id ');
+//				
+//				wp_send_json(array(
+//					'status'    => 0,
+//					'msg'        => 'sc_create_open_order Error with the order id '
+//				));
+//				wp_die();
+//			}
+//			
+//			$order = wc_get_order($order_id);
+//		
+//			if (!$order) {
+//				SC_CLASS::create_log('sc_create_open_order Error - Order is false for order id ' . $order_id);
+//				
+//				wp_send_json(array(
+//					'status'    => 0,
+//					'msg'        => 'sc_create_open_order Error - Order is false for order id ' . $order_id
+//				));
+//				wp_die();
+//			}
+//		}
 		
-		if (is_null($order)) {
-			$is_ajax  = true;
-			$order_id = $this->get_param('order_id', 'int', false);
-			
-			if (!$order_id) {
-				SC_CLASS::create_log('sc_open_order Error with the order id ');
-				
-				wp_send_json(array(
-					'status'    => 0,
-					'msg'        => 'sc_open_order Error with the order id '
-				));
-				wp_die();
-			}
-			
-			$order = wc_get_order($order_id);
+		global $woocommerce;
 		
-			if (!$order) {
-				SC_CLASS::create_log('sc_open_order Error - Order is false for order id ' . $order_id);
-				
-				wp_send_json(array(
-					'status'    => 0,
-					'msg'        => 'sc_open_order Error - Order is false for order id ' . $order_id
-				));
-				wp_die();
-			}
+		$time			= gmdate('YmdHis');
+		$ajax_params	= array();
+		
+		if(!empty($this->get_param('scFormData'))) {
+			parse_str($this->get_param('scFormData'), $ajax_params); 
 		}
 		
-		$time = gmdate('YmdHis');
-		
 		$oo_params = array(
-			'merchantId'        => $this->merchantId,
-			'merchantSiteId'    => $this->merchantSiteId,
-			'clientRequestId'   => $time . '_' . uniqid(),
-			'clientUniqueId'    => $time . '_' . uniqid(),
-			'amount'            => $order->get_total(),
-			'currency'          => $order->get_currency(),
+			'merchantId'        => $this->sc_get_setting('merchantId'),
+			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
+			'clientRequestId'	=> $time . '_' . uniqid(),
+			'clientUniqueId'    => $time . '_' . uniqid() . '_wc_cart',
+			'amount'            => WC()->cart->total,
+			'currency'          => get_woocommerce_currency(),
 			'timeStamp'         => $time,
 			
 			'urlDetails'        => array(
@@ -1697,43 +1408,60 @@ class WC_SC extends WC_Payment_Gateway {
 			),
 			
 			'deviceDetails'     => SC_CLASS::get_device_details(),
-			'userTokenId'       => $order->get_billing_email(),
+			'userTokenId'       => $this->get_param('billing_email', 'mail', '', $ajax_params),
 			
-			'billingAddress'    => array(
-				'firstName'    => $order->get_billing_first_name(),
-				'lastName'    => $order->get_billing_last_name(),
-				'address'   => $order->get_billing_address_1() . ' ' . $order->get_billing_address_2(),
-				'phone'     => $order->get_billing_phone(),
-				'zip'       => $order->get_billing_postcode(),
-				'city'      => $order->get_billing_city(),
-				'country'    => $order->get_billing_country(),
-				'email'        => $order->get_billing_email(),
+			'billingAddress'	=> array(
+				'firstName'	=> $this->get_param('billing_first_name', 'string', '', $ajax_params),
+				'lastName'	=> $this->get_param('billing_last_name', 'string', '', $ajax_params),
+				'address'	=> $this->get_param('billing_address_1', 'string', '', $ajax_params)
+								. ' ' . $this->get_param('billing_address_1', 'string', '', $ajax_params),
+				'phone'		=> $this->get_param('billing_phone', 'string', '', $ajax_params),
+				'zip'		=> $this->get_param('billing_postcode', 'int', 0, $ajax_params),
+				'city'		=> $this->get_param('billing_city', 'string', '', $ajax_params),
+				'country'	=> $this->get_param('billing_country', 'string', '', $ajax_params),
+				'email'		=> $this->get_param('billing_email', 'mail', '', $ajax_params),
+//				'firstName'    => $order->get_billing_first_name(),
+//				'lastName'    => $order->get_billing_last_name(),
+//				'address'   => $order->get_billing_address_1() . ' ' . $order->get_billing_address_2(),
+//				'phone'     => $order->get_billing_phone(),
+//				'zip'       => $order->get_billing_postcode(),
+//				'city'      => $order->get_billing_city(),
+//				'country'    => $order->get_billing_country(),
+//				'email'        => $order->get_billing_email(),
 			),
 			
-			'shippingAddress'    => array(
-				'firstName'    => $order->get_shipping_first_name(),
-				'lastName'    => $order->get_shipping_last_name(),
-				'address'   => $order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2(),
-				'zip'       => $order->get_shipping_postcode(),
-				'city'      => $order->get_shipping_city(),
-				'country'    => $order->get_shipping_country(),
+			'shippingAddress'	=> array(
+				'firstName'	=> $this->get_param('shipping_first_name', 'string', '', $ajax_params),
+				'lastName'  => $this->get_param('shipping_last_name', 'string', '', $ajax_params),
+				'address'   => $this->get_param('shipping_address_1', 'string', '', $ajax_params)
+								. ' ' . $this->get_param('shipping_address_2', 'string', '', $ajax_params),
+				'zip'       => $this->get_param('shipping_postcode', 'string', '', $ajax_params),
+				'city'      => $this->get_param('shipping_city', 'string', '', $ajax_params),
+				'country'   => $this->get_param('shipping_country', 'string', '', $ajax_params),
+//				'firstName'    => $order->get_shipping_first_name(),
+//				'lastName'    => $order->get_shipping_last_name(),
+//				'address'   => $order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2(),
+//				'zip'       => $order->get_shipping_postcode(),
+//				'city'      => $order->get_shipping_city(),
+//				'country'    => $order->get_shipping_country(),
 			),
 			
 			'webMasterId'       => $this->webMasterId,
 			'paymentOption'        => array('card' => array('threeD' => array('isDynamic3D' => 1))),
-			'transactionType'    => $this->payment_action,
+			'transactionType'    => $this->sc_get_setting('payment_action'),
 		);
 		
 		$oo_params['userDetails'] = $oo_params['billingAddress'];
 		
 		$oo_params['checksum'] = hash(
-			$this->hash_type,
-			$this->merchantId . $this->merchantSiteId . $oo_params['clientRequestId']
-				. $oo_params['amount'] . $oo_params['currency'] . $time . $this->secret
+			$this->sc_get_setting('hash_type'),
+//			$this->merchantId . $this->merchantSiteId . $oo_params['clientRequestId']
+			$this->sc_get_setting('merchantId') . $this->sc_get_setting('merchantSiteId') . $oo_params['clientRequestId']
+				. $oo_params['amount'] . $oo_params['currency'] . $time . $this->sc_get_setting('secret')
 		);
 		
 		SC_CLASS::create_log($this->getEndPointBase(), 'getEndPointBase');
-		SC_CLASS::create_log($this->test, '$this->test');
+		SC_CLASS::create_log($this->sc_get_setting('test'), '$this->test');
 		
 		$resp = SC_CLASS::call_rest_api(
 			$this->getEndPointBase() . 'openOrder.do',
@@ -1804,12 +1532,12 @@ class WC_SC extends WC_Payment_Gateway {
 			wp_die();
 		}
 		
-		$time            = gmdate('YmdHis');
-		$oo_endpoint_url = 'yes' == $this->test ? SC_TEST_OPEN_ORDER_URL : SC_LIVE_OPEN_ORDER_URL;
+		$time = gmdate('YmdHis');
 
 		$oo_params = array(
-			'merchantId'        => $this->merchantId,
-			'merchantSiteId'    => $this->merchantSiteId,
+//			'merchantId'        => $this->merchantId,
+			'merchantId'        => $this->sc_get_setting('merchantId'),
+			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
 			'clientRequestId'   => $time . '_' . uniqid(),
 			'clientUniqueId'    => $time . '_' . uniqid(),
 			'amount'            => $woocommerce->cart->get_totals()['total'],
@@ -1847,18 +1575,19 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			'webMasterId'       => $this->webMasterId,
 			'paymentOption'        => array('card' => array('threeD' => array('isDynamic3D' => 1))),
-			'transactionType'    => $this->payment_action,
+			'transactionType'    => $this->sc_get_setting('payment_action'),
 		);
 		
 		$oo_params['userDetails'] = $oo_params['billingAddress'];
 
 		$oo_params['checksum'] = hash(
-			$this->hash_type,
-			$this->merchantId . $this->merchantSiteId . $oo_params['clientRequestId']
-				. $oo_params['amount'] . $oo_params['currency'] . $time . $this->secret
+			$this->sc_get_setting('hash_type'),
+//			$this->merchantId . $this->merchantSiteId . $oo_params['clientRequestId']
+			$this->sc_get_setting('merchantId') . $this->sc_get_setting('merchantSiteId') . $oo_params['clientRequestId']
+				. $oo_params['amount'] . $oo_params['currency'] . $time . $this->sc_get_setting('secret')
 		);
 
-		$resp = SC_CLASS::call_rest_api($oo_endpoint_url, $oo_params);
+		$resp = SC_CLASS::call_rest_api($this->getEndPointBase() . 'openOrder.do', $oo_params);
 
 		if (
 			empty($resp['status']) || empty($resp['sessionToken'])
@@ -1882,8 +1611,9 @@ class WC_SC extends WC_Payment_Gateway {
 
 		# get APMs
 		$apms_params = array(
-			'merchantId'        => $this->merchantId,
-			'merchantSiteId'    => $this->merchantSiteId,
+//			'merchantId'        => $this->merchantId,
+			'merchantId'        => $this->sc_get_setting('merchantId'),
+			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
 			'clientRequestId'   => $time . '_' . uniqid(),
 			'timeStamp'         => $time,
 			'sessionToken'      => $resp['sessionToken'],
@@ -1893,15 +1623,13 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		$apms_params['checksum'] = hash(
-			$this->hash_type,
-			$this->merchantId . $this->merchantSiteId . $apms_params['clientRequestId']
-				. $time . $this->secret
+			$this->sc_get_setting('hash_type'),
+			$this->sc_get_setting('merchantId') . $this->sc_get_setting('merchantSiteId') . $apms_params['clientRequestId']
+//			$this->merchantId . $this->merchantSiteId . $apms_params['clientRequestId']
+				. $time . $this->sc_get_setting('secret')
 		);
 
-		$endpoint_url = 'yes' == $this->test
-			? SC_TEST_REST_PAYMENT_METHODS_URL : SC_LIVE_REST_PAYMENT_METHODS_URL;
-
-		$apms_data = SC_CLASS::call_rest_api($endpoint_url, $apms_params);
+		$apms_data = SC_CLASS::call_rest_api($this->getEndPointBase() . 'getMerchantPaymentMethods.do', $apms_params);
 		
 		if (!is_array($apms_data) || empty($apms_data['paymentMethods'])) {
 			wp_send_json(array(
@@ -1922,7 +1650,7 @@ class WC_SC extends WC_Payment_Gateway {
 
 		// get them only for registred users when there are APMs
 		if (
-			1 == $this->use_upos
+			1 == $this->sc_get_setting('use_upos')
 			&& is_user_logged_in()
 			&& !empty($payment_methods)
 		) {
@@ -1934,12 +1662,9 @@ class WC_SC extends WC_Payment_Gateway {
 				'timeStamp'            => $time,
 			);
 
-			$upo_params['checksum'] = hash($this->hash_type, implode('', $upo_params) . $this->secret);
+			$upo_params['checksum'] = hash($this->sc_get_setting('hash_type'), implode('', $upo_params) . $this->sc_get_setting('secret'));
 
-			$upo_res = SC_CLASS::call_rest_api(
-				'yes' == $this->test ? SC_TEST_USER_UPOS_URL : SC_LIVE_USER_UPOS_URL,
-				$upo_params
-			);
+			$upo_res = SC_CLASS::call_rest_api($this->getEndPointBase() . 'getUserUPOs.do', $upo_params);
 			
 			if (!empty($upo_res['paymentMethods']) && is_array($upo_res['paymentMethods'])) {
 				foreach ($upo_res['paymentMethods'] as $data) {
@@ -1970,9 +1695,10 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		wp_send_json(array(
 			'status'            => 1,
-			'testEnv'           => $this->test,
-			'merchantSiteId'    => $this->merchantSiteId,
-			'merchantId'        => $this->merchantId,
+			'testEnv'           => $this->sc_get_setting('test'),
+			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
+//			'merchantId'        => $this->merchantId,
+			'merchantId'        => $this->sc_get_setting('merchantId'),
 			'langCode'          => $this->formatLocation(get_locale()),
 			'sessionToken'      => $resp['sessionToken'],
 			'currency'          => get_woocommerce_currency(),
@@ -2028,8 +1754,9 @@ class WC_SC extends WC_Payment_Gateway {
 		$timeStamp = gmdate('YmdHis', time());
 			
 		$params = array(
-			'merchantId'            => $this->merchantId,
-			'merchantSiteId'        => $this->merchantSiteId,
+//			'merchantId'            => $this->merchantId,
+			'merchantId'            => $this->sc_get_setting('merchantId'),
+			'merchantSiteId'        => $this->sc_get_setting('merchantSiteId'),
 			'userTokenId'            => $curr_user->user_email,
 			'clientRequestId'        => $timeStamp . '_' . uniqid(),
 			'userPaymentOptionId'    => $upo_id,
@@ -2037,14 +1764,11 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		$params['checksum'] = hash(
-			$this->hash_type,
-			implode('', $params) . $this->secret
+			$this->sc_get_setting('hash_type'),
+			implode('', $params) . $this->sc_get_setting('secret')
 		);
 		
-		$resp = SC_CLASS::call_rest_api(
-			'yes' == $this->test ? SC_TEST_DELETE_UPO_URL: SC_LIVE_DELETE_UPO_URL,
-			$params
-		);
+		$resp = SC_CLASS::call_rest_api($this->getEndPointBase() . 'deleteUPO.do', $params);
 		
 		if (empty($resp['status']) || 'SUCCESS' != $resp['status']) {
 			$msg = !empty($resp['reason']) ? $resp['reason'] : '';
@@ -2120,13 +1844,20 @@ class WC_SC extends WC_Payment_Gateway {
 					? filter_var($arr[$key], FILTER_VALIDATE_EMAIL) : $default;
 				
 			case 'float':
-			case 'int':
 				if (empty($default)) {
-					$default = (float) 0.00;
+					$default = (float) 0;
 				}
 				
 				return ( !empty($arr[$key]) && is_numeric($arr[$key]) )
-					? filter_var($arr[$key], FILTER_DEFAULT) : $default;
+					? floatval(filter_var($arr[$key], FILTER_DEFAULT)) : $default;
+				
+			case 'int':
+				if (empty($default)) {
+					$default = (float) 0;
+				}
+				
+				return ( !empty($arr[$key]) && is_numeric($arr[$key]) )
+					? intval(filter_var($arr[$key], FILTER_DEFAULT)) : $default;
 				
 			case 'array':
 				if (empty($default)) {
@@ -2229,11 +1960,11 @@ class WC_SC extends WC_Payment_Gateway {
 			'WC_SC change_order_status()'
 		);
 		
-		$gw_data = ',<br/>' . __('Status = ', 'sc') . $req_status
-			. '<br/>' . __('PPP Transaction ID = ', 'sc') . $this->get_param('PPP_TransactionID', 'int')
-			. ',<br/>' . __('Transaction Type = ', 'sc') . $transactionType
-			. ',<br/>' . __('Transaction ID = ', 'sc') . $this->get_param('TransactionID', 'int')
-			. ',<br/>' . __('Payment Method - ', 'sc') . $this->get_param('payment_method');
+		$gw_data = '<br/>' . __('Status: ', 'sc') . $req_status
+			. '<br/>' . __('PPP Transaction ID: ', 'sc') . $this->get_param('PPP_TransactionID', 'int')
+			. ',<br/>' . __('Transaction Type: ', 'sc') . $transactionType
+			. ',<br/>' . __('Transaction ID: ', 'sc') . $this->get_param('TransactionID', 'int')
+			. ',<br/>' . __('Payment Method: ', 'sc') . $this->get_param('payment_method');
 		
 		$message = '';
 		$status  = $this->sc_order->get_status();
@@ -2250,16 +1981,32 @@ class WC_SC extends WC_Payment_Gateway {
 
 			case 'APPROVED':
 				if ('Void' === $transactionType) {
-					$message = __('DMN message: Your Void was successful.', 'sc')
+					$message = __('DMN Void message', 'sc')
 						. $gw_data . '<br/>' . __('Plsese check your stock!', 'sc');
 					
 					$status = 'cancelled';
 				} elseif (in_array($transactionType, array('Credit', 'Refund'), true)) {
-					$message = __('DMN message: Your Refund was successful.', 'sc') . $gw_data;
+					$message = __('DMN Refund message', 'sc') . $gw_data;
 					$status  = 'completed';
 					
-					// set flag that order has some refunds
-					$this->sc_order->update_meta_data(SC_ORDER_HAS_REFUND, 1);
+					// get current refund amount
+					$refunds = json_decode($this->sc_order->get_meta('_sc_refunds'), true);
+					$currency_code = $this->sc_order->get_currency();
+					$currency_symbol = get_woocommerce_currency_symbol( $currency_code );
+					
+					$message .= '<br/>' . __('Refund Amount') . ': ' . $currency_symbol
+						. number_format($refunds[$this->get_param('TransactionID', 'int')]['refund_amount'], 2, '.', '')
+						. '<br/>' . __('Refund') . ' #' . $refunds[$this->get_param('TransactionID', 'int')]['wc_id'];
+					
+					if(round($this->sc_order->get_total(), 2) <= $this->sc_sum_order_refunds()) {
+						$status  = 'refunded';
+					}
+					
+					/**
+					 * set flag that order has some refunds
+					 * @deprecated since version 3.5
+					 */
+//					$this->sc_order->update_meta_data(SC_ORDER_HAS_REFUND, 1);
 				} elseif ('Auth' === $transactionType) {
 					$message = __('The amount has been authorized and wait for Settle.', 'sc') . $gw_data;
 					$status  = 'pending';
@@ -2276,7 +2023,7 @@ class WC_SC extends WC_Payment_Gateway {
 			case 'ERROR':
 			case 'DECLINED':
 			case 'FAIL':
-				$reason = ',<br/>' . __('Reason = ', 'sc');
+				$reason = ',<br/>' . __('Reason: ', 'sc');
 				if ('' != $this->get_param('reason')) {
 					$reason .= $this->get_param('reason');
 				} elseif ('' != $this->get_param('Reason')) {
@@ -2284,8 +2031,8 @@ class WC_SC extends WC_Payment_Gateway {
 				}
 				
 				$message = __('Transaction failed.', 'sc')
-					. '<br/>' . __('Error code = ', 'sc') . $this->get_param('ErrCode')
-					. '<br/>' . __('Message = ', 'sc') . $this->get_param('message') . $reason . $gw_data;
+					. '<br/>' . __('Error code: ', 'sc') . $this->get_param('ErrCode')
+					. '<br/>' . __('Message: ', 'sc') . $this->get_param('message') . $reason . $gw_data;
 				
 				// do not change status
 				if ('Void' === $transactionType) {
@@ -2373,12 +2120,166 @@ class WC_SC extends WC_Payment_Gateway {
 	}
 	
 	private function getEndPointBase() {
-		if ('yes' == $this->test) {
+		if ('yes' == $this->sc_get_setting('test')) {
 			return 'https://ppp-test.safecharge.com/ppp/api/v1/';
 		}
 		
 		return 'https://secure.safecharge.com/ppp/api/v1/';
 	}
+	
+	/**
+	 * Function sc_get_setting
+	 * @param string $key - the key we are search for
+	 * @param mixed $default - the default value if no setting found
+	 */
+	private function sc_get_setting($key, $default = 0) {
+		if(!empty($this->settings[$key])) {
+			return $this->settings[$key];
+		}
+		
+		return $default;
+	}
+	
+	private function sc_get_order_by_tans_id($trans_id) {
+		// try to get Order ID by its meta key
+		$tries = 0;
+
+		do {
+			$tries++;
+
+			$res = $this->sc_get_order_data($trans_id);
+
+			if (empty($res[0]->post_id)) {
+				sleep(3);
+			}
+		} while ($tries <= 10 && empty($res[0]->post_id));
+
+		if (empty($res[0]->post_id)) {
+			SC_CLASS::create_log('The DMN didn\'t wait for the Order creation. Exit.');
+			echo 'The DMN didn\'t wait for the Order creation. Exit.';
+			exit;
+		}
+
+		return $res[0]->post_id;
+	}
+	
+	private function sc_create_refund_record($order_id, $reason = '') {
+		$this->sc_order = wc_get_order( $order_id );
+		
+		if( ! is_a( $this->sc_order, 'WC_Order') ) {
+			SC_CLASS::create_log('DMN Error for Cpanel Refund - Provided Order ID is not a WC Order');
+			echo 'DMN Error for Cpanel Refund - Provided { ID is not a WC Order';
+			exit;
+		}
+		
+		if( !in_array($this->sc_order->get_status(), array('completed', 'processing')) ) {
+			SC_CLASS::create_log(
+				$this->sc_order->get_status(),
+				'DMN Error for Cpanel Refund - the Order status does not allow refunds. The status is:'
+			);
+			echo 'DMN Error for Cpanel Refund - the Order status does not allow refunds.';
+			exit;
+		}
+		
+		$ref_amount = 0;
+		$tries		= 0;
+		
+		do {
+			$refunds = json_decode($this->sc_order->get_meta('_sc_refunds'), true);
+			$tries++;
+			
+			SC_CLASS::create_log($tries, 'Wait for Refund meta data');
+			sleep(2);
+		}
+		while(empty($refunds[$this->get_param('TransactionID', 'int')]) && $tries < 5);
+		
+		SC_CLASS::create_log($refunds, 'saved refund');
+		
+		if(
+			!empty($refunds[$this->get_param('TransactionID', 'int')])
+			&& 'pending' == $refunds[$this->get_param('TransactionID', 'int')]['status']
+			&& !empty($refunds[$this->get_param('TransactionID', 'int')]['refund_amount'])
+		) {
+			$ref_amount = $refunds[$this->get_param('TransactionID', 'int')]['refund_amount'];
+		}
+		
+		// in case of CPanel refund - add Refund meta data here
+		if(0 == $ref_amount && strpos($this->get_param('clientRequestId'), 'gwp_') !== false) {
+			$ref_amount = $this->get_param('totalAmount', 'float');
+			
+			$this->sc_save_refund_meta_data(
+				$this->sc_order,
+				$this->get_param('TransactionID'),
+				$ref_amount
+			);
+			
+			$refunds = json_decode($this->sc_order->get_meta('_sc_refunds'), true);
+		}
+		
+		if(0 == $ref_amount) {
+			return;
+		}
+		
+		$refund = wc_create_refund(array(
+			'amount'         => round(floatval($ref_amount), 2),
+			'order_id'       => $order_id,
+		));
+		
+		if (is_a($refund, 'WP_Error')) {
+			SC_CLASS::create_log($refund, 'DMN Error for Cpanel Refund - the Refund process in WC returns error: ');
+			echo 'DMN Error for Cpanel Refund - the Refund process in WC returns error.';
+			exit;
+		}
+		
+		$refunds[$this->get_param('TransactionID', 'int')]['status'] = 'approved';
+		$refunds[$this->get_param('TransactionID', 'int')]['wc_id'] = $refund->get_id();
+		
+		$this->sc_order->update_meta_data('_sc_refunds', json_encode($refunds));
+		$this->sc_order->save();
+
+		return true;
+	}
+	
+	private function sc_sum_order_refunds() {
+		$refunds = json_decode($this->sc_order->get_meta('_sc_refunds'), true);
+		$sum = 0;
+		
+		if(!empty($refunds[$this->get_param('TransactionID', 'int')])) {
+			SC_CLASS::create_log($refunds, 'Order Refunds');
+			
+			foreach($refunds as $data) {
+				if('approved' == $data['status']) {
+					$sum += $data['refund_amount'];
+				}
+			}
+		}
+		
+		SC_CLASS::create_log($sum, 'Sum of refunds for an Order.');
+		return round($sum, 2);
+	}
+	
+	private function sc_save_refund_meta_data($order, $trans_id, $ref_amount) {
+		$refunds = json_decode($order->get_meta('_sc_refunds'), true);
+		
+		if(empty($refunds)) {
+			$refunds = array();
+		}
+		
+		SC_CLASS::create_log($refunds, 'Saved Refunds meta data before add the current one.');
+		SC_CLASS::create_log($ref_amount, '$ref_amount');
+		
+		// add the new refund
+		$refunds[$trans_id] = array(
+			'refund_amount'	=> round(floatval($ref_amount), 2),
+			'status'		=> 'pending'
+		);
+
+		$order->update_meta_data('_sc_refunds', json_encode($refunds));
+		$order->save();
+		
+		SC_CLASS::create_log(json_decode($order->get_meta('_sc_refunds'), true), 'Saved Refunds after the request.');
+	}
+	
 }
 
 ?>

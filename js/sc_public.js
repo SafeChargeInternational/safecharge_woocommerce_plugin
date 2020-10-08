@@ -114,6 +114,7 @@ function scValidateAPMFields() {
 		sfc.createPayment(nuveiPaymentParams, function(resp) {
 			afterSdkResponse(resp);
 		});
+		return;
 	}
 	// use CC UPO
 	else if(
@@ -187,7 +188,7 @@ function scValidateAPMFields() {
 		}
 
 		// if not using SDK submit form
-		jQuery('#sc_second_step_form').submit();
+		jQuery('#place_order').trigger('click');
 	}
 }
 
@@ -205,7 +206,10 @@ function afterSdkResponse(resp) {
 
 		if (resp.result == 'APPROVED' && resp.transactionId != 'undefined') {
 			jQuery('#sc_transaction_id').val(resp.transactionId);
-			jQuery('#sc_second_step_form').submit();
+			jQuery('#place_order').trigger('click');
+			
+			jQuery('#sc_loader_background').hide();
+			return;
 		}
 		else if (resp.result == 'DECLINED') {
 			scFormFalse(scTrans.paymentDeclined);
@@ -238,7 +242,11 @@ function afterSdkResponse(resp) {
 }
  
 function scFormFalse(text) {
-	jQuery('#sc_checkout_messages').html('');
+	console.log('scFormFalse()');
+	
+	// uncheck radios and hide fileds containers
+	jQuery('.sc_payment_method_field').attr('checked', false);
+	jQuery('.apm_fields').hide();
 	
 	if (typeof text == 'undefined') {
 		text = scTrans.choosePM;
@@ -250,7 +258,8 @@ function scFormFalse(text) {
 	   +'</div>'
 	);
 	
-	window.location.hash = '#masthead';
+	jQuery(window).scrollTop(0);
+	jQuery('#sc_loader_background').hide();
 }
  
  /**
@@ -279,7 +288,7 @@ function getNewSessionToken() {
 			action      : 'sc-ajax-action',
 			security    : scTrans.security,
 			sc_request	: 'OpenOrder',
-			order_id	: orderId
+			scFormData	: jQuery('form.woocommerce-checkout').serialize()
 		},
 		dataType: 'json'
 	})
@@ -354,8 +363,163 @@ function deleteScUpo(upoId) {
 	}
 }
 
+function scPrintApms(data) {
+	console.log('scPrintApms()');
+	
+	jQuery("form.woocommerce-checkout *:not(form.woocommerce-checkout, #sc_second_step_form *, #sc_checkout_messages), .woocommerce-form-coupon-toggle").hide();
+	jQuery("form.woocommerce-checkout #sc_second_step_form").show();
+//	jQuery("form.woocommerce-checkout").attr('action', data.endPointUrl + 'payment.do');
+//	jQuery("form.woocommerce-checkout").attr('action', data.siteUrl . '/?wc-api=process-order&order_id=' . $order_id);
+	
+	jQuery(window).scrollTop(0);
+	jQuery('#lst').val(data.sessonToken);
+	
+	scOpenOrderToken			= data.sessonToken;
+	scOrderAmount				= data.orderAmount;
+	scUserTokenId				= data.userTokenId;
+	scData.sessionToken			= data.sessonToken;
+	scData.sourceApplication	= scTrans.webMasterId;
+	
+	if(Object.keys(data.upos).length > 0) {
+		var upoHtml = '';
+		
+		for(var i in data.upos) {
+			if ('cc_card' == data.upos[i]['paymentMethodName']) {
+				var img = '<img src="' + data.pluginUrl + 'icons/visa_mc_maestro.svg" alt="'
+					+ data.upos[i]['name'] + '" style="height: 36px;" />';
+			} else {
+				var img = '<img src="' + data.upos[i].logoURL.replace('/svg/', '/svg/solid-white/')
+					+ '" alt="' + data.upos[i]['name'] + '" />';
+			}
+			
+			upoHtml +=
+				'<li class="upo_container" id="upo_cont_' + data.upos[i]['userPaymentOptionId'] + '">'
+					+ '<label class="apm_title">'
+						+ '<input id="sc_payment_method_' + data.upos[i]['userPaymentOptionId'] + '" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="' + data.upos[i]['userPaymentOptionId'] + '" data-upo-name="' + data.upos[i]['paymentMethodName'] + '" />&nbsp;'
+						+ img + '&nbsp;&nbsp;'
+						+ '<span>';
+				
+			// add upo identificator
+			if ('cc_card' == data.upos[i]['paymentMethodName']) {
+				upoHtml += data.upos[i]['upoData']['ccCardNumber'];
+			} else if ('' != data.upos[i]['upoName']) {
+				upoHtml += data.upos[i]['upoName'];
+			}
+
+			upoHtml +=
+						'</span>&nbsp;&nbsp;';
+				
+			// add remove icon
+			upoHtml +=
+						'<span id="#sc_remove_upo_' + data.upos[i]['userPaymentOptionId'] + '" class="dashicons dashicons-trash" data-upo-id="' + data.upos[i]['userPaymentOptionId'] + '"></span>'
+					+ '</label>';
+			
+			if ('cc_card' === data.upos[i]['paymentMethodName']) {
+					upoHtml +=
+						'<div class="apm_fields" id="sc_' + data.upos[i]['userPaymentOptionId'] + '">'
+							+ '<div id="sc_upo_' + data.upos[i]['userPaymentOptionId'] + '_cvc"></div>'
+						+ '</div>';
+				}
+				
+				upoHtml +=
+					'</li>';
+		}
+		
+		jQuery('#sc_second_step_form #sc_upos_list').html(upoHtml);
+	}
+	
+	if(Object.keys(data.apms).length > 0) {
+		var apmHmtl = '';
+		
+		for(var j in data.apms) {
+			var pmMsg = '';
+			
+			if (
+				data.apms[j]['paymentMethodDisplayName'].hasOwnProperty(0)
+				&& data.apms[j]['paymentMethodDisplayName'][0].hasOwnProperty('message')
+			) {
+				pmMsg = data.apms[j]['paymentMethodDisplayName'][0]['message'];
+			} else if ('' != data.apms[j]['paymentMethod']) {
+				// fix when there is no display name
+				pmMsg = data.apms[j]['paymentMethod'].replace('apmgw_', '');
+				pmMsg = pmMsg.replace('_', ' ');
+			}
+			
+			var newImg = pmMsg;
+			
+			if ('cc_card' == data.apms[j]['paymentMethod']) {
+				newImg = '<img src="' + data.pluginUrl + 'icons/visa_mc_maestro.svg" alt="'
+					+ pmMsg + '" style="height: 36px;" />';
+			} else if (
+				data.apms[j].hasOwnProperty('logoURL')
+				&& data.apms[j]['logoURL'] != ''
+			) {
+				newImg = '<img src="' + data.apms[j]['logoURL'].replace('/svg/', '/svg/solid-white/')
+					+ '" alt="' + pmMsg + '" />';
+			} else {
+				newImg = '<img src="#" alt="' + pmMsg + '" />';
+			}
+			
+			apmHmtl +=
+					'<li class="apm_container">'
+						+ '<label class="apm_title">'
+							+ '<input id="sc_payment_method_' + data.apms[j]['paymentMethod'] + '" type="radio" class="input-radio sc_payment_method_field" name="sc_payment_method" value="' + data.apms[j]['paymentMethod'] + '" data-nuvei-is-direct="'
+								+ ( typeof data.apms[j]['isDirect'] != 'undefined' ? data.apms[j]['isDirect'] : 'false' ) + '" />&nbsp;'
+							+ newImg
+						+ '</label>';
+			
+			if ('cc_card' == data.apms[j]['paymentMethod']) {
+				apmHmtl +=
+						'<div class="apm_fields" id="sc_' + data.apms[j]['paymentMethod'] + '">'
+							+ '<input type="text" id="sc_card_holder_name" name="' + data.apms[j]['paymentMethod'] + '[cardHolderName]" placeholder="Card holder name" />'
+
+							+ '<div id="sc_card_number"></div>'
+							+ '<div id="sc_card_expiry"></div>'
+							+ '<div id="sc_card_cvc"></div>';
+			} else if (data.apms[j]['fields'].length > 0) {
+				apmHmtl +=
+						'<div class="apm_fields">';
+
+				for (var f in data.apms[j]['fields']) {
+					var pattern = '';
+					if ('' != data.apms[j]['fields'][f]['regex']) {
+						pattern = data.apms[j]['fields'][f]['regex'];
+					}
+
+					var placeholder = '';
+					if (
+						data.apms[j]['fields'][f]['caption'].hasOwnProperty(0)
+						&& data.apms[j]['fields'][f]['caption'][0].hasOwnProperty('message')
+						&& '' != data.apms[j]['fields'][f]['caption'][0]['message']
+					) {
+						placeholder = data.apms[j]['fields'][f]['caption'][0]['message'];
+					} else {
+						placeholder = data.apms[j]['fields'][f]['name'].replace('_', ' ');
+					}
+					
+					apmHmtl +=
+							'<input id="' + data.apms[j]['paymentMethod'] + '_' + data.apms[j]['fields'][f]['name']
+								+ '" name="' + data.apms[j]['fields'][f]['name']
+								+ '" type="' + data.apms[j]['fields'][f]['type']
+								+ '" pattern="' + pattern
+								+ '" placeholder="' + placeholder
+								+ '" autocomplete="new-password" />';
+				}
+				
+				apmHmtl +=
+						'</div>';
+			}
+			
+			apmHmtl +=
+					'</li>';
+		}
+		
+		jQuery('#sc_second_step_form #sc_apms_list').html(apmHmtl);
+	}
+}
+
 jQuery(function() {
-	jQuery('.apm_title').on('click', function() {
+	jQuery('body').on('click', '.apm_title', function() {
 		if(scDeleteUpoFlag) {
 			scDeleteUpoFlag = false;
 			return;
@@ -428,7 +592,7 @@ jQuery(function() {
 		}
 	});
 	
-	jQuery('#sc_second_step_form span.dashicons-trash').on('click', function(e) {
+	jQuery('body').on('click', '#sc_second_step_form span.dashicons-trash', function(e) {
 		e.preventDefault();
 		deleteScUpo(jQuery(this).attr('data-upo-id'));
 	});

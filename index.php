@@ -3,13 +3,13 @@
  * Plugin Name: SafeCharge Payments
  * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
  * Description: SafeCharge gateway for WooCommerce
- * Version: 3.4
+ * Version: 3.5
  * Author: SafeCharge
  * Author URI: https://safecharge.com
  * Require at least: 4.7
- * Tested up to: 5.5
+ * Tested up to: 5.5.1
  * WC requires at least: 3.0
- * WC tested up to: 4.3.2
+ * WC tested up to: 4.5.2
 */
 
 defined('ABSPATH') || die('die');
@@ -47,6 +47,44 @@ function woocommerce_sc_init() {
 	// handle custom Ajax calls
 	add_action('wp_ajax_sc-ajax-action', 'sc_ajax_action');
 	add_action('wp_ajax_nopriv_sc-ajax-action', 'sc_ajax_action');
+	
+	// insert Custom Merchat style
+//	add_action( 'woocommerce_checkout_before_customer_details',  array($wc_sc, 'sc_insert_merchant_style'), 0, 1 );
+	add_action( 'woocommerce_checkout_after_order_review',  array($wc_sc, 'sc_insert_merchant_style'), 10, 1 );
+	
+	// if validation success get order details
+	add_action('woocommerce_after_checkout_validation', function($data, $errors) {
+		SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
+		SC_CLASS::create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
+		
+		if( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
+			if (!isset($_POST['sc_payment_method']) || empty($_POST['sc_payment_method'])) {
+//				SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
+				
+				global $wc_sc;
+				$content = $wc_sc->sc_get_payment_methods('');
+				
+//				var_dump($content);
+//				die;
+				
+//				wp_send_json(array(
+//					'result' => 'failure',
+//					'refresh' => false,
+//					'reload' => false,
+//					'messages' =>
+//					//	'<ul id="sc_fake_error" class="woocommerce-error" style="display: none;" role="alert"><li>'
+//							'<script>'
+//								. 'scPrintApms('.$content.');'
+////								. 'jQuery("form.woocommerce-checkout *:not(form.woocommerce-checkout)").hide();'
+//							//. 'jQuery("form.woocommerce-checkout").append("'. $content .'");'
+//							. '</script>'
+//					//	. '</li></ul>'
+//				));
+//
+//				wp_die();
+			} 
+		}
+	}, 9999, 2);
 	
 	// use this to change button text, because of the cache the jQuery not always works
 	add_filter('woocommerce_order_button_text', 'sc_edit_order_buttons');
@@ -87,7 +125,8 @@ function woocommerce_sc_init() {
 			function ( $str, $order) {
 				return esc_html__('There is an error with your order. Please, check if the order was recieved or what is the status!', 'sc');
 			}, 10, 2);
-	} elseif ('canceled' === strtolower($wc_sc->get_request_status())) {
+	}
+	elseif ('canceled' === strtolower($wc_sc->get_request_status())) {
 		add_filter('the_title', function ( $title, $id) {
 			if (
 				function_exists('is_order_received_page')
@@ -106,9 +145,9 @@ function woocommerce_sc_init() {
 	}
 	
 	// replace content on Checkout second step
-	if (!empty($_GET['order_id']) && !empty($_GET['key'])) {
-		add_filter('the_content', array($wc_sc, 'checkoutSecondStep'));
-	}
+//	if (!empty($_GET['order_id']) && !empty($_GET['key'])) {
+//		add_filter('the_content', array($wc_sc, 'sc_get_payment_methods'));
+//	}
 	
 	add_filter('woocommerce_pay_order_after_submit', 'nuvei_user_orders', 10, 2);
 	
@@ -135,36 +174,42 @@ function sc_ajax_action() {
 	}
 	
 	$payment_method_sc = '';
-	if (isset($_POST['payment_method_sc'])) {
+	if (!empty($wc_sc->get_param('payment_method_sc'))) {
 		$payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
 	}
 
 	// recognize the action:
 	// Void (Cancel)
-	if (!empty($_POST['cancelOrder']) && !empty($_POST['orderId'])) {
+	if ($wc_sc->get_param('cancelOrder', 'int') == 1 && $wc_sc->get_param('orderId', 'int') > 0) {
 		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'void');
 	}
 
 	// Settle
-	if (isset($_POST['settleOrder'], $_POST['orderId']) && 1 == $_POST['settleOrder']) {
+	if ($wc_sc->get_param('settleOrder', 'int') == 1 && $wc_sc->get_param('orderId', 'int') > 0) {
 		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'settle');
 	}
-
+	
+	// Refund
+	if ( isset($_POST['refAmount']) ) {
+		$wc_sc->create_refund_request($wc_sc->get_param('postId', 'int'), $wc_sc->get_param('refAmount', 'float'));
+	}
+	
 	// when we use the REST - Open order and get APMs
-	if (!empty($_POST['sc_request']) && 'OpenOrder' === $_POST['sc_request']) {
-		$wc_sc->sc_open_order();
+	if ($wc_sc->get_param('sc_request') == 'OpenOrder') {
+		$wc_sc->sc_create_open_order(true);
 	}
 	
 	// delete UPO
-	if (!empty($_POST['scUpoId']) && is_numeric($_POST['scUpoId'])) {
+	if ($wc_sc->get_param('scUpoId', 'int') > 0) {
 		$wc_sc->delete_user_upo();
 	}
 	
 	// when Reorder
-	if (!empty($_POST['sc_request']) && 'scReorder' === $_POST['sc_request']) {
+	if ($wc_sc->get_param('sc_request') == 'scReorder') {
 		$wc_sc->sc_reorder();
 	}
 
+	wp_send_json_error(__('Not recognized Ajax call.'));
 	wp_die();
 }
 
@@ -336,8 +381,9 @@ function sc_enqueue( $hook) {
 			'sc_js_admin',
 			'scTrans',
 			array(
-				'ajaxurl'    => admin_url('admin-ajax.php'),
-				'security'    => wp_create_nonce('sc-security-nonce'),
+				'ajaxurl'			=> admin_url('admin-ajax.php'),
+				'security'			=> wp_create_nonce('sc-security-nonce'),
+				'refundQuestion'	=> __('Are you sure about this Refund?', 'nuvei'),
 			)
 		);
 		
@@ -381,18 +427,18 @@ function sc_add_buttons() {
 		$order                = wc_get_order($order_id);
 		$order_status         = strtolower($order->get_status());
 		$order_payment_method = $order->get_meta('_paymentMethod');
-		
-		// hide Refund Button
-		if (
-			!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))
-			|| 'processing' == $order_status
-		) {
-			echo '<script type="text/javascript">jQuery(\'.refund-items\').prop("disabled", true);</script>';
-		}
 	} catch (Exception $ex) {
 		echo '<script type="text/javascript">console.error("'
 			. esc_js($ex->getMessage()) . '")</script>';
 		exit;
+	}
+	
+	// hide Refund Button
+	if (
+		!in_array($order_payment_method, array('cc_card', 'dc_card', 'apmgw_expresscheckout'))
+		|| 'processing' == $order_status
+	) {
+		echo '<script type="text/javascript">jQuery(\'.refund-items\').prop("disabled", true);</script>';
 	}
 	
 	// to show SC buttons we must be sure the order is paid via SC Paygate
@@ -403,13 +449,24 @@ function sc_add_buttons() {
 	if ('completed' == $order_status || 'pending' == $order_status) {
 		global $wc_sc;
 
-		$time             = gmdate('YmdHis', time());
-		$order_tr_id      = $order->get_meta(SC_TRANS_ID);
-		$order_has_refund = $order->get_meta(SC_ORDER_HAS_REFUND);
-		$notify_url       = $wc_sc->set_notify_url();
+		$time				= gmdate('YmdHis', time());
+		$order_tr_id		= $order->get_meta(SC_TRANS_ID);
+		// we do not set this meta anymore, keep it only because of the orders made before v3.5 of the plugin
+		$order_has_refund	= $order->get_meta(SC_ORDER_HAS_REFUND);
+		$refunds			= json_decode($order->get_meta('_sc_refunds'), true);
+		$notify_url			= $wc_sc->set_notify_url();
 		
 		// Show VOID button
-		if ('1' != $order_has_refund && in_array($order_payment_method, array('cc_card', 'dc_card'))) {
+//		if ('1' != $order_has_refund && in_array($order_payment_method, array('cc_card', 'dc_card'))) {
+		if (
+			'cc_card' == $order_payment_method
+			/**
+			 * before v3.5 we put a flag on refund - $order_has_refund
+			 * since v3.5 we save some of the refund parameters as json in "_sc_refunds" meta data
+			 * and do not save $order_has_refund flag anymore
+			 */
+			&& ( '1' != $order_has_refund || (!empty($refunds) && is_array($refunds)) )
+		) {
 			echo
 				'<button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
 				. esc_html__('Are you sure, you want to Cancel Order #' . $order_id . '?', 'sc') . '\', '
@@ -528,6 +585,14 @@ function nuvei_change_title_order_received( $title, $id) {
 	return $title;
 }
 
+/**
+ * Function nuvei_user_orders
+ * Call this on Store when the logged user is in My Account section
+ * 
+ * @global type $wp
+ * @global WC_SC $wc_sc
+ * @global type $woocommerce
+ */
 function nuvei_user_orders() {
 	global $wp, $wc_sc, $woocommerce;
 	
