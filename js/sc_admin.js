@@ -184,5 +184,58 @@ jQuery(function() {
 		.attr('id', 'sc_api_refund')
 		.attr('onclick', "scCreateRefund('"+ scTrans.refundQuestion +"');")
 		.removeClass('do-api-refund');
+
+	// actions about "Download Subscriptions plans" button in Plugin's settings
+	if(jQuery('#woocommerce_sc_get_plans_btn').length > 0) {
+		var butonTd = jQuery('#woocommerce_sc_get_plans_btn').closest('td');
+		butonTd.find('#custom_loader').hide();
+		butonTd.find('fieldset').append('<span class="dashicons dashicons-yes-alt" style="display: none;"></span>');
+
+		if('' != scTrans.scPlansLastModTime) {
+			butonTd.find('fieldset').append('<p class="description">'+ scTrans.LastDownload +': '+ scTrans.scPlansLastModTime +'</p>');
+		}
+		else {
+			butonTd.find('fieldset').append('<p class="description"></p>');
+		}
+
+		jQuery('#woocommerce_sc_get_plans_btn').on('click', function() {
+			butonTd.find('#custom_loader').show();
+			
+			jQuery.ajax({
+				type: "POST",
+				url: scTrans.ajaxurl,
+				data: {
+					action			: 'sc-ajax-action',
+					downloadPlans	: 1,
+					security		: scTrans.security,
+				},
+				dataType: 'json'
+			})
+			.fail(function( jqXHR, textStatus, errorThrown){
+				alert('Request fail.');
+				
+				console.error(textStatus);
+				console.error(errorThrown);
+				
+				butonTd.find('#custom_loader').hide();
+			})
+			.done(function(resp) {
+				console.log(resp);
+				
+				if (resp.hasOwnProperty('status') && 1 == resp.status) {
+					butonTd.find('fieldset span.dashicons.dashicons-yes-alt').css({
+						display :'inline',
+						color : 'green'
+					});
+					
+					butonTd.find('fieldset p.description').html(scTrans.LastDownload +': '+ resp.time);
+				} else {
+					alert('Response error.');
+				}
+				
+				butonTd.find('#custom_loader').hide();
+			});
+		});
+	}
 });
 // document ready function END

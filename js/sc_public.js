@@ -200,7 +200,7 @@ function scValidateAPMFields() {
 function afterSdkResponse(resp) {
 	console.log('afterSdkResponse');
 	console.log(resp);
-
+	
 	if (typeof resp.result != 'undefined') {
 		console.log(resp.result)
 

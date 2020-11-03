@@ -1,0 +1,3 @@
+#woocommerce-product-data ul.wc-tabs li.sc_subscr_tab a::before {
+	content: '\f18e';
+}
