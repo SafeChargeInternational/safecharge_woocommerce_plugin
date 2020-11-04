@@ -499,7 +499,7 @@ function scPrintApms(data) {
 					
 					apmHmtl +=
 							'<input id="' + data.apms[j]['paymentMethod'] + '_' + data.apms[j]['fields'][f]['name']
-								+ '" name="' + data.apms[j]['fields'][f]['name']
+								+ '" name="' + data.apms[j]['paymentMethod'] + '_' + data.apms[j]['fields'][f]['name']
 								+ '" type="' + data.apms[j]['fields'][f]['type']
 								+ '" pattern="' + pattern
 								+ '" placeholder="' + placeholder

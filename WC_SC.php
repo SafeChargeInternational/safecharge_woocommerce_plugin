@@ -19,6 +19,9 @@ class WC_SC extends WC_Payment_Gateway {
 	private $stop_dmn    = 0; // when 1 - stops the DMN for testing
 	private $sc_order;
 	
+	// the fields for the subscription
+	private $subscr_fields = array('_sc_subscr_enabled', '_sc_subscr_plan_id', '_sc_subscr_initial_amount', '_sc_subscr_recurr_amount', '_sc_subscr_recurr_units', '_sc_subscr_recurr_period', '_sc_subscr_trial_units', '_sc_subscr_trial_period', '_sc_subscr_end_after_units', '_sc_subscr_end_after_period');
+	
 	public function __construct() {
 		$plugin_dir        = basename(dirname(__FILE__));
 		$this->plugin_path = plugin_dir_path(__FILE__) . $plugin_dir . DIRECTORY_SEPARATOR;
@@ -291,6 +294,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 **/
 	public function process_payment( $order_id) {
 		SC_CLASS::create_log('Process payment(), Order #' . $order_id);
+		SC_CLASS::create_log($_POST);
 		
 		$order = wc_get_order($order_id);
 		
@@ -432,6 +436,13 @@ class WC_SC extends WC_Payment_Gateway {
 			// APM
 			$endpoint_method         = 'paymentAPM.do';
 			$params['paymentMethod'] = $sc_payment_method;
+			
+			// search for account details
+			foreach($_POST as $param => $val) {
+				if(strpos($param, $sc_payment_method . '_') !== false) {
+					$params['userAccountDetails'][str_replace($sc_payment_method . '_', '', $param)] = $val;
+				}
+			}
 		}
 		
 		$resp = SC_CLASS::call_rest_api(
@@ -571,8 +582,6 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		$resp_data	= array();
 		$content	= '';
-		
-//		SC_CLASS::create_log($_POST, '$_POST');
 		
 		# OpenOrder
 		$oo_data = $this->sc_create_open_order($order);
@@ -1337,10 +1346,41 @@ class WC_SC extends WC_Payment_Gateway {
 		$time			= gmdate('YmdHis');
 		$uniq_str		= $time . '_' . uniqid();
 		$ajax_params	= array();
+		$subscr_data	= array();
 		
 		if(!empty($this->get_param('scFormData'))) {
 			parse_str($this->get_param('scFormData'), $ajax_params); 
 		}
+		
+		// check for product with subscription
+		foreach(WC()->cart->get_cart() as $item_id => $item) {
+			// check for enabled subscription
+			if(current(get_post_meta($item['product_id'], '_sc_subscr_enabled')) == '1') {
+				// mandatory data
+				$subscr_data[$item['product_id']] = array(
+					'planId' => current(get_post_meta($item['product_id'], '_sc_subscr_plan_id')),
+					'initialAmount' => number_format(current(get_post_meta($item['product_id'], '_sc_subscr_initial_amount')), 2, '.', ''),
+					'recurringAmount' => number_format(current(get_post_meta($item['product_id'], '_sc_subscr_recurr_amount')), 2, '.', ''),
+				);
+				
+				# optional data
+				$recurr_unit	= current(get_post_meta($item['product_id'], '_sc_subscr_recurr_units'));
+				$recurr_period	= current(get_post_meta($item['product_id'], '_sc_subscr_recurr_period'));
+				$subscr_data[$item['product_id']]['recurringPeriod'][$recurr_unit] = $recurr_period;
+
+				$trial_unit		= current(get_post_meta($item['product_id'], '_sc_subscr_trial_units'));
+				$trial_period	= current(get_post_meta($item['product_id'], '_sc_subscr_trial_period'));
+				$subscr_data[$item['product_id']]['startAfter'][$trial_unit] = $trial_period;
+
+				$end_after_unit		= current(get_post_meta($item['product_id'], '_sc_subscr_end_after_units'));
+				$end_after_period	= current(get_post_meta($item['product_id'], '_sc_subscr_end_after_period'));
+				$subscr_data[$item['product_id']]['endAfter'][$end_after_unit] = $end_after_period;
+				# optional data END
+			}
+			
+//			SC_CLASS::create_log($subscr_data, 'OpenOrder $subscr_data');
+		}
+		// check for product with subscription END
 		
 		$oo_params = array(
 			'merchantId'        => $this->sc_get_setting('merchantId'),
@@ -1383,7 +1423,7 @@ class WC_SC extends WC_Payment_Gateway {
 			'webMasterId'       => $this->webMasterId,
 			'paymentOption'        => array('card' => array('threeD' => array('isDynamic3D' => 1))),
 			'transactionType'    => $this->sc_get_setting('payment_action'),
-//			'merchantDetails'	=> array('customField1' => ''),
+			'merchantDetails'	=> array('customField1' => json_encode($subscr_data)), // put subscr data here
 		);
 		
 		$oo_params['userDetails'] = $oo_params['billingAddress'];
@@ -1699,6 +1739,10 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		wp_send_json(array('status' => 0));
 		wp_die();
+	}
+	
+	public function get_subscr_fields() {
+		return $this->subscr_fields;
 	}
 	
 	private function sc_get_order_data( $TransactionID) {

@@ -664,19 +664,30 @@ function sc_add_product_subscr_data_fields() {
 	
 	echo '<div id="sc_subscr_settings" class="panel woocommerce_options_panel">';
 		# _sc_subscr_enabled
-		$sc_subscr_enabled = 'no';
+		$sc_subscr_enabled = 0;
 		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_enabled'))) {
 			$sc_subscr_enabled = $tmp[0];
 		}
 		
-		woocommerce_wp_checkbox(array( 
-			'id'            => '_sc_subscr_enabled', 
-//			'wrapper_class' => 'show_if_simple', 
-			'label'         => __( 'Enable Subscription', 'nuvei' ),
-//			'description'   => __( 'My Custom Field Description', 'my_text_domain' ),
-//			'default'  		=> 'no',
-			'value'			=> $sc_subscr_enabled,
-			'desc_tip'    	=> false,
+		var_dump($sc_subscr_enabled);
+		
+//		woocommerce_wp_checkbox(array( 
+//			'id'            => '_sc_subscr_enabled', 
+////			'wrapper_class' => 'show_if_simple', 
+//			'label'         => __( 'Enable Subscription', 'nuvei' ),
+////			'description'   => __( 'My Custom Field Description', 'my_text_domain' ),
+////			'default'  		=> 'no',
+//			'value'			=> $sc_subscr_enabled,
+////			'desc_tip'    	=> false,
+//		));
+		woocommerce_wp_select(array(
+			'id'		=> '_sc_subscr_enabled', 
+			'label'		=> __( 'Enable Subscription', 'nuvei' ),
+			'value'		=> $sc_subscr_enabled,
+			'options'	=> array(
+				0	=> __( 'NO', 'nuvei' ),
+				1	=> __( 'YES', 'nuvei' ),
+			),
 		));
 		# _sc_subscr_enabled END
 		
@@ -807,7 +818,7 @@ function sc_add_product_subscr_data_fields() {
 		# _sc_subscr_end_after_period
 		$sc_subscr_end_after_period = '';
 		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_end_after_period'))) {
-			$sc_subscr_trial_period = $tmp[0];
+			$sc_subscr_end_after_period = $tmp[0];
 		}
 		
 		woocommerce_wp_text_input(array(
@@ -827,9 +838,9 @@ function sc_add_product_subscr_data_fields() {
  * @param int $post_id
  */
 function sc_save_product_custom_fields($post_id) {
-	$fields = array('_sc_subscr_enabled', '_sc_subscr_plan_id', '_sc_subscr_initial_amount', '_sc_subscr_recurr_amount', '_sc_subscr_recurr_units', '_sc_subscr_recurr_period', '_sc_subscr_trial_units', '_sc_subscr_trial_period', '_sc_subscr_end_after_units', '_sc_subscr_end_after_period');
+	global $wc_sc;
 	
-	foreach($fields as $field) {
+	foreach($wc_sc->get_subscr_fields() as $field) {
 		if(isset($_POST[$field])) {
 			update_post_meta( $post_id, $field, esc_attr( $_POST[$field] ) );
 		}

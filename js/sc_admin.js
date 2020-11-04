@@ -237,5 +237,6 @@ jQuery(function() {
 			});
 		});
 	}
+	
 });
 // document ready function END

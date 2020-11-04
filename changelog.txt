@@ -1,5 +1,9 @@
 *** WooCommerce Extension Template Changelog ***
 
+version 3.6
+* Added Download Plans button in plugin settings.
+* Added "SafeCharge Subscription" tab with fields in product details.
+
 version 3.5
 * Code refactoring.
 * The Test Mode option was replaced with Side Mode dropdown.
