@@ -6,7 +6,17 @@
 	<input type="hidden" name="lst" id="lst" value="" />
 	
 	<div id="sc_loader_background">
-		<img src="<?php echo $this->plugin_url; ?>icons/loader.gif" alt="loading..." />
+		<div class="sc_modal">
+			<div class="sc_header"><span onclick="closeScLoadingModal()">&times;</span></div>
+			<hr/>
+
+			<div class="sc_content">
+				<h3>
+					<img src="<?php echo $this->plugin_url; ?>icons/loader.gif" alt="loading..." />
+					<?php echo __('Processing your Payment...', 'nuvei'); ?>
+				</h3>
+			</div>
+		</div>
 	</div>
 
 	<h3><?php echo __('Choose from yours preferred payment methods', 'nuvei');?></h3>
@@ -14,6 +24,8 @@
 
 	<h3><?php echo __('Choose from the payment options', 'nuvei'); ?></h3>
 	<ul id="sc_apms_list"></ul>
+	
+	<?php wp_nonce_field('sc_checkout', 'sc_nonce'); ?>
 
 	<button type="button" onclick="scValidateAPMFields()" class="button alt" name="woocommerce_checkout_place_order" value="<?php echo __('Pay'); ?>" data-value="<?php echo __('Pay'); ?>" data-default-text="Place order"><?php echo __('Pay'); ?></button>
 	

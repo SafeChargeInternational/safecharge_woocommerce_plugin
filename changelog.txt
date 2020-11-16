@@ -1,122 +1,125 @@
 *** WooCommerce Extension Template Changelog ***
 
-version 3.6
-* Added Download Plans button in plugin settings.
-* Added "SafeCharge Subscription" tab with fields in product details.
-
-version 3.5
-* Code refactoring.
-* The Test Mode option was replaced with Side Mode dropdown.
-* In required dropdowns was add "Select an option..." option.
-* Mandatory settings are marked with *
-* Skip additional check for ipAddress parameter. It is checked when we get it.
-* Compatible with "WooCommerce Multi-Step Checkout" plugin
-* Removed Manual Refund button.
-* No need to create manual refund record after a Refund from CPanel.
-* Now refunds records in WC are saved after the Refund DMNs. The info for the Refunds is stored as Order meta data.
-* Update plugins settings hook was moved to WC_SC Class.
-* SC_Versions_Resolver Class will ne removed in next version
-
 version 3.4
-* Now user can reorder Failed Orders form My account > Orders
+	* After click the pay button on APMs page, we check for changes in the Cart. If there are changes, we update the Order and return the new Order Amount, so can pass it into webSDK call.
+	* Added loading popup on APMs step.
+	* Void button is available for Failed Orders.
+	* Added create_log method in WC_SC class.
+	* When site is in Test Mode log account details.
+	* Plugin was rebranded.
+	* Working over the Rebbiling.
+	* Fix for the new Netteler behavior.
+	* Verify Nonce in process_payment().
+	* Code refactoring.
+	* The Test Mode option was replaced with Side Mode dropdown.
+	* In required dropdowns was add "Select an option..." option.
+	* Mandatory settings are marked with *.
+	* Skip additional check for ipAddress parameter. It is checked when we get it.
+	* Compatible with "WooCommerce Multi-Step Checkout" plugin.
+	* Removed Manual Refund button.
+	* No need to create manual refund record after a Refund from CPanel.
+	* Now refunds records in WC are saved after the Refund DMNs. The info for the Refunds is stored as Order meta data.
+	* Update plugins settings hook was moved to WC_SC Class.
+	* SC_Versions_Resolver class was removed.
+	* Now user can reorder Failed Orders form My account > Orders.
 
 version 3.3.3
-* Skip additional check for ipAddress parameter. It is checked when we get it.
+	* Skip additional check for ipAddress parameter. It is checked when we get it.
 
 version 3.3.2
-* Fix for the Prod endpoint.
+	* Fix for the Prod endpoint.
 
 2020-08-14 - version 3.3.1
-* Small style fixes;
-* Tested compatibility with WP 5.5 and WC 4.3.2
+	* Small style fixes;
+	* Tested compatibility with WP 5.5 and WC 4.3.2
 
 2020-08-13 - version 3.3
-* Use custom 2 steps checkout;
-* Complete style for SC elements;
+	* Use custom 2 steps checkout;
+	* Complete style for SC elements;
 
 2020-08-10 - version 3.2
-* Do not use confirm-order-flag anymore. Instead check for sc_payment_method parameter;
+	* Do not use confirm-order-flag anymore. Instead check for sc_payment_method parameter;
 
 2020-08-07 - version 3.1
-* Start prepare UPOs usage;
-* Fix for the problem when the client select other Payment Provider than SafeCharge.
-* Fixed the problem with missing Shipping Email.
-* Use webSDK for Direct APMs.
-* Added error message on Order Confirm page in case of error.
+	* Start prepare UPOs usage;
+	* Fix for the problem when the client select other Payment Provider than SafeCharge.
+	* Fixed the problem with missing Shipping Email.
+	* Use webSDK for Direct APMs.
+	* Added error message on Order Confirm page in case of error.
 
 2020-02-12 - version 3.0
-* New - new keys and values of SC Order meta data. Added few more SC meta fields.
-Please, complete all you existing Orders before apply this update!
-* Added validations in SC_CLASS for some of the request parameters;
+	* New - new keys and values of SC Order meta data. Added few more SC meta fields.
+	Please, complete all you existing Orders before apply this update!
+	* Added validations in SC_CLASS for some of the request parameters;
 
 2020-02-04 - version 2.4
-* Fix for Guest user Order. Fix for the case when user changes the shipping method, and this changes the Order Total.
-* New - add new icon for the CC method.
+	* Fix for Guest user Order. Fix for the case when user changes the shipping method, and this changes the Order Total.
+	* New - add new icon for the CC method.
 
 2020-01-03 - version 2.3
-* New - Removed the code for Cashier in iFrame. Fixes.
+	* New - Removed the code for Cashier in iFrame. Fixes.
 
 2019-09-10 - version 2.2
-* New - Create payments via WebSDK. Cashier payments are not supported anymore.
+	* New - Create payments via WebSDK. Cashier payments are not supported anymore.
 
 2019-07-22 - version 2.1
-* New - Added logger class.
+	* New - Added logger class.
 
 2019-05-28 - version 2.0
-* New - Integrate SafeCharge Fields.
+	* New - Integrate SafeCharge Fields.
 
 2019-07-03 - version 1.9.3
-* New - The parameter user_token_id will be filled only for registered users. Added "/" before the "?" in the Notify URL, if there is non. The Notify URL field in the settings is hidden. It will be visible as text now.
+	* New - The parameter user_token_id will be filled only for registered users. Added "/" before the "?" in the Notify URL, if there is non. The Notify URL field in the settings is hidden. It will be visible as text now.
 
 2019-06-07 - version 1.9.2
-* New - Added option for the merchant to create local Refund - without sending request to the CPanel, in case her created the refund first in CPanel. Removed the DMN listener for CPanel Refund. Enabled Refund Amount field for WC 3.6+.
+	* New - Added option for the merchant to create local Refund - without sending request to the CPanel, in case her created the refund first in CPanel. Removed the DMN listener for CPanel Refund. Enabled Refund Amount field for WC 3.6+.
 
 2019-05-13 - version 1.9.1
-* New - Hide Refund and Void buttons when they no need to be visible. Better Order Notes. Some code fixes.
+	* New - Hide Refund and Void buttons when they no need to be visible. Better Order Notes. Some code fixes.
 
 2019-03-26 - version 1.9
-* New - Better logic for add and remove SC hooks for the checkout. Hide SC buttons when edit order if, it not made via SC. Removed option to show or hide the loading message on Checkout page.
-* Add - Added functionality to create Full Refund, when merchant change order status to Refunded.
+	* New - Better logic for add and remove SC hooks for the checkout. Hide SC buttons when edit order if, it not made via SC. Removed option to show or hide the loading message on Checkout page.
+	* Add - Added functionality to create Full Refund, when merchant change order status to Refunded.
 
 2018-12-19 - version 1.8.2
-* New - Added option in the settings, to use Cashier in iFrame.
+	* New - Added option in the settings, to use Cashier in iFrame.
 
 2018-11-28 - version 1.8.1
-* New - Option in Admin to rewrite DMN URL and redirect to new one. This helps when the user have 404 page problem with "+", " " and "%20" symbols in the URL. Support of WP WPML and WC WPML plugins. Button in Admin to delete oldest logs, but kept last 30 of them.
-* Bug Fix - When get DMN from Void / Refund - change the status of the order.
+	* New - Option in Admin to rewrite DMN URL and redirect to new one. This helps when the user have 404 page problem with "+", " " and "%20" symbols in the URL. Support of WP WPML and WC WPML plugins. Button in Admin to delete oldest logs, but kept last 30 of them.
+	* Bug Fix - When get DMN from Void / Refund - change the status of the order.
 
 2018-11-26 - version 1.8
-* New - Add Transaction Type in the backend with two options - Auth and Settle  / Sale, and all logic connected with this option.
+	* New - Add Transaction Type in the backend with two options - Auth and Settle  / Sale, and all logic connected with this option.
 
 2018-11-22 - version 1.7
-* New - Option to cancel the order using Void button.
+	* New - Option to cancel the order using Void button.
 
 2018-11-19 - version 1.6.2
-* New - The Merchant will have option to force HTTP for the Notification URL.
+	* New - The Merchant will have option to force HTTP for the Notification URL.
 
 2018-11-16 - version 1.6.1
-* New - Added more checks in SC_REST_API Class to prevent unexpected errors, code cleaned. The class was changed to static. Added new file sc_ajax.php to catch the Ajax call from the JS file.
+	* New - Added more checks in SC_REST_API Class to prevent unexpected errors, code cleaned. The class was changed to static. Added new file sc_ajax.php to catch the Ajax call from the JS file.
 
 2018-11-14 - version 1.6
-* Add - Map variables according names convention in the REST API.
+	* Add - Map variables according names convention in the REST API.
 
 2018-11-13 - version 1.5.1
-* Add - The merchant have an option to enable or disable creating logs for the plugin's work.
+	* Add - The merchant have an option to enable or disable creating logs for the plugin's work.
 
 2018-11-01 - version 1.5
-* Add - Added Tokenization for card payment methods.
+	* Add - Added Tokenization for card payment methods.
 
 2018-10-24 - version 1.4
-* Add - Independent SC_REST_API class from the main shopping system.
+	* Add - Independent SC_REST_API class from the main shopping system.
 
 2018-10-17 - version 1.3.1
-* Add - Added SC Novo Mobile like theme for the APM fields.
+	* Add - Added SC Novo Mobile like theme for the APM fields.
 
 2018-10-02 - version 1.3
-* Add - Work with REST API payments integration.
+	* Add - Work with REST API payments integration.
 
 2018-09-27 - version 1.2
-* Add - Support for Refund.
+	* Add - Support for Refund.
 
 2018-08-23 - version 1.1
-* Add - Support for Dynamic Pricing including tax calculation and discount.
+	* Add - Support for Dynamic Pricing including tax calculation and discount.

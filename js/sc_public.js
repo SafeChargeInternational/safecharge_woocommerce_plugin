@@ -41,6 +41,7 @@ var scOrderAmount, scOrderCurr, scMerchantId, scMerchantSiteId, scOpenOrderToken
   * When click save on modal, check for mandatory fields and validate them.
   */
 function scValidateAPMFields() {
+	jQuery('#sc_loader_background').show();
 	console.log('scValidateAPMFields')
 	
 	selectedPM = jQuery('input[name="sc_payment_method"]:checked').val();
@@ -49,6 +50,38 @@ function scValidateAPMFields() {
 		scFormFalse();
 		return;
 	}
+	
+	jQuery.ajax({
+		type: "POST",
+		url: scTrans.ajaxurl,
+		data: {
+			action      : 'sc-ajax-action',
+			security    : scTrans.security,
+			checkCart	: 1
+		},
+		dataType: 'json'
+	})
+		.fail(function(){
+			console.error('Cart check failed.');
+		})
+		.done(function(resp) {
+			console.log(resp);
+	
+			if (
+				resp === null
+				|| ! resp.hasOwnProperty('success')
+				|| ! resp.hasOwnProperty('isCartChanged')
+				|| resp.success == 0
+			) {
+				console.error('Cart check error.');
+			}
+			else if(1 == resp.isCartChanged && resp.hasOwnProperty('amount')) {
+				scOrderAmount = resp.amount;
+			}
+			else {
+				console.error('Cart check report - cart was not changed or there is no amount.');
+			}
+		});
 		
 	var formValid			= true;	
 	var nuveiPaymentParams	= {
@@ -110,7 +143,6 @@ function scValidateAPMFields() {
 		nuveiPaymentParams.paymentOption	= sfcFirstField;
 
 		// create payment with WebSDK
-		jQuery('#sc_loader_background').show();
 		sfc.createPayment(nuveiPaymentParams, function(resp) {
 			afterSdkResponse(resp);
 		});
@@ -134,7 +166,6 @@ function scValidateAPMFields() {
 		};
 		
 		// create payment with WebSDK
-		jQuery('#sc_loader_background').show();
 		sfc.createPayment(nuveiPaymentParams, function(resp){
 			afterSdkResponse(resp);
 		});
@@ -179,7 +210,6 @@ function scValidateAPMFields() {
 
 		// direct APMs can use the SDK
 		if(jQuery('input[name="sc_payment_method"]:checked').attr('data-nuvei-is-direct') == 'true') {
-			jQuery('#sc_loader_background').show();
 			sfc.createPayment(nuveiPaymentParams, function(resp){
 				afterSdkResponse(resp);
 			});
@@ -208,7 +238,7 @@ function afterSdkResponse(resp) {
 			jQuery('#sc_transaction_id').val(resp.transactionId);
 			jQuery('#place_order').trigger('click');
 			
-			jQuery('#sc_loader_background').hide();
+			closeScLoadingModal();
 			return;
 		}
 		else if (resp.result == 'DECLINED') {
@@ -241,6 +271,10 @@ function afterSdkResponse(resp) {
 	}
 }
  
+function closeScLoadingModal() {
+	jQuery('#sc_loader_background').hide();
+}
+
 function scFormFalse(text) {
 	console.log('scFormFalse()');
 	
@@ -259,7 +293,7 @@ function scFormFalse(text) {
 	);
 	
 	jQuery(window).scrollTop(0);
-	jQuery('#sc_loader_background').hide();
+	closeScLoadingModal();
 }
  
  /**
@@ -359,7 +393,7 @@ function deleteScUpo(upoId) {
 			jQuery('#sc_remove_upo_' + upoId).show();
 		});
 		
-		jQuery('#sc_loader_background').hide();
+		closeScLoadingModal();
 	}
 }
 
@@ -499,7 +533,7 @@ function scPrintApms(data) {
 					
 					apmHmtl +=
 							'<input id="' + data.apms[j]['paymentMethod'] + '_' + data.apms[j]['fields'][f]['name']
-								+ '" name="' + data.apms[j]['paymentMethod'] + '_' + data.apms[j]['fields'][f]['name']
+								+ '" name="' + data.apms[j]['paymentMethod'] + '[' + data.apms[j]['fields'][f]['name'] + ']'
 								+ '" type="' + data.apms[j]['fields'][f]['type']
 								+ '" pattern="' + pattern
 								+ '" placeholder="' + placeholder

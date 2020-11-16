@@ -13,22 +13,46 @@
 }
 
 #sc_second_step_form #sc_loader_background {
-	position: absolute;
-	top: 0px;
-	left: 0px;
-	background: rgba(255, 255, 255, 0.5);
-	width: 100%;
-	height: 100%;
 	display: none;
-	z-index: 100;
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 99999;
+	background: rgba(0,0,0,0.5);
+}
+
+#sc_second_step_form #sc_loader_background .sc_modal {
+	position: relative;
+	width: 100%;
+	background: white;
+	max-width: 600px;
+	margin: 60px auto;
+	font-size: 1rem;
+	padding: 30px;
+	text-align: center;
+
+
+}
+
+#sc_second_step_form #sc_loader_background .sc_header {
+	text-align: right;
+	font-size: 1.375rem;
+}
+
+#sc_second_step_form #sc_loader_background .sc_content {
+	margin-top: 40px;
+}
+
+#sc_second_step_form #sc_loader_background .sc_header span {
+	font-weight: bolder;
+	cursor: pointer;
 }
 
 #sc_second_step_form #sc_loader_background img {
-	position: fixed;
-	left: 50%;
-	margin-left: -32px;
-	top: 50%;
-	margin-top: -32px;
+	max-width: 18px;
+	display: inline;
 }
 
 #sc_second_step_form .woocommerce-error, #content .woocommerce-warning {

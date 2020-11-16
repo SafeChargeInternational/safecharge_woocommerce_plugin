@@ -1,11 +1,11 @@
 <?php
 /*
- * Plugin Name: SafeCharge Payments
+ * Plugin Name: Nuvei Payments
  * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
- * Description: SafeCharge gateway for WooCommerce
- * Version: 3.5
- * Author: SafeCharge
- * Author URI: https://safecharge.com
+ * Description: Nuvei gateway for WooCommerce
+ * Version: 3.4
+ * Author: Nuvei
+ * Author URI: https://nuvei.com
  * Require at least: 4.7
  * Tested up to: 5.5.1
  * WC requires at least: 3.0
@@ -19,7 +19,6 @@ if (!session_id()) {
 }
 
 require_once 'sc_config.php';
-require_once 'SC_Versions_Resolver.php';
 require_once 'SC_CLASS.php';
 
 $wc_sc = null;
@@ -42,8 +41,8 @@ function woocommerce_sc_init() {
 	// load WC styles
 	add_filter('woocommerce_enqueue_styles', 'sc_enqueue_wo_files');
 	// add admin style
-	add_action( 'admin_enqueue_scripts', function($hook) {
-		if( 'post.php' != $hook ) {
+	add_action( 'admin_enqueue_scripts', function( $hook) {
+		if ( 'post.php' != $hook ) {
 			return;
 		}
 		
@@ -58,14 +57,14 @@ function woocommerce_sc_init() {
 	add_action('wp_ajax_nopriv_sc-ajax-action', 'sc_ajax_action');
 	
 	// insert Custom Merchat style
-	add_action( 'woocommerce_checkout_after_order_review',  array($wc_sc, 'sc_insert_merchant_style'), 10, 1 );
+	add_action( 'woocommerce_checkout_after_order_review', array($wc_sc, 'sc_insert_merchant_style'), 10, 1 );
 	
 	// if validation success get order details
-	add_action('woocommerce_after_checkout_validation', function($data, $errors) {
-//		SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
+	add_action('woocommerce_after_checkout_validation', function( $data, $errors) {
+		//      SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
 		SC_CLASS::create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
 		
-		if( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
+		if ( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
 			if (!isset($_POST['sc_payment_method']) || empty($_POST['sc_payment_method'])) {
 				global $wc_sc;
 				$content = $wc_sc->sc_get_payment_methods('');
@@ -92,11 +91,11 @@ function woocommerce_sc_init() {
 		}
 		
 		// show admin product data Subscription tab
-		add_filter( 'woocommerce_product_data_tabs', 'sc_filter_woocommerce_product_data_tabs', 10, 1 );
-		// add admin product data Subscription tab content
-		add_action( 'woocommerce_product_data_panels', 'sc_add_product_subscr_data_fields' );
-		// save product Subscription data as meta data
-		add_action( 'woocommerce_process_product_meta', 'sc_save_product_custom_fields', 10, 3 );
+		//      add_filter( 'woocommerce_product_data_tabs', 'sc_filter_woocommerce_product_data_tabs', 10, 1 );
+		//      // add admin product data Subscription tab content
+		//      add_action( 'woocommerce_product_data_panels', 'sc_add_product_subscr_data_fields' );
+		//      // save product Subscription data as meta data
+		//      add_action( 'woocommerce_process_product_meta', 'sc_save_product_custom_fields', 10, 3 );
 	}
 	
 	// change Thank-you page title and text
@@ -119,8 +118,7 @@ function woocommerce_sc_init() {
 			function ( $str, $order) {
 				return esc_html__('There is an error with your order. Please, check if the order was recieved or what is the status!', 'sc');
 			}, 10, 2);
-	}
-	elseif ('canceled' === strtolower($wc_sc->get_request_status())) {
+	} elseif ('canceled' === strtolower($wc_sc->get_request_status())) {
 		add_filter('the_title', function ( $title, $id) {
 			if (
 				function_exists('is_order_received_page')
@@ -167,7 +165,7 @@ function sc_ajax_action() {
 		$payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
 	}
 
-	// recognize the action:
+	# recognize the action:
 	// Void (Cancel)
 	if ($wc_sc->get_param('cancelOrder', 'int') == 1 && $wc_sc->get_param('orderId', 'int') > 0) {
 		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'void');
@@ -201,6 +199,11 @@ function sc_ajax_action() {
 	// download Subscriptions Plans
 	if ($wc_sc->get_param('downloadPlans', 'int') == 1) {
 		$wc_sc->sc_download_subscr_pans();
+	}
+	
+	// update order
+	if ($wc_sc->get_param('checkCart', 'int') == 1) {
+		$wc_sc->check_cart();
 	}
 
 	wp_send_json_error(__('Not recognized Ajax call.'));
@@ -372,7 +375,7 @@ function sc_enqueue( $hook) {
 		);
 		
 		$sc_plans_last_mod_time = '';
-		if(is_readable(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json')) {
+		if (is_readable(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json')) {
 			$sc_plans_last_mod_time = date('Y-m-d H:i:s', filemtime(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json'));
 		}
 		
@@ -430,6 +433,17 @@ function sc_add_buttons() {
 		$order                = wc_get_order($order_id);
 		$order_status         = strtolower($order->get_status());
 		$order_payment_method = $order->get_meta('_paymentMethod');
+		$order_refunds        = json_decode($order->get_meta('_sc_refunds'), true);
+		$refunds_exists       = false;
+		
+		if (!empty($order_refunds) && is_array($order_refunds)) {
+			foreach ($order_refunds as $tr_id => $data) {
+				if ('approved' == $data['status']) {
+					$refunds_exists = true;
+					break;
+				}
+			}
+		}
 	} catch (Exception $ex) {
 		echo '<script type="text/javascript">console.error("'
 			. esc_js($ex->getMessage()) . '")</script>';
@@ -449,18 +463,16 @@ function sc_add_buttons() {
 		return;
 	}
 	
-	if ('completed' == $order_status || 'pending' == $order_status) {
+	if (in_array($order_status, array('completed', 'pending', 'failed'))) {
 		global $wc_sc;
 
-		$time				= gmdate('YmdHis', time());
-		$order_tr_id		= $order->get_meta(SC_TRANS_ID);
+		$time        = gmdate('YmdHis', time());
+		$order_tr_id = $order->get_meta(SC_TRANS_ID);
 		// we do not set this meta anymore, keep it only because of the orders made before v3.5 of the plugin
-		$order_has_refund	= $order->get_meta(SC_ORDER_HAS_REFUND);
-		$refunds			= json_decode($order->get_meta('_sc_refunds'), true);
-		$notify_url			= $wc_sc->set_notify_url();
+		$order_has_refund = $order->get_meta(SC_ORDER_HAS_REFUND);
+		$notify_url       = $wc_sc->set_notify_url();
 		
 		// Show VOID button
-//		if ('1' != $order_has_refund && in_array($order_payment_method, array('cc_card', 'dc_card'))) {
 		if (
 			'cc_card' == $order_payment_method
 			/**
@@ -468,7 +480,7 @@ function sc_add_buttons() {
 			 * since v3.5 we save some of the refund parameters as json in "_sc_refunds" meta data
 			 * and do not save $order_has_refund flag anymore
 			 */
-			&& ( '1' != $order_has_refund || (!empty($refunds) && is_array($refunds)) )
+			&& ( '1' != $order_has_refund && !$refunds_exists )
 		) {
 			echo
 				'<button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
@@ -642,12 +654,12 @@ function nuvei_show_message_on_cart( $data) {
  */
 function sc_filter_woocommerce_product_data_tabs( $tabs ) { 
 	$tabs['sc_subscr'] = array(
-		'label'		=> __( 'SafeCharge Subscription', 'sc' ),
+		'label'		=> __( 'Nuvei Subscription', 'sc' ),
 		'priority' 	=> 10000,
 		'target'	=> 'sc_subscr_settings', // the container div ID
 	);
 	
-    return $tabs; 
+	return $tabs; 
 }; 
 
 /**
@@ -655,7 +667,7 @@ function sc_filter_woocommerce_product_data_tabs( $tabs ) {
  * Add Subscription settings
  */
 function sc_add_product_subscr_data_fields() {
-	$units = array(
+	$units    = array(
 		'day'	=> __( 'DAY', 'nuvei' ),
 		'month'	=> __( 'MONTH', 'nuvei' ),
 		'year'	=> __( 'YEAR', 'nuvei' ),
@@ -665,21 +677,21 @@ function sc_add_product_subscr_data_fields() {
 	echo '<div id="sc_subscr_settings" class="panel woocommerce_options_panel">';
 		# _sc_subscr_enabled
 		$sc_subscr_enabled = 0;
-		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_enabled'))) {
-			$sc_subscr_enabled = $tmp[0];
-		}
+	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_enabled'))) {
+		$sc_subscr_enabled = $tmp[0];
+	}
 		
 		var_dump($sc_subscr_enabled);
 		
-//		woocommerce_wp_checkbox(array( 
-//			'id'            => '_sc_subscr_enabled', 
-////			'wrapper_class' => 'show_if_simple', 
-//			'label'         => __( 'Enable Subscription', 'nuvei' ),
-////			'description'   => __( 'My Custom Field Description', 'my_text_domain' ),
-////			'default'  		=> 'no',
-//			'value'			=> $sc_subscr_enabled,
-////			'desc_tip'    	=> false,
-//		));
+	//      woocommerce_wp_checkbox(array( 
+	//          'id'            => '_sc_subscr_enabled', 
+	////            'wrapper_class' => 'show_if_simple', 
+	//          'label'         => __( 'Enable Subscription', 'nuvei' ),
+	////            'description'   => __( 'My Custom Field Description', 'my_text_domain' ),
+	////            'default'       => 'no',
+	//          'value'         => $sc_subscr_enabled,
+	////            'desc_tip'      => false,
+	//      ));
 		woocommerce_wp_select(array(
 			'id'		=> '_sc_subscr_enabled', 
 			'label'		=> __( 'Enable Subscription', 'nuvei' ),
@@ -694,20 +706,20 @@ function sc_add_product_subscr_data_fields() {
 		# _sc_subscr_plan_id
 		$plans_list = array('' => __('Select a Plan', 'nuvei'));
 		
-		if(is_readable(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json')) {
-			$plans = json_decode(file_get_contents(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json', true));
+	if (is_readable(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json')) {
+		$plans = json_decode(file_get_contents(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json', true));
 			
-			if(is_array($plans)) {
-				foreach($plans as $data) {
-					$plans_list[$data->planId] = $data->name;
-				}
+		if (is_array($plans)) {
+			foreach ($plans as $data) {
+				$plans_list[$data->planId] = $data->name;
 			}
 		}
+	}
 		
 		$sc_subscr_plan_id = '';
-		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_plan_id'))) {
-			$sc_subscr_plan_id = $tmp[0];
-		}
+	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_plan_id'))) {
+		$sc_subscr_plan_id = $tmp[0];
+	}
 		
 		woocommerce_wp_select(array(
 			'id'		=> '_sc_subscr_plan_id', 
@@ -719,9 +731,9 @@ function sc_add_product_subscr_data_fields() {
 		
 		# _sc_subscr_initial_amount
 		$sc_subscr_initial_amount = '';
-		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_initial_amount'))) {
-			$sc_subscr_initial_amount = $tmp[0];
-		}
+	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_initial_amount'))) {
+		$sc_subscr_initial_amount = $tmp[0];
+	}
 		
 		woocommerce_wp_text_input(array(
 			'id'	=> '_sc_subscr_initial_amount', 
@@ -733,9 +745,9 @@ function sc_add_product_subscr_data_fields() {
 		
 		# _sc_subscr_recurr_amount
 		$sc_subscr_recurr_amount = '';
-		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_recurr_amount'))) {
-			$sc_subscr_recurr_amount = $tmp[0];
-		}
+	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_recurr_amount'))) {
+		$sc_subscr_recurr_amount = $tmp[0];
+	}
 		
 		woocommerce_wp_text_input(array(
 			'id'	=> '_sc_subscr_recurr_amount', 
@@ -747,9 +759,9 @@ function sc_add_product_subscr_data_fields() {
 		
 		# _sc_subscr_recurr_units
 		$sc_subscr_recurr_units = 'day';
-		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_recurr_units'))) {
-			$sc_subscr_recurr_units = $tmp[0];
-		}
+	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_recurr_units'))) {
+		$sc_subscr_recurr_units = $tmp[0];
+	}
 		
 		woocommerce_wp_select(array(
 			'id'		=> '_sc_subscr_recurr_units', 
@@ -761,9 +773,9 @@ function sc_add_product_subscr_data_fields() {
 		
 		# _sc_subscr_recurr_period
 		$sc_subscr_recurr_period = '';
-		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_recurr_period'))) {
-			$sc_subscr_recurr_period = $tmp[0];
-		}
+	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_recurr_period'))) {
+		$sc_subscr_recurr_period = $tmp[0];
+	}
 		
 		woocommerce_wp_text_input(array(
 			'id'	=> '_sc_subscr_recurr_period', 
@@ -775,9 +787,9 @@ function sc_add_product_subscr_data_fields() {
 		
 		# _sc_subscr_trial_units
 		$sc_subscr_trial_units = 'day';
-		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_trial_units'))) {
-			$sc_subscr_trial_units = $tmp[0];
-		}
+	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_trial_units'))) {
+		$sc_subscr_trial_units = $tmp[0];
+	}
 		
 		woocommerce_wp_select(array(
 			'id'		=> '_sc_subscr_trial_units', 
@@ -789,9 +801,9 @@ function sc_add_product_subscr_data_fields() {
 		
 		# _sc_subscr_trial_period
 		$sc_subscr_trial_period = '';
-		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_trial_period'))) {
-			$sc_subscr_trial_period = $tmp[0];
-		}
+	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_trial_period'))) {
+		$sc_subscr_trial_period = $tmp[0];
+	}
 		
 		woocommerce_wp_text_input(array(
 			'id'	=> '_sc_subscr_trial_period', 
@@ -803,9 +815,9 @@ function sc_add_product_subscr_data_fields() {
 		
 		# _sc_subscr_end_after_units
 		$sc_subscr_end_after_units = 'day';
-		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_end_after_units'))) {
-			$sc_subscr_end_after_units = $tmp[0];
-		}
+	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_end_after_units'))) {
+		$sc_subscr_end_after_units = $tmp[0];
+	}
 		
 		woocommerce_wp_select(array(
 			'id'		=> '_sc_subscr_end_after_units', 
@@ -817,9 +829,9 @@ function sc_add_product_subscr_data_fields() {
 		
 		# _sc_subscr_end_after_period
 		$sc_subscr_end_after_period = '';
-		if(!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_end_after_period'))) {
-			$sc_subscr_end_after_period = $tmp[0];
-		}
+	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_end_after_period'))) {
+		$sc_subscr_end_after_period = $tmp[0];
+	}
 		
 		woocommerce_wp_text_input(array(
 			'id'	=> '_sc_subscr_end_after_period', 
@@ -837,11 +849,11 @@ function sc_add_product_subscr_data_fields() {
  * 
  * @param int $post_id
  */
-function sc_save_product_custom_fields($post_id) {
+function sc_save_product_custom_fields( $post_id) {
 	global $wc_sc;
 	
-	foreach($wc_sc->get_subscr_fields() as $field) {
-		if(isset($_POST[$field])) {
+	foreach ($wc_sc->get_subscr_fields() as $field) {
+		if (isset($_POST[$field])) {
 			update_post_meta( $post_id, $field, esc_attr( $_POST[$field] ) );
 		}
 	}
