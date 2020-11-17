@@ -466,10 +466,10 @@ class WC_SC extends WC_Payment_Gateway {
 			}
 		}
 		
-//		$resp = SC_CLASS::call_rest_api(
-//			$this->getEndPointBase() . $endpoint_method,
-//			$params
-//		);
+		//      $resp = SC_CLASS::call_rest_api(
+		//          $this->getEndPointBase() . $endpoint_method,
+		//          $params
+		//      );
 		$resp = $this->call_rest_api($endpoint_method, $params);
 		
 		if (!$resp) {
@@ -595,15 +595,15 @@ class WC_SC extends WC_Payment_Gateway {
 		ob_end_flush();
 	}
 	
-//	public function sc_get_payment_methods( $content) {
+	//  public function sc_get_payment_methods( $content) {
 	public function sc_get_payment_methods() {
 		global $woocommerce;
 		
 		$resp_data = array();
-//		$content   = '';
+		//      $content   = '';
 		
 		# OpenOrder
-//		$oo_data = $this->sc_create_open_order($order);
+		//      $oo_data = $this->sc_create_open_order($order);
 		$oo_data = $this->sc_create_open_order();
 		
 		if (!$oo_data) {
@@ -642,10 +642,10 @@ class WC_SC extends WC_Payment_Gateway {
 				. $time . $this->sc_get_setting('secret')
 		);
 
-//		$apms_data = SC_CLASS::call_rest_api(
-//			$this->getEndPointBase() . 'getMerchantPaymentMethods.do',
-//			$apms_params
-//		);
+		//      $apms_data = SC_CLASS::call_rest_api(
+		//          $this->getEndPointBase() . 'getMerchantPaymentMethods.do',
+		//          $apms_params
+		//      );
 		$apms_data = $this->call_rest_api('getMerchantPaymentMethods.do', $apms_params);
 		
 		if (!is_array($apms_data) || empty($apms_data['paymentMethods'])) {
@@ -683,10 +683,10 @@ class WC_SC extends WC_Payment_Gateway {
 
 			$upo_params['checksum'] = hash($this->sc_get_setting('hash_type'), implode('', $upo_params) . $this->sc_get_setting('secret'));
 
-//			$upo_res = SC_CLASS::call_rest_api(
-//				$this->getEndPointBase() . 'getUserUPOs.do',
-//				$upo_params
-//			);
+			//          $upo_res = SC_CLASS::call_rest_api(
+			//              $this->getEndPointBase() . 'getUserUPOs.do',
+			//              $upo_params
+			//          );
 			$upo_res = $this->call_rest_api('getUserUPOs.do', $upo_params);
 			
 			if (!empty($upo_res['paymentMethods']) && is_array($upo_res['paymentMethods'])) {
@@ -757,16 +757,16 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		// santitized get variables
-		$invoice_id				= $this->get_param('invoice_id');
-		$clientUniqueId			= $this->get_param('clientUniqueId');
-		$transactionType		= $this->get_param('transactionType');
-		$Reason					= $this->get_param('Reason');
-		$action					= $this->get_param('action');
-		$order_id				= $this->get_param('order_id', 'int');
-		$gwErrorReason			= $this->get_param('gwErrorReason');
-		$AuthCode				= $this->get_param('AuthCode', 'int');
-		$TransactionID			= $this->get_param('TransactionID', 'int');
-		$relatedTransactionId	= $this->get_param('relatedTransactionId', 'int');
+		$invoice_id           = $this->get_param('invoice_id');
+		$clientUniqueId       = $this->get_param('clientUniqueId');
+		$transactionType      = $this->get_param('transactionType');
+		$Reason               = $this->get_param('Reason');
+		$action               = $this->get_param('action');
+		$order_id             = $this->get_param('order_id', 'int');
+		$gwErrorReason        = $this->get_param('gwErrorReason');
+		$AuthCode             = $this->get_param('AuthCode', 'int');
+		$TransactionID        = $this->get_param('TransactionID', 'int');
+		$relatedTransactionId = $this->get_param('relatedTransactionId', 'int');
 		
 		if (empty($TransactionID)) {
 			$this->create_log($_REQUEST, 'DMN error - The TransactionID is empty!');
@@ -787,7 +787,7 @@ class WC_SC extends WC_Payment_Gateway {
 				!is_numeric($clientUniqueId)
 				&& $this->get_param('TransactionID', 'int') != 0
 			) {
-//				$this->create_log('DMN Report - webSDK payment.');
+				//              $this->create_log('DMN Report - webSDK payment.');
 				$order_id = $this->sc_get_order_by_tans_id($TransactionID);
 			} else {
 				// REST
@@ -1122,7 +1122,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$ref_parameters['webMasterId']       = $this->webMasterId;
 		$ref_parameters['sourceApplication'] = SC_SOURCE_APPLICATION;
 		
-//		$resp = SC_CLASS::call_rest_api($this->getEndPointBase() . 'refundTransaction.do', $ref_parameters);
+		//      $resp = SC_CLASS::call_rest_api($this->getEndPointBase() . 'refundTransaction.do', $ref_parameters);
 		$resp = $this->call_rest_api('refundTransaction.do', $ref_parameters);
 		$msg  = '';
 
@@ -1331,7 +1331,7 @@ class WC_SC extends WC_Payment_Gateway {
 					. $this->sc_get_setting('secret')
 			);
 
-//			$resp = SC_CLASS::call_rest_api($this->getEndPointBase() . $method, $params);
+			//          $resp = SC_CLASS::call_rest_api($this->getEndPointBase() . $method, $params);
 			$resp = $this->call_rest_api($method, $params);
 		} catch (Exception $ex) {
 			$this->create_log($ex->getMessage(), 'Create void exception:');
@@ -1463,10 +1463,10 @@ class WC_SC extends WC_Payment_Gateway {
 				. $oo_params['amount'] . $oo_params['currency'] . $time . $this->sc_get_setting('secret')
 		);
 		
-//		$resp = SC_CLASS::call_rest_api(
-//			$this->getEndPointBase() . 'openOrder.do',
-//			$oo_params
-//		);
+		//      $resp = SC_CLASS::call_rest_api(
+		//          $this->getEndPointBase() . 'openOrder.do',
+		//          $oo_params
+		//      );
 		$resp = $this->call_rest_api('openOrder.do', $oo_params);
 		
 		if (
@@ -1564,7 +1564,7 @@ class WC_SC extends WC_Payment_Gateway {
 			implode('', $params) . $this->sc_get_setting('secret')
 		);
 		
-//		$resp = SC_CLASS::call_rest_api($this->getEndPointBase() . 'deleteUPO.do', $params);
+		//      $resp = SC_CLASS::call_rest_api($this->getEndPointBase() . 'deleteUPO.do', $params);
 		$resp = $this->call_rest_api('deleteUPO.do', $params);
 		
 		if (empty($resp['status']) || 'SUCCESS' != $resp['status']) {
@@ -1753,10 +1753,10 @@ class WC_SC extends WC_Payment_Gateway {
 				. $params['planStatus'] . $time . $this->sc_get_setting('secret')
 		);
 		
-//		$resp = SC_CLASS::call_rest_api(
-//			$this->getEndPointBase() . 'getPlansList.do',
-//			$params
-//		);
+		//      $resp = SC_CLASS::call_rest_api(
+		//          $this->getEndPointBase() . 'getPlansList.do',
+		//          $params
+		//      );
 		$resp = $this->call_rest_api('getPlansList.do', $params);
 		
 		if (empty($resp) || !is_array($resp) || 'SUCCESS' != $resp['status']) {
@@ -1844,7 +1844,7 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		file_put_contents(
 			SC_LOGS_DIR . gmdate('Y-m-d', time()) . '.txt',
-//			gmdate('H:i:s', time()) . ': ' . $string . "\r\n",
+		//          gmdate('H:i:s', time()) . ': ' . $string . "\r\n",
 			gmdate('H:i:s', time()) . ': ' . $string,
 			FILE_APPEND
 		);
@@ -1869,7 +1869,7 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			$cart_st     = $this->get_param('sessionToken');
 			$cart_amount = (string) round($woocommerce->cart->total, 2);
-			$cart_items     = array();
+			$cart_items  = array();
 			
 			foreach ($woocommerce->cart->get_cart() as $item_id => $item) {
 				$cart_items[$item['product_id']] = array(
@@ -1954,7 +1954,7 @@ class WC_SC extends WC_Payment_Gateway {
 		# Success
 		if (!empty($resp['status']) && 'SUCCESS' == $resp['status']) {
 			$_SESSION['nuvei_last_open_order_details']['amount'] = $cart_amount;
-			$_SESSION['nuvei_last_open_order_details']['items'] = $params['merchantDetails']['customField2'];
+			$_SESSION['nuvei_last_open_order_details']['items']  = $params['merchantDetails']['customField2'];
 			
 			echo wp_json_encode(array(
 				success			=> 1,
@@ -1981,7 +1981,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 * 
 	 * @return mixed $resp
 	 */
-	private function call_rest_api($method, $params) {
+	private function call_rest_api( $method, $params) {
 		$resp = '';
 		
 		$url = $this->getEndPointBase() . $method;

@@ -62,11 +62,11 @@ function woocommerce_sc_init() {
 	// if validation success get order details
 	add_action('woocommerce_after_checkout_validation', function( $data, $errors) {
 		global $wc_sc;
-//		$wc_sc->create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
+		//      $wc_sc->create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
 		
 		if ( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
 			if (empty($wc_sc->get_param('sc_payment_method'))) {
-//				$content = $wc_sc->sc_get_payment_methods('');
+				//              $content = $wc_sc->sc_get_payment_methods('');
 				$content = $wc_sc->sc_get_payment_methods();
 			} 
 		}
@@ -679,13 +679,13 @@ function sc_add_product_subscr_data_fields() {
 		'month'	=> __( 'MONTH', 'nuvei' ),
 		'year'	=> __( 'YEAR', 'nuvei' ),
 	);
-	$currency	= get_woocommerce_currency_symbol();
-	$post		= $wc_sc->get_param('post', 'int', '', $_GET);
+	$currency = get_woocommerce_currency_symbol();
+	$post     = $wc_sc->get_param('post', 'int', '', $_GET);
 	
 	echo '<div id="sc_subscr_settings" class="panel woocommerce_options_panel">';
 		# _sc_subscr_enabled
-	$sc_subscr_enabled	= 0;
-	$tmp				= get_post_meta($post, '_sc_subscr_enabled');
+	$sc_subscr_enabled = 0;
+	$tmp               = get_post_meta($post, '_sc_subscr_enabled');
 	
 	if (!empty($tmp)) {
 		$sc_subscr_enabled = $tmp[0];
@@ -727,8 +727,8 @@ function sc_add_product_subscr_data_fields() {
 		}
 	}
 		
-	$sc_subscr_plan_id	= '';
-	$tmp				= get_post_meta($post, '_sc_subscr_plan_id');
+	$sc_subscr_plan_id = '';
+	$tmp               = get_post_meta($post, '_sc_subscr_plan_id');
 	
 	if (!empty($tmp)) {
 		$sc_subscr_plan_id = $tmp[0];
@@ -743,8 +743,8 @@ function sc_add_product_subscr_data_fields() {
 	# _sc_subscr_plan_id END
 		
 	# _sc_subscr_initial_amount
-	$sc_subscr_initial_amount	= '';
-	$tmp						= get_post_meta($post, '_sc_subscr_initial_amount');
+	$sc_subscr_initial_amount = '';
+	$tmp                      = get_post_meta($post, '_sc_subscr_initial_amount');
 	
 	if (!empty($tmp)) {
 		$sc_subscr_initial_amount = $tmp[0];
@@ -759,8 +759,8 @@ function sc_add_product_subscr_data_fields() {
 	# _sc_subscr_initial_amount END
 
 	# _sc_subscr_recurr_amount
-	$sc_subscr_recurr_amount	= '';
-	$tmp						= get_post_meta($post, '_sc_subscr_recurr_amount');
+	$sc_subscr_recurr_amount = '';
+	$tmp                     = get_post_meta($post, '_sc_subscr_recurr_amount');
 	
 	if (!empty($tmp)) {
 		$sc_subscr_recurr_amount = $tmp[0];
@@ -791,8 +791,8 @@ function sc_add_product_subscr_data_fields() {
 	# _sc_subscr_recurr_units END
 
 	# _sc_subscr_recurr_period
-	$sc_subscr_recurr_period	= '';
-	$tmp						= get_post_meta($post, '_sc_subscr_recurr_period');
+	$sc_subscr_recurr_period = '';
+	$tmp                     = get_post_meta($post, '_sc_subscr_recurr_period');
 	
 	if (!empty($tmp)) {
 		$sc_subscr_recurr_period = $tmp[0];
@@ -807,8 +807,8 @@ function sc_add_product_subscr_data_fields() {
 	# _sc_subscr_recurr_period END
 
 	# _sc_subscr_trial_units
-	$sc_subscr_trial_units	= 'day';
-	$tmp					= get_post_meta($post, '_sc_subscr_trial_units');
+	$sc_subscr_trial_units = 'day';
+	$tmp                   = get_post_meta($post, '_sc_subscr_trial_units');
 	
 	if (!empty($tmp)) {
 		$sc_subscr_trial_units = $tmp[0];
@@ -839,8 +839,8 @@ function sc_add_product_subscr_data_fields() {
 	# _sc_subscr_recurr_period END
 
 	# _sc_subscr_end_after_units
-	$sc_subscr_end_after_units	= 'day';
-	$tmp						= get_post_meta($post, '_sc_subscr_end_after_units');
+	$sc_subscr_end_after_units = 'day';
+	$tmp                       = get_post_meta($post, '_sc_subscr_end_after_units');
 	
 	if (!empty($tmp)) {
 		$sc_subscr_end_after_units = $tmp[0];
