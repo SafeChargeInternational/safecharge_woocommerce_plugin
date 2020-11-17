@@ -1818,7 +1818,9 @@ class WC_SC extends WC_Payment_Gateway {
 				}
 			}
 			
-			$data['paymentMethods'] = json_encode($data['paymentMethods']);
+			if (isset($data['paymentMethods'])) {
+				$data['paymentMethods'] = json_encode($data['paymentMethods']);
+			}
 			
 			$d = $this->sc_get_setting('test') == 'yes' ? print_r($data, true) : json_encode($data);
 		} elseif (is_object($data)) {
