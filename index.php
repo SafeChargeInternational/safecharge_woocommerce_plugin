@@ -61,13 +61,13 @@ function woocommerce_sc_init() {
 	
 	// if validation success get order details
 	add_action('woocommerce_after_checkout_validation', function( $data, $errors) {
-		//      SC_CLASS::create_log($data, 'woocommerce_after_checkout_validation');
-		SC_CLASS::create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
+		global $wc_sc;
+//		$wc_sc->create_log($errors->errors, 'woocommerce_after_checkout_validation errors');
 		
 		if ( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
-			if (!isset($_POST['sc_payment_method']) || empty($_POST['sc_payment_method'])) {
-				global $wc_sc;
-				$content = $wc_sc->sc_get_payment_methods('');
+			if (empty($wc_sc->get_param('sc_payment_method'))) {
+//				$content = $wc_sc->sc_get_payment_methods('');
+				$content = $wc_sc->sc_get_payment_methods();
 			} 
 		}
 	}, 9999, 2);
@@ -160,20 +160,22 @@ function sc_ajax_action() {
 		wp_die('Invalid site mode.');
 	}
 	
+	$order_id = $wc_sc->get_param('orderId', 'int');
+	
 	$payment_method_sc = '';
 	if (!empty($wc_sc->get_param('payment_method_sc'))) {
-		$payment_method_sc = sanitize_text_field($_POST['payment_method_sc']);
+		$payment_method_sc = sanitize_text_field($wc_sc->get_param('payment_method_sc'));
 	}
 
 	# recognize the action:
 	// Void (Cancel)
-	if ($wc_sc->get_param('cancelOrder', 'int') == 1 && $wc_sc->get_param('orderId', 'int') > 0) {
-		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'void');
+	if ($wc_sc->get_param('cancelOrder', 'int') == 1 && $order_id > 0) {
+		$wc_sc->create_settle_void(sanitize_text_field($order_id), 'void');
 	}
 
 	// Settle
-	if ($wc_sc->get_param('settleOrder', 'int') == 1 && $wc_sc->get_param('orderId', 'int') > 0) {
-		$wc_sc->create_settle_void(sanitize_text_field($_POST['orderId']), 'settle');
+	if ($wc_sc->get_param('settleOrder', 'int') == 1 && $order_id > 0) {
+		$wc_sc->create_settle_void(sanitize_text_field($order_id), 'settle');
 	}
 	
 	// Refund
@@ -376,7 +378,7 @@ function sc_enqueue( $hook) {
 		
 		$sc_plans_last_mod_time = '';
 		if (is_readable(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json')) {
-			$sc_plans_last_mod_time = date('Y-m-d H:i:s', filemtime(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json'));
+			$sc_plans_last_mod_time = gmdate('Y-m-d H:i:s', filemtime(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json'));
 		}
 		
 		// put translations here into the array
@@ -476,7 +478,7 @@ function sc_add_buttons() {
 		if (
 			'cc_card' == $order_payment_method
 			/**
-			 * before v3.5 we put a flag on refund - $order_has_refund
+			 * Before v3.5 we put a flag on refund - $order_has_refund
 			 * since v3.5 we save some of the refund parameters as json in "_sc_refunds" meta data
 			 * and do not save $order_has_refund flag anymore
 			 */
@@ -556,13 +558,16 @@ function sc_rewrite_return_url() {
  *
  * @param string $order_received_url
  * @param WC_Order $order
+ * 
  * @return string $order_received_url
  */
 function sc_wpml_thank_you_page( $order_received_url, $order) {
+	global $wc_sc;
+	
 	$lang_code          = get_post_meta($order->id, 'wpml_language', true);
 	$order_received_url = apply_filters('wpml_permalink', $order_received_url, $lang_code);
 	
-	SC_CLASS::create_log($order_received_url, 'sc_wpml_thank_you_page: ');
+	$wc_sc->create_log($order_received_url, 'sc_wpml_thank_you_page: ');
  
 	return $order_received_url;
 }
@@ -667,21 +672,26 @@ function sc_filter_woocommerce_product_data_tabs( $tabs ) {
  * Add Subscription settings
  */
 function sc_add_product_subscr_data_fields() {
+	global $wc_sc;
+
 	$units    = array(
 		'day'	=> __( 'DAY', 'nuvei' ),
 		'month'	=> __( 'MONTH', 'nuvei' ),
 		'year'	=> __( 'YEAR', 'nuvei' ),
 	);
-	$currency = get_woocommerce_currency_symbol();
+	$currency	= get_woocommerce_currency_symbol();
+	$post		= $wc_sc->get_param('post', 'int', '', $_GET);
 	
 	echo '<div id="sc_subscr_settings" class="panel woocommerce_options_panel">';
 		# _sc_subscr_enabled
-		$sc_subscr_enabled = 0;
-	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_enabled'))) {
+	$sc_subscr_enabled	= 0;
+	$tmp				= get_post_meta($post, '_sc_subscr_enabled');
+	
+	if (!empty($tmp)) {
 		$sc_subscr_enabled = $tmp[0];
 	}
 		
-		var_dump($sc_subscr_enabled);
+	var_dump($sc_subscr_enabled);
 		
 	//      woocommerce_wp_checkbox(array( 
 	//          'id'            => '_sc_subscr_enabled', 
@@ -692,19 +702,20 @@ function sc_add_product_subscr_data_fields() {
 	//          'value'         => $sc_subscr_enabled,
 	////            'desc_tip'      => false,
 	//      ));
-		woocommerce_wp_select(array(
-			'id'		=> '_sc_subscr_enabled', 
-			'label'		=> __( 'Enable Subscription', 'nuvei' ),
-			'value'		=> $sc_subscr_enabled,
-			'options'	=> array(
-				0	=> __( 'NO', 'nuvei' ),
-				1	=> __( 'YES', 'nuvei' ),
-			),
-		));
-		# _sc_subscr_enabled END
 		
-		# _sc_subscr_plan_id
-		$plans_list = array('' => __('Select a Plan', 'nuvei'));
+	woocommerce_wp_select(array(
+		'id'		=> '_sc_subscr_enabled', 
+		'label'		=> __( 'Enable Subscription', 'nuvei' ),
+		'value'		=> $sc_subscr_enabled,
+		'options'	=> array(
+			0	=> __( 'NO', 'nuvei' ),
+			1	=> __( 'YES', 'nuvei' ),
+		),
+	));
+	# _sc_subscr_enabled END
+
+	# _sc_subscr_plan_id
+	$plans_list = array('' => __('Select a Plan', 'nuvei'));
 		
 	if (is_readable(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json')) {
 		$plans = json_decode(file_get_contents(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json', true));
@@ -716,22 +727,26 @@ function sc_add_product_subscr_data_fields() {
 		}
 	}
 		
-		$sc_subscr_plan_id = '';
-	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_plan_id'))) {
+	$sc_subscr_plan_id	= '';
+	$tmp				= get_post_meta($post, '_sc_subscr_plan_id');
+	
+	if (!empty($tmp)) {
 		$sc_subscr_plan_id = $tmp[0];
 	}
 		
-		woocommerce_wp_select(array(
-			'id'		=> '_sc_subscr_plan_id', 
-			'label'		=> __( 'Subscription Plan', 'nuvei' ),
-			'value'		=> $sc_subscr_plan_id,
-			'options'	=> $plans_list,
-		));
-		# _sc_subscr_plan_id END
+	woocommerce_wp_select(array(
+		'id'		=> '_sc_subscr_plan_id', 
+		'label'		=> __( 'Subscription Plan', 'nuvei' ),
+		'value'		=> $sc_subscr_plan_id,
+		'options'	=> $plans_list,
+	));
+	# _sc_subscr_plan_id END
 		
-		# _sc_subscr_initial_amount
-		$sc_subscr_initial_amount = '';
-	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_initial_amount'))) {
+	# _sc_subscr_initial_amount
+	$sc_subscr_initial_amount	= '';
+	$tmp						= get_post_meta($post, '_sc_subscr_initial_amount');
+	
+	if (!empty($tmp)) {
 		$sc_subscr_initial_amount = $tmp[0];
 	}
 		
@@ -741,105 +756,119 @@ function sc_add_product_subscr_data_fields() {
 			'value'	=> $sc_subscr_initial_amount,
 			'class'	=> 'wc_input_price'
 		));
-		# _sc_subscr_initial_amount END
-		
-		# _sc_subscr_recurr_amount
-		$sc_subscr_recurr_amount = '';
-	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_recurr_amount'))) {
+	# _sc_subscr_initial_amount END
+
+	# _sc_subscr_recurr_amount
+	$sc_subscr_recurr_amount	= '';
+	$tmp						= get_post_meta($post, '_sc_subscr_recurr_amount');
+	
+	if (!empty($tmp)) {
 		$sc_subscr_recurr_amount = $tmp[0];
 	}
 		
-		woocommerce_wp_text_input(array(
-			'id'	=> '_sc_subscr_recurr_amount', 
-			'label'	=> __( 'Recurring Amount', 'nuvei' ) . ' (' . $currency . ')',
-			'value'	=> $sc_subscr_recurr_amount,
-			'class'	=> 'wc_input_price'
-		));
-		# _sc_subscr_recurr_amount END
-		
-		# _sc_subscr_recurr_units
-		$sc_subscr_recurr_units = 'day';
-	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_recurr_units'))) {
+	woocommerce_wp_text_input(array(
+		'id'	=> '_sc_subscr_recurr_amount', 
+		'label'	=> __( 'Recurring Amount', 'nuvei' ) . ' (' . $currency . ')',
+		'value'	=> $sc_subscr_recurr_amount,
+		'class'	=> 'wc_input_price'
+	));
+	# _sc_subscr_recurr_amount END
+
+	# _sc_subscr_recurr_units
+	$sc_subscr_recurr_units	= 'day';
+	$tmp					= get_post_meta($post, '_sc_subscr_recurr_units');
+	
+	if (!empty($tmp)) {
 		$sc_subscr_recurr_units = $tmp[0];
 	}
 		
-		woocommerce_wp_select(array(
-			'id'		=> '_sc_subscr_recurr_units', 
-			'label'		=> __( 'Recurring Units', 'nuvei' ),
-			'value'		=> $sc_subscr_recurr_units,
-			'options'	=> $units,
-		));
-		# _sc_subscr_recurr_units END
-		
-		# _sc_subscr_recurr_period
-		$sc_subscr_recurr_period = '';
-	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_recurr_period'))) {
+	woocommerce_wp_select(array(
+		'id'		=> '_sc_subscr_recurr_units', 
+		'label'		=> __( 'Recurring Units', 'nuvei' ),
+		'value'		=> $sc_subscr_recurr_units,
+		'options'	=> $units,
+	));
+	# _sc_subscr_recurr_units END
+
+	# _sc_subscr_recurr_period
+	$sc_subscr_recurr_period	= '';
+	$tmp						= get_post_meta($post, '_sc_subscr_recurr_period');
+	
+	if (!empty($tmp)) {
 		$sc_subscr_recurr_period = $tmp[0];
 	}
 		
-		woocommerce_wp_text_input(array(
-			'id'	=> '_sc_subscr_recurr_period', 
-			'label'	=> __( 'Recurring Period', 'nuvei' ),
-			'value'	=> $sc_subscr_recurr_period,
-			'class'	=> 'wc_input_price'
-		));
-		# _sc_subscr_recurr_period END
-		
-		# _sc_subscr_trial_units
-		$sc_subscr_trial_units = 'day';
-	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_trial_units'))) {
+	woocommerce_wp_text_input(array(
+		'id'	=> '_sc_subscr_recurr_period', 
+		'label'	=> __( 'Recurring Period', 'nuvei' ),
+		'value'	=> $sc_subscr_recurr_period,
+		'class'	=> 'wc_input_price'
+	));
+	# _sc_subscr_recurr_period END
+
+	# _sc_subscr_trial_units
+	$sc_subscr_trial_units	= 'day';
+	$tmp					= get_post_meta($post, '_sc_subscr_trial_units');
+	
+	if (!empty($tmp)) {
 		$sc_subscr_trial_units = $tmp[0];
 	}
 		
-		woocommerce_wp_select(array(
-			'id'		=> '_sc_subscr_trial_units', 
-			'label'		=> __( 'Trial Units', 'nuvei' ),
-			'value'		=> $sc_subscr_trial_units,
-			'options'	=> $units,
-		));
-		# _sc_subscr_trial_units END
-		
-		# _sc_subscr_trial_period
-		$sc_subscr_trial_period = '';
-	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_trial_period'))) {
+	woocommerce_wp_select(array(
+		'id'		=> '_sc_subscr_trial_units', 
+		'label'		=> __( 'Trial Units', 'nuvei' ),
+		'value'		=> $sc_subscr_trial_units,
+		'options'	=> $units,
+	));
+	# _sc_subscr_trial_units END
+
+	# _sc_subscr_trial_period
+	$sc_subscr_trial_period	= '';
+	$tmp					= get_post_meta($post, '_sc_subscr_trial_period');
+	
+	if (!empty($tmp)) {
 		$sc_subscr_trial_period = $tmp[0];
 	}
 		
-		woocommerce_wp_text_input(array(
-			'id'	=> '_sc_subscr_trial_period', 
-			'label'	=> __( 'Trial Period', 'nuvei' ),
-			'value'	=> $sc_subscr_trial_period,
-			'class'	=> 'wc_input_price'
-		));
-		# _sc_subscr_recurr_period END
-		
-		# _sc_subscr_end_after_units
-		$sc_subscr_end_after_units = 'day';
-	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_end_after_units'))) {
+	woocommerce_wp_text_input(array(
+		'id'	=> '_sc_subscr_trial_period', 
+		'label'	=> __( 'Trial Period', 'nuvei' ),
+		'value'	=> $sc_subscr_trial_period,
+		'class'	=> 'wc_input_price'
+	));
+	# _sc_subscr_recurr_period END
+
+	# _sc_subscr_end_after_units
+	$sc_subscr_end_after_units	= 'day';
+	$tmp						= get_post_meta($post, '_sc_subscr_end_after_units');
+	
+	if (!empty($tmp)) {
 		$sc_subscr_end_after_units = $tmp[0];
 	}
 		
-		woocommerce_wp_select(array(
-			'id'		=> '_sc_subscr_end_after_units', 
-			'label'		=> __( 'End After Units', 'nuvei' ),
-			'value'		=> $sc_subscr_end_after_units,
-			'options'	=> $units,
-		));
-		# _sc_subscr_end_after_units END
+	woocommerce_wp_select(array(
+		'id'		=> '_sc_subscr_end_after_units', 
+		'label'		=> __( 'End After Units', 'nuvei' ),
+		'value'		=> $sc_subscr_end_after_units,
+		'options'	=> $units,
+	));
+	# _sc_subscr_end_after_units END
+
+	# _sc_subscr_end_after_period
+	$sc_subscr_end_after_period = '';
+	$tmp						= get_post_meta($post, '_sc_subscr_end_after_period');
 		
-		# _sc_subscr_end_after_period
-		$sc_subscr_end_after_period = '';
-	if (!empty($tmp = get_post_meta($_GET['post'], '_sc_subscr_end_after_period'))) {
+	if (!empty($tmp)) {
 		$sc_subscr_end_after_period = $tmp[0];
 	}
 		
-		woocommerce_wp_text_input(array(
-			'id'	=> '_sc_subscr_end_after_period', 
-			'label'	=> __( 'End After Period', 'nuvei' ),
-			'value'	=> $sc_subscr_end_after_period,
-			'class'	=> 'wc_input_price'
-		));
-		# _sc_subscr_end_after_period END
+	woocommerce_wp_text_input(array(
+		'id'	=> '_sc_subscr_end_after_period', 
+		'label'	=> __( 'End After Period', 'nuvei' ),
+		'value'	=> $sc_subscr_end_after_period,
+		'class'	=> 'wc_input_price'
+	));
+	# _sc_subscr_end_after_period END
 	echo '</div>';
 }
 
@@ -853,8 +882,10 @@ function sc_save_product_custom_fields( $post_id) {
 	global $wc_sc;
 	
 	foreach ($wc_sc->get_subscr_fields() as $field) {
-		if (isset($_POST[$field])) {
-			update_post_meta( $post_id, $field, esc_attr( $_POST[$field] ) );
+		$post_field = $wc_sc->get_param($field);
+		
+		if (!empty($post_field)) {
+			update_post_meta( $post_id, $field, esc_attr( $post_field  ) );
 		}
 	}
 }

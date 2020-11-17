@@ -19,7 +19,7 @@
 		</div>
 	</div>
 
-	<h3><?php echo __('Choose from yours preferred payment methods', 'nuvei');?></h3>
+	<h3><?php echo __('Choose from yours preferred payment methods', 'nuvei'); ?></h3>
 	<ul id="sc_upos_list"></ul>
 
 	<h3><?php echo __('Choose from the payment options', 'nuvei'); ?></h3>
@@ -27,7 +27,7 @@
 	
 	<?php wp_nonce_field('sc_checkout', 'sc_nonce'); ?>
 
-	<button type="button" onclick="scValidateAPMFields()" class="button alt" name="woocommerce_checkout_place_order" value="<?php echo __('Pay'); ?>" data-value="<?php echo __('Pay'); ?>" data-default-text="Place order"><?php echo __('Pay'); ?></button>
+	<button type="button" onclick="scCheckCart()" class="button alt" name="woocommerce_checkout_place_order" value="<?php echo __('Pay'); ?>" data-value="<?php echo __('Pay'); ?>" data-default-text="Place order"><?php echo __('Pay'); ?></button>
 	
 	<script>
 		var locale			= "<?php echo $this->formatLocation(get_locale()); ?>";
@@ -35,7 +35,7 @@
 		scMerchantId		= scData.merchantId = "<?php echo $this->sc_get_setting('merchantId'); ?>";
 		scMerchantSiteId	= scData.merchantSiteId = "<?php echo $this->sc_get_setting('merchantSiteId'); ?>";
 
-		<?php if ($this->sc_get_setting('test') == 'yes'): ?>
+		<?php if ($this->sc_get_setting('test') == 'yes') : ?>
 			scData.env = "test";
 		<?php endif; ?>
 		

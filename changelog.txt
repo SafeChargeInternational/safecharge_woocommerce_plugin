@@ -1,6 +1,10 @@
 *** WooCommerce Extension Template Changelog ***
 
 version 3.4
+	* SC_CLASS create_log method is deprecated.
+	* When create updateOrder request pass the cart items in it.
+	* Do not pass amount and currency in the webSDK request anymore.
+	* When CC payment is declined wse same session and order.
 	* After click the pay button on APMs page, we check for changes in the Cart. If there are changes, we update the Order and return the new Order Amount, so can pass it into webSDK call.
 	* Added loading popup on APMs step.
 	* Void button is available for Failed Orders.

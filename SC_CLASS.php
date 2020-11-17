@@ -27,10 +27,10 @@ class SC_CLASS {
 			'length' => 255,
 			'flag'    => FILTER_DEFAULT
 		),
-//		'ipAddress' => array(
-//			'length' => 15,
-//			'flag'    => FILTER_VALIDATE_IP
-//		),
+	//      'ipAddress' => array(
+	//          'length' => 15,
+	//          'flag'    => FILTER_VALIDATE_IP
+	//      ),
 		// deviceDetails END
 		
 		// userDetails, shippingAddress, billingAddress
@@ -128,12 +128,12 @@ class SC_CLASS {
 	 * @return mixed
 	 */
 	public static function call_rest_api( $url, $params) {
-		self::create_log($url, 'REST API URL:');
+//		self::create_log($url, 'REST API URL:');
 		
-		if (empty($url)) {
-			self::create_log('SC_REST_API, the URL is empty!');
-			return false;
-		}
+//		if (empty($url)) {
+//			self::create_log('SC_REST_API, the URL is empty!');
+//			return false;
+//		}
 		
 		$resp = false;
 		
@@ -146,21 +146,21 @@ class SC_CLASS {
 		// directly check the mails
 		if (isset($params['billingAddress']['email'])) {
 			if (!filter_var($params['billingAddress']['email'], self::$params_validation_email['flag'])) {
-				self::create_log($params, 'REST API ERROR: The parameter Billing Address Email is not valid.');
+//				self::create_log($params, 'REST API ERROR: The parameter Billing Address Email is not valid.');
 				
 				return array(
 					'status' => 'ERROR',
-					'message' => 'The parameter Billing Address Email is not valid.'
+					'message' => 'REST API ERROR: The parameter Billing Address Email is not valid.'
 				);
 			}
 			
 			if (strlen($params['billingAddress']['email']) > self::$params_validation_email['length']) {
-				self::create_log($params, 'REST API ERROR: The parameter Billing Address Email must be maximum '
-					. self::$params_validation_email['length'] . ' symbols.');
+//				self::create_log($params, 'REST API ERROR: The parameter Billing Address Email must be maximum '
+//					. self::$params_validation_email['length'] . ' symbols.');
 				
 				return array(
 					'status' => 'ERROR',
-					'message' => 'The parameter Billing Address Email must be maximum '
+					'message' => 'REST API ERROR: The parameter Billing Address Email must be maximum '
 						. self::$params_validation_email['length'] . ' symbols.'
 				);
 			}
@@ -168,21 +168,21 @@ class SC_CLASS {
 		
 		if (isset($params['shippingAddress']['email'])) {
 			if (!filter_var($params['shippingAddress']['email'], self::$params_validation_email['flag'])) {
-				self::create_log($params, 'REST API ERROR: The parameter Shipping Address Email is not valid.');
+//				self::create_log($params, 'REST API ERROR: The parameter Shipping Address Email is not valid.');
 				
 				return array(
 					'status' => 'ERROR',
-					'message' => 'The parameter Shipping Address Email is not valid.'
+					'message' => 'REST API ERROR: The parameter Shipping Address Email is not valid.'
 				);
 			}
 			
 			if (strlen($params['shippingAddress']['email']) > self::$params_validation_email['length']) {
-				self::create_log($params, 'REST API ERROR: The parameter Shipping Address Email must be maximum '
-					. self::$params_validation_email['length'] . ' symbols.');
+//				self::create_log($params, 'REST API ERROR: The parameter Shipping Address Email must be maximum '
+//					. self::$params_validation_email['length'] . ' symbols.');
 				
 				return array(
 					'status' => 'ERROR',
-					'message' => 'The parameter Shipping Address Email must be maximum '
+					'message' => 'REST API ERROR: The parameter Shipping Address Email must be maximum '
 						. self::$params_validation_email['length'] . ' symbols.'
 				);
 			}
@@ -196,7 +196,7 @@ class SC_CLASS {
 				if (mb_strlen($val1) > self::$params_validation[$key1]['length']) {
 					$new_val = mb_substr($val1, 0, self::$params_validation[$key1]['length']);
 					
-					self::create_log($key1, 'Limit');
+//					self::create_log($key1, 'Limit');
 				}
 				
 				$params[$key1] = filter_var($new_val, self::$params_validation[$key1]['flag']);
@@ -208,7 +208,7 @@ class SC_CLASS {
 						if (mb_strlen($val2) > self::$params_validation[$key2]['length']) {
 							$new_val = mb_substr($val2, 0, self::$params_validation[$key2]['length']);
 							
-							self::create_log($key2, 'Limit');
+//							self::create_log($key2, 'Limit');
 						}
 
 						$params[$key1][$key2] = filter_var($new_val, self::$params_validation[$key2]['flag']);
@@ -218,7 +218,7 @@ class SC_CLASS {
 		}
 		// validate parameters END
 		
-		self::create_log($params, 'SC_REST_API, parameters for the REST API call:');
+//		self::create_log($params, 'SC_REST_API, parameters for the REST API call:');
 		
 		$json_post = json_encode($params);
 		
@@ -243,16 +243,26 @@ class SC_CLASS {
 			curl_close($ch);
 			
 			if (false === $resp) {
-				return false;
+//				return false;
+				
+				return array(
+					'status' => 'ERROR',
+					'message' => 'REST API ERROR: response is false'
+				);
 			}
 
 			$resp_arr = json_decode($resp, true);
-			self::create_log($resp_arr, 'REST API response: ');
+//			self::create_log($resp_arr, 'REST API response: ');
 
 			return $resp_arr;
 		} catch (Exception $e) {
-			self::create_log($e->getMessage(), 'Exception ERROR when call REST API: ');
-			return false;
+//			self::create_log($e->getMessage(), 'Exception ERROR when call REST API: ');
+//			return false;
+			
+			return array(
+				'status' => 'ERROR',
+				'message' => 'Exception ERROR when call REST API: ' . $e->getMessage()
+			);
 		}
 	}
 	
@@ -276,7 +286,7 @@ class SC_CLASS {
 		if (empty($_SERVER['HTTP_USER_AGENT'])) {
 			$device_details['Warning'] = 'User Agent is empty.';
 			
-			self::create_log($device_details['Warning'], 'Error');
+//			self::create_log($device_details['Warning'], 'Error');
 			return $device_details;
 		}
 		
@@ -285,7 +295,7 @@ class SC_CLASS {
 		if (empty($user_agent)) {
 			$device_details['Warning'] = 'Probably the merchant Server has problems with PHP filter_var function!';
 			
-			self::create_log($device_details['Warning'], 'Error');
+//			self::create_log($device_details['Warning'], 'Error');
 			return $device_details;
 		}
 		
@@ -351,15 +361,14 @@ class SC_CLASS {
 		}
 		if (!empty($ip_address)) {
 			$device_details['ipAddress'] = (string) $ip_address;
-		}
-		else {
-			self::create_log(
-				array(
-					'REMOTE_ADDR'			=> empty($_SERVER['REMOTE_ADDR']) ? '' : $_SERVER['REMOTE_ADDR'],
-					'HTTP_X_FORWARDED_FOR'	=> empty($_SERVER['HTTP_X_FORWARDED_FOR']) ? '' : $_SERVER['HTTP_X_FORWARDED_FOR'],
-					'HTTP_CLIENT_IP'		=> empty($_SERVER['HTTP_CLIENT_IP']) ? '' : $_SERVER['HTTP_CLIENT_IP'],
-				),
-				'Problem with IP holders:'
+		} else {
+			$device_details['Warning'] = array(
+				'REMOTE_ADDR'			=> empty($_SERVER['REMOTE_ADDR'])
+					? '' : filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP),
+				'HTTP_X_FORWARDED_FOR'	=> empty($_SERVER['HTTP_X_FORWARDED_FOR'])
+					? '' : filter_var($_SERVER['HTTP_X_FORWARDED_FOR'], FILTER_VALIDATE_IP),
+				'HTTP_CLIENT_IP'		=> empty($_SERVER['HTTP_CLIENT_IP'])
+					? '' : filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP),
 			);
 		}
 		
@@ -371,6 +380,8 @@ class SC_CLASS {
 	 *
 	 * @param mixed $data
 	 * @param string $title - title for the printed log
+	 * 
+	 * @deprecated since version 3.4
 	 */
 	public static function create_log( $data, $title = '') {
 		// path is different fore each plugin
