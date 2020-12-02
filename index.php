@@ -7,9 +7,9 @@
  * Author: Nuvei
  * Author URI: https://nuvei.com
  * Require at least: 4.7
- * Tested up to: 5.5.1
+ * Tested up to: 5.5.3
  * WC requires at least: 3.0
- * WC tested up to: 4.5.2
+ * WC tested up to: 4.7.1
 */
 
 defined('ABSPATH') || die('die');
@@ -67,7 +67,7 @@ function woocommerce_sc_init() {
 		if ( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
 			if (empty($wc_sc->get_param('sc_payment_method'))) {
 				//              $content = $wc_sc->sc_get_payment_methods('');
-				$content = $wc_sc->sc_get_payment_methods();
+				$content = $wc_sc->get_payment_methods();
 			} 
 		}
 	}, 9999, 2);
@@ -184,8 +184,8 @@ function sc_ajax_action() {
 	}
 	
 	// when we use the REST - Open order and get APMs
-	if ($wc_sc->get_param('sc_request') == 'OpenOrder') {
-		$wc_sc->sc_create_open_order(true);
+	if (in_array($wc_sc->get_param('sc_request'), array('OpenOrder', 'updateOrder'))) {
+		$wc_sc->open_order(true);
 	}
 	
 	// delete UPO
@@ -203,12 +203,7 @@ function sc_ajax_action() {
 		$wc_sc->sc_download_subscr_pans();
 	}
 	
-	// update order
-	if ($wc_sc->get_param('checkCart', 'int') == 1) {
-		$wc_sc->check_cart();
-	}
-
-	wp_send_json_error(__('Not recognized Ajax call.'));
+	wp_send_json_error(__('Not recognized Ajax call.', 'nuvei'));
 	wp_die();
 }
 
@@ -425,6 +420,8 @@ function sc_show_final_text() {
 }
 
 function sc_add_buttons() {
+	global $wc_sc;
+	
 	$order_id = false;
 	
 	if (!empty($_GET['post'])) {
@@ -432,7 +429,15 @@ function sc_add_buttons() {
 	}
 	
 	try {
-		$order                = wc_get_order($order_id);
+		//      $order                = wc_get_order($order_id);
+		$order = $wc_sc->is_order_valid($order_id, true);
+		
+		if (!$order) {
+			$wc_sc->create_log('sc_add_buttons() - hook activated for not valid Order. Probably an Order created form the Admin.');
+			
+			return;
+		}
+		
 		$order_status         = strtolower($order->get_status());
 		$order_payment_method = $order->get_meta('_paymentMethod');
 		$order_refunds        = json_decode($order->get_meta('_sc_refunds'), true);
@@ -451,6 +456,8 @@ function sc_add_buttons() {
 			. esc_js($ex->getMessage()) . '")</script>';
 		exit;
 	}
+	
+	//  echo '<pre>'.print_r($order_refunds, true).'</pre>';
 	
 	// hide Refund Button
 	if (
@@ -486,18 +493,18 @@ function sc_add_buttons() {
 		) {
 			echo
 				'<button id="sc_void_btn" type="button" onclick="settleAndCancelOrder(\''
-				. esc_html__('Are you sure, you want to Cancel Order #' . $order_id . '?', 'sc') . '\', '
-				. '\'void\', ' . esc_html($order_id) . ')" class="button generate-items">'
-				. esc_html__('Void', 'sc') . '</button>';
+					. esc_html__('Are you sure, you want to Cancel Order #' . $order_id . '?', 'sc') . '\', '
+					. '\'void\', ' . esc_html($order_id) . ')" class="button generate-items">'
+					. esc_html__('Void', 'sc') . '</button>';
 		}
 		
 		// show SETTLE button ONLY if P3D resonse transaction_type IS Auth
 		if ('pending' == $order_status && 'Auth' == $order->get_meta(SC_RESP_TRANS_TYPE)) {
 			echo
 				'<button id="sc_settle_btn" type="button" onclick="settleAndCancelOrder(\''
-				. esc_html__('Are you sure, you want to Settle Order #' . $order_id . '?', 'sc') . '\', '
-				. '\'settle\', \'' . esc_html($order_id) . '\')" class="button generate-items">'
-				. esc_html__('Settle', 'sc') . '</button>';
+					. esc_html__('Are you sure, you want to Settle Order #' . $order_id . '?', 'sc') . '\', '
+					. '\'settle\', \'' . esc_html($order_id) . '\')" class="button generate-items">'
+					. esc_html__('Settle', 'sc') . '</button>';
 		}
 		
 		// add loading screen

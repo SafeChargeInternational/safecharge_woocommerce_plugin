@@ -14,10 +14,11 @@ if (!session_id()) {
 
 class WC_SC extends WC_Payment_Gateway {
 	# payments URL
-	private $URL			= '';
+	private $plugin_path	= '';
 	private $webMasterId	= 'WooCommerce ';
 	private $stop_dmn		= 0; // when 1 - stops the DMN for testing
 	private $plugin_version	= '3.4';
+	private $cuid_postfix	= '_sandbox_apm'; // postfix for Sandbox APM payments
 	private $sc_order;
 	
 	// the fields for the subscription
@@ -290,6 +291,8 @@ class WC_SC extends WC_Payment_Gateway {
 	public function process_payment( $order_id) {
 		$this->create_log('Process payment(), Order #' . $order_id);
 		
+		$_SESSION['nuvei_last_open_order_details'] = array();
+		
 		$sc_nonce = $this->get_param('sc_nonce');
 		
 		if (
@@ -376,12 +379,13 @@ class WC_SC extends WC_Payment_Gateway {
 			$value = trim($value);
 			$value = filter_var($value);
 		});
+		// complicated way to filter all $_POST input, but WP will be happy END
 		
 		$params = array(
 			'merchantId'        => $this->sc_get_setting('merchantId'),
 			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
 			'userTokenId'       => $order->get_billing_email(),
-			'clientUniqueId'    => $order_id,
+			'clientUniqueId'    => $this->set_cuid($order_id),
 			'clientRequestId'   => $time . '_' . uniqid(),
 			'currency'          => $order->get_currency(),
 			'amount'            => (string) $order->get_total(),
@@ -451,7 +455,8 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		// UPO
 		if (is_numeric($sc_payment_method)) {
-			$endpoint_method                                = 'payment.do';
+			//          $endpoint_method                                = 'payment.do';
+			$endpoint_method                                = 'payment';
 			$params['paymentOption']['userPaymentOptionId'] = $sc_payment_method;
 		} else {
 			// APM
@@ -470,7 +475,7 @@ class WC_SC extends WC_Payment_Gateway {
 		//          $this->getEndPointBase() . $endpoint_method,
 		//          $params
 		//      );
-		$resp = $this->call_rest_api($endpoint_method, $params);
+		$resp = $this->callRestApi($endpoint_method, $params);
 		
 		if (!$resp) {
 			$msg = __('There is no response for the Order.', 'sc');
@@ -595,16 +600,27 @@ class WC_SC extends WC_Payment_Gateway {
 		ob_end_flush();
 	}
 	
-	//  public function sc_get_payment_methods( $content) {
-	public function sc_get_payment_methods() {
+	//  public function get_payment_methods( $content) {
+	public function get_payment_methods() {
 		global $woocommerce;
 		
-		$resp_data = array();
+		$resp_data = array(); // use it in the template
 		//      $content   = '';
 		
 		# OpenOrder
-		//      $oo_data = $this->sc_create_open_order($order);
-		$oo_data = $this->sc_create_open_order();
+		//      $oo_data = $this->open_order($order);
+		
+		//      $resp = $this->update_order(false); // try to update Order
+		
+		// create OpenOrder response if UpdateOrder fail
+		//      if (
+		//          !$resp
+		//          || !isset($resp['status'])
+		//          || 'SUCCESS' != $resp['status']
+		//      ) {
+			$oo_data = $this->open_order();
+			
+		//          $this->create_log($oo_data, 'get_payment_methods() - Open Order response');
 		
 		if (!$oo_data) {
 			wp_send_json(array(
@@ -614,25 +630,37 @@ class WC_SC extends WC_Payment_Gateway {
 				'messages'	=> '<ul id="sc_fake_error" class="woocommerce-error" role="alert"><li>' . __('Unexpected error, please try again later!', 'nuvei') . '</li></ul>'
 			));
 
-			wp_die();
+			exit;
 		}
+
+		//          $oo_params = $oo_data['oo_params'];
+		//          $resp      = $oo_data['resp'];
+		//          $time      = $oo_data['time'];
+		//      }
 		
-		$oo_params = $oo_data['oo_params'];
-		$resp      = $oo_data['resp'];
-		$time      = $oo_data['time'];
-		
-		$resp_data['sessonToken'] = $resp['sessionToken'];
+		$resp_data['sessonToken'] = $oo_data['sessionToken'];
 		# OpenOrder END
 		
 		# get APMs
+		$time     = gmdate('YmdHis', time());
+		$currency = !empty($oo_params['currency']) ? $oo_params['currency'] : get_woocommerce_currency();
+		
+		if (!empty($oo_params['billingAddress']['country'])) {
+			$countryCode = $oo_params['billingAddress']['country'];
+		} elseif (!empty($_SESSION['nuvei_last_open_order_details']['billingAddress']['country'])) {
+			$countryCode = $_SESSION['nuvei_last_open_order_details']['billingAddress']['country'];
+		} else {
+			$countryCode = '';
+		}
+		
 		$apms_params = array(
 			'merchantId'        => $this->sc_get_setting('merchantId'),
 			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
 			'clientRequestId'   => $time . '_' . uniqid(),
 			'timeStamp'         => $time,
-			'sessionToken'      => $resp['sessionToken'],
-			'currencyCode'      => $oo_params['currency'],
-			'countryCode'       => $oo_params['billingAddress']['country'],
+			'sessionToken'      => $oo_data['sessionToken'],
+			'currencyCode'      => $currency,
+			'countryCode'       => $countryCode,
 			'languageCode'      => $this->formatLocation(get_locale()),
 		);
 		
@@ -642,11 +670,8 @@ class WC_SC extends WC_Payment_Gateway {
 				. $time . $this->sc_get_setting('secret')
 		);
 
-		//      $apms_data = SC_CLASS::call_rest_api(
-		//          $this->getEndPointBase() . 'getMerchantPaymentMethods.do',
-		//          $apms_params
-		//      );
-		$apms_data = $this->call_rest_api('getMerchantPaymentMethods.do', $apms_params);
+		//      $apms_data = $this->callRestApi('getMerchantPaymentMethods.do', $apms_params);
+		$apms_data = $this->callRestApi('getMerchantPaymentMethods', $apms_params);
 		
 		if (!is_array($apms_data) || empty($apms_data['paymentMethods'])) {
 			wp_send_json(array(
@@ -656,16 +681,16 @@ class WC_SC extends WC_Payment_Gateway {
 				'messages'	=> '<ul id="sc_fake_error" class="woocommerce-error" role="alert"><li>' . __('Can not obtain Payment Methods, please try again later!', 'nuvei') . '</li></ul>'
 			));
 
-			wp_die();
+			exit;
 		}
 		
 		$resp_data['apms'] = $apms_data['paymentMethods'];
 		# get APMs END
 		
 		# get UPOs
-		$icons         = array();
-		$upos          = array();
-		$user_token_id = $oo_params['userTokenId'];
+		$icons = array();
+		$upos  = array();
+		//      $user_token_id = $oo_params['userTokenId'];
 
 		// get them only for registred users when there are APMs
 		if (
@@ -676,18 +701,23 @@ class WC_SC extends WC_Payment_Gateway {
 			$upo_params = array(
 				'merchantId'        => $apms_params['merchantId'],
 				'merchantSiteId'    => $apms_params['merchantSiteId'],
-				'userTokenId'        => $oo_params['userTokenId'],
-				'clientRequestId'    => $apms_params['clientRequestId'],
-				'timeStamp'            => $time,
+			//              'userTokenId'       => $resp['userTokenId'],
+			//              
+				// OO request set userTokenId in the session
+				'userTokenId'       => isset($_SESSION['nuvei_last_open_order_details']['userTokenId'])
+					? $_SESSION['nuvei_last_open_order_details']['userTokenId'] : '',
+				
+				'clientRequestId'   => $apms_params['clientRequestId'],
+				'timeStamp'         => $time,
 			);
 
-			$upo_params['checksum'] = hash($this->sc_get_setting('hash_type'), implode('', $upo_params) . $this->sc_get_setting('secret'));
+			$upo_params['checksum'] = hash(
+				$this->sc_get_setting('hash_type'),
+				implode('', $upo_params) . $this->sc_get_setting('secret')
+			);
 
-			//          $upo_res = SC_CLASS::call_rest_api(
-			//              $this->getEndPointBase() . 'getUserUPOs.do',
-			//              $upo_params
-			//          );
-			$upo_res = $this->call_rest_api('getUserUPOs.do', $upo_params);
+			//          $upo_res = $this->callRestApi('getUserUPOs.do', $upo_params);
+			$upo_res = $this->callRestApi('getUserUPOs', $upo_params);
 			
 			if (!empty($upo_res['paymentMethods']) && is_array($upo_res['paymentMethods'])) {
 				foreach ($upo_res['paymentMethods'] as $data) {
@@ -719,22 +749,24 @@ class WC_SC extends WC_Payment_Gateway {
 		# get UPOs END
 		
 		$resp_data['orderAmount'] = WC()->cart->total;
-		$resp_data['userTokenId'] = $this->get_param('billing_email', 'mail');
+		$resp_data['userTokenId'] = !empty($this->get_param('billing_email', 'mail'))
+			? $this->get_param('billing_email', 'mail') : $resp['userTokenId'];
 		$resp_data['pluginUrl']   = $this->plugin_url;
 		$resp_data['siteUrl']     = get_site_url();
 			
 		wp_send_json(array(
-			'result'	=> 'failure',
+			'result'	=> 'failure', // this is just to stop WC send the form, and show APMs
 			'refresh'	=> false,
 			'reload'	=> false,
 			'messages'	=> '<script>scPrintApms(' . json_encode($resp_data) . ');</script>'
 		));
 
-		wp_die();
+		exit;
 	}
 
 	/**
 	 * Function process_dmns
+	 * 
 	 * Process information from the DMNs.
 	 * We call this method form index.php
 	 */
@@ -742,9 +774,15 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->create_log($_REQUEST, 'DMN params');
 		
 		if ($this->get_param('stopDMN', 'int') == 1) {
-			$this->create_log(http_build_query($_REQUEST), 'DMN was stopped, please run it manually!');
+			$params            = $_REQUEST;
+			$params['stopDMN'] = 0;
 			
-			echo 'DMN was stopped, please run it manually!';
+			$this->create_log(
+				get_site_url() . '/?' . http_build_query($params),
+				'DMN was stopped, please run it manually from the URL bleow:'
+			);
+			
+			echo wp_json_encode('DMN was stopped, please run it manually!');
 			exit;
 		}
 		
@@ -752,13 +790,15 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		if (empty($req_status)) {
 			$this->create_log($_REQUEST, 'DMN Error - the Status is empty!');
-			echo 'DMN Error - the Status is empty!';
+			
+			echo wp_json_encode('DMN Error - the Status is empty!');
 			exit;
 		}
 		
 		// santitized get variables
-		$invoice_id           = $this->get_param('invoice_id');
-		$clientUniqueId       = $this->get_param('clientUniqueId');
+		$invoice_id = $this->get_param('invoice_id');
+		//      $clientUniqueId       = $this->get_param('clientUniqueId');
+		$clientUniqueId       = $this->get_cuid();
 		$transactionType      = $this->get_param('transactionType');
 		$Reason               = $this->get_param('Reason');
 		$action               = $this->get_param('action');
@@ -770,13 +810,15 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		if (empty($TransactionID)) {
 			$this->create_log($_REQUEST, 'DMN error - The TransactionID is empty!');
-			echo esc_html('DMN error - The TransactionID is empty!');
+			
+			echo wp_json_encode('DMN error - The TransactionID is empty!');
 			exit;
 		}
 		
 		if (!$this->checkAdvancedCheckSum()) {
 			$this->create_log($_REQUEST, 'DMN Error - AdvancedCheckSum problem!');
-			echo esc_html('DMN Error - AdvancedCheckSum problem!');
+			
+			echo wp_json_encode('DMN Error - AdvancedCheckSum problem!');
 			exit;
 		}
 		
@@ -787,18 +829,19 @@ class WC_SC extends WC_Payment_Gateway {
 				!is_numeric($clientUniqueId)
 				&& $this->get_param('TransactionID', 'int') != 0
 			) {
-				//              $this->create_log('DMN Report - webSDK payment.');
-				$order_id = $this->sc_get_order_by_tans_id($TransactionID);
+				$order_id = $this->get_order_by_trans_id($TransactionID, $transactionType);
+				
 			} else {
 				// REST
-				$this->create_log('DMN Report - REST payment.');
+				$this->create_log($order_id, '$order_id');
+				
 				
 				if (empty($order_id) && is_numeric($clientUniqueId)) {
 					$order_id = $clientUniqueId;
 				}
 			}
 			
-			$this->sc_is_order_valid($order_id);
+			$this->is_order_valid($order_id);
 			$this->save_update_order_numbers();
 			
 			$order_status = strtolower($this->sc_order->get_status());
@@ -811,6 +854,8 @@ class WC_SC extends WC_Payment_Gateway {
 				);
 			}
 			
+			//          echo wp_json_encode(array('DMN process end for Order #' . $order_id));
+			//          exit;
 			echo esc_html('DMN process end for Order #' . $order_id);
 			exit;
 		}
@@ -827,7 +872,7 @@ class WC_SC extends WC_Payment_Gateway {
 			'' != $clientUniqueId
 			&& ( in_array($transactionType, array('Void', 'Settle'), true) )
 		) {
-			$this->sc_is_order_valid($order_id);
+			$this->is_order_valid($order_id);
 			
 			$msg = __('DMN for Order #' . $order_id . ', was received.', 'sc');
 			
@@ -837,17 +882,17 @@ class WC_SC extends WC_Payment_Gateway {
 
 			$this->change_order_status($order_id, $req_status, $transactionType);
 				
-			echo esc_html('DMN received.');
+			echo wp_json_encode('DMN received.');
 			exit;
 		}
 		
 		# Refund
 		if (in_array($transactionType, array('Credit', 'Refund'), true)) {
 			if (0 == $order_id) {
-				$order_id = $this->sc_get_order_by_tans_id($relatedTransactionId);
+				$order_id = $this->get_order_by_trans_id($relatedTransactionId, $transactionType);
 			}
 			
-			$this->sc_create_refund_record($order_id);
+			$this->create_refund_record($order_id);
 			
 			$this->change_order_status(
 				$order_id,
@@ -859,7 +904,7 @@ class WC_SC extends WC_Payment_Gateway {
 				)
 			);
 
-			echo esc_html('DMN process end for Order #' . $order_id);
+			echo wp_json_encode(array('DMN process end for Order #' . $order_id));
 			exit;
 		}
 		
@@ -871,7 +916,7 @@ class WC_SC extends WC_Payment_Gateway {
 			'DMN was not recognized.'
 		);
 		
-		echo 'DMN was not recognized.';
+		echo wp_json_encode('DMN was not recognized.');
 		exit;
 	}
 	
@@ -1053,6 +1098,7 @@ class WC_SC extends WC_Payment_Gateway {
 	
 	/**
 	 * Function create_refund
+	 * 
 	 * Create Refund in SC by Refund from WC, after the merchant
 	 * click refund button or set Status to Refunded
 	 */
@@ -1065,7 +1111,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'msg' => __('Post parameter is less than 1.', 'nuvei'),
 				'data' => array($order_id)
 			));
-			wp_die();
+			exit;
 		}
 		
 		$ref_amount = round($ref_amount, 2);
@@ -1073,25 +1119,18 @@ class WC_SC extends WC_Payment_Gateway {
 			wp_send_json(array(
 				'status' => 0,
 				'msg' => __('Invalid Refund amount.', 'nuvei')));
-			wp_die();
+			exit;
 		}
 		
-		$order = wc_get_order($order_id);
+		$this->is_order_valid($order_id);
 		
-		if (!is_a($order, 'WC_Order')) {
-			wp_send_json(array(
-				'status' => 0,
-				'msg' => __('There is no Order with ID ', 'nuvei') . $order_id));
-			wp_die();
-		}
-		
-		$tr_id = $order->get_meta(SC_TRANS_ID);
+		$tr_id = $this->sc_order->get_meta(SC_TRANS_ID);
 		
 		if (empty($tr_id)) {
 			wp_send_json(array(
 				'status' => 0,
 				'msg' => __('The Order missing Transaction ID.', 'nuvei')));
-			wp_die();
+			exit;
 		}
 		
 		$notify_url	= $this->set_notify_url();
@@ -1122,21 +1161,20 @@ class WC_SC extends WC_Payment_Gateway {
 		$ref_parameters['webMasterId']       = $this->webMasterId;
 		$ref_parameters['sourceApplication'] = SC_SOURCE_APPLICATION;
 		
-		//      $resp = SC_CLASS::call_rest_api($this->getEndPointBase() . 'refundTransaction.do', $ref_parameters);
-		$resp = $this->call_rest_api('refundTransaction.do', $ref_parameters);
+		$resp = $this->callRestApi('refundTransaction', $ref_parameters);
 		$msg  = '';
 
 		if (false === $resp) {
 			$msg = __('The REST API retun false.', 'nuvei');
 
-			$order->add_order_note($msg);
-			$order->save();
+			$this->sc_order->add_order_note($msg);
+			$this->sc_order->save();
 			
 			wp_send_json(array(
 				'status' => 0,
 				'msg' => $msg
 			));
-			wp_die();
+			exit;
 		}
 
 		$json_arr = $resp;
@@ -1147,31 +1185,32 @@ class WC_SC extends WC_Payment_Gateway {
 		if (!is_array($json_arr)) {
 			$msg = __('Invalid API response.', 'nuvei');
 
-			$order->add_order_note($msg);
-			$order->save();
+			$this->sc_order->add_order_note($msg);
+			$this->sc_order->save();
 			
 			wp_send_json(array(
 				'status' => 0,
 				'msg' => $msg
 			));
-			wp_die();
+			exit;
 		}
 
+		// APPROVED
 		if (!empty($json_arr['transactionStatus']) && 'APPROVED' == $json_arr['transactionStatus']) {
-			$order->update_status('processing');
+			$this->sc_order->update_status('processing');
 			
-			$this->sc_save_refund_meta_data($order, $json_arr['transactionId'], $ref_amount);
+			$this->save_refund_meta_data($json_arr['transactionId'], $ref_amount);
 			
 			wp_send_json(array('status' => 1));
-			wp_die();
+			exit;
 		}
 		
 		// in case we have message but without status
 		if (!isset($json_arr['status']) && isset($json_arr['msg'])) {
 			$msg = __('Refund request problem: ', 'nuvei') . $json_arr['msg'];
 
-			$order->add_order_note($msg);
-			$order->save();
+			$this->sc_order->add_order_note($msg);
+			$this->sc_order->save();
 			
 			$this->create_log($msg);
 
@@ -1179,15 +1218,15 @@ class WC_SC extends WC_Payment_Gateway {
 				'status' => 0,
 				'msg' => $msg
 			));
-			wp_die();
+			exit;
 		}
 		
 		// the status of the request is ERROR
 		if (isset($json_arr['status']) && 'ERROR' === $json_arr['status']) {
 			$msg = __('Request ERROR: ', 'nuvei') . $json_arr['reason'];
 
-			$order->add_order_note($msg);
-			$order->save();
+			$this->sc_order->add_order_note($msg);
+			$this->sc_order->save();
 			
 			$this->create_log($msg);
 			
@@ -1195,7 +1234,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'status' => 0,
 				'msg' => $msg
 			));
-			wp_die();
+			exit;
 		}
 
 		// the status of the request is SUCCESS, check the transaction status
@@ -1208,8 +1247,8 @@ class WC_SC extends WC_Payment_Gateway {
 				$msg = __('Transaction error.', 'nuvei');
 			}
 
-			$order->add_order_note($msg);
-			$order->save();
+			$this->sc_order->add_order_note($msg);
+			$this->sc_order->save();
 			
 			$this->create_log($msg);
 			
@@ -1217,14 +1256,14 @@ class WC_SC extends WC_Payment_Gateway {
 				'status' => 0,
 				'msg' => $msg
 			));
-			wp_die();
+			exit;
 		}
 
 		if (isset($json_arr['transactionStatus']) && 'DECLINED' === $json_arr['transactionStatus']) {
 			$msg = __('The refund was declined.', 'nuvei');
 
-			$order->add_order_note($msg);
-			$order->save();
+			$this->sc_order->add_order_note($msg);
+			$this->sc_order->save();
 			
 			$this->create_log($msg);
 			
@@ -1232,13 +1271,13 @@ class WC_SC extends WC_Payment_Gateway {
 				'status' => 0,
 				'msg' => $msg
 			));
-			wp_die();
+			exit;
 		}
 
 		$msg = __('The status of Refund request is UNKONOWN.', 'nuvei');
 
-		$order->add_order_note(__($msg, 'sc'));
-		$order->save();
+		$this->sc_order->add_order_note(__($msg, 'sc'));
+		$this->sc_order->save();
 		
 		$this->create_log($msg);
 		
@@ -1246,7 +1285,7 @@ class WC_SC extends WC_Payment_Gateway {
 			'status' => 0,
 			'msg' => $msg
 		));
-		wp_die();
+		exit;
 	}
 	
 	public function sc_return_sc_settle_btn( $args) {
@@ -1291,9 +1330,11 @@ class WC_SC extends WC_Payment_Gateway {
 		$time       = gmdate('YmdHis');
 		
 		if ('settle' == $action) {
-			$method = 'settleTransaction.do';
+			//          $method = 'settleTransaction.do';
+			$method = 'settleTransaction';
 		} else {
-			$method = 'voidTransaction.do';
+			//          $method = 'voidTransaction.do';
+			$method = 'voidTransaction';
 		}
 		
 		try {
@@ -1332,7 +1373,7 @@ class WC_SC extends WC_Payment_Gateway {
 			);
 
 			//          $resp = SC_CLASS::call_rest_api($this->getEndPointBase() . $method, $params);
-			$resp = $this->call_rest_api($method, $params);
+			$resp = $this->callRestApi($method, $params);
 		} catch (Exception $ex) {
 			$this->create_log($ex->getMessage(), 'Create void exception:');
 			
@@ -1342,7 +1383,7 @@ class WC_SC extends WC_Payment_Gateway {
 					'Unexpexted error during the ' . $action . ':',
 					'sc'
 			)));
-			wp_die();
+			exit;
 		}
 		
 		if (
@@ -1357,157 +1398,7 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		wp_send_json(array('status' => $ord_status, 'data' => $resp));
-		wp_die();
-	}
-	
-	public function sc_create_open_order( $is_ajax = false ) {
-		global $woocommerce;
-		
-		$time          = gmdate('YmdHis');
-		$uniq_str      = $time . '_' . uniqid();
-		$ajax_params   = array();
-		$subscr_data   = array();
-		$products_data = array();
-		
-		if (!empty($this->get_param('scFormData'))) {
-			parse_str($this->get_param('scFormData'), $ajax_params); 
-		}
-		
-		// check for product with subscription
-		foreach ($woocommerce->cart->get_cart() as $item_id => $item) {
-			// check for enabled subscription
-			if (current(get_post_meta($item['product_id'], '_sc_subscr_enabled')) == '1') {
-				// mandatory data
-				$subscr_data[$item['product_id']] = array(
-					'planId' => current(get_post_meta($item['product_id'], '_sc_subscr_plan_id')),
-					'initialAmount' => number_format(current(get_post_meta(
-						$item['product_id'], '_sc_subscr_initial_amount')), 2, '.', ''),
-					'recurringAmount' => number_format(current(get_post_meta(
-						$item['product_id'], '_sc_subscr_recurr_amount')), 2, '.', ''),
-				);
-				
-				# optional data
-				$recurr_unit   = current(get_post_meta($item['product_id'], '_sc_subscr_recurr_units'));
-				$recurr_period = current(get_post_meta($item['product_id'], '_sc_subscr_recurr_period'));
-				$subscr_data[$item['product_id']]['recurringPeriod'][$recurr_unit] = $recurr_period;
-
-				$trial_unit   = current(get_post_meta($item['product_id'], '_sc_subscr_trial_units'));
-				$trial_period = current(get_post_meta($item['product_id'], '_sc_subscr_trial_period'));
-				$subscr_data[$item['product_id']]['startAfter'][$trial_unit] = $trial_period;
-
-				$end_after_unit   = current(get_post_meta($item['product_id'], '_sc_subscr_end_after_units'));
-				$end_after_period = current(get_post_meta($item['product_id'], '_sc_subscr_end_after_period'));
-				$subscr_data[$item['product_id']]['endAfter'][$end_after_unit] = $end_after_period;
-				# optional data END
-			}
-			
-			$products_data[$item['product_id']] = array(
-				'quantity'	=> $item['quantity'],
-				'price'		=> get_post_meta($item['product_id'] , '_price', true),
-			);
-		}
-		// check for product with subscription END
-		
-		$oo_params = array(
-			'merchantId'        => $this->sc_get_setting('merchantId'),
-			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
-			'clientRequestId'	=> $uniq_str,
-			'clientUniqueId'    => $uniq_str . '_wc_cart',
-			'amount'            => $woocommerce->cart->total,
-			'currency'          => get_woocommerce_currency(),
-			'timeStamp'         => $time,
-			
-			'urlDetails'        => array(
-				'notificationUrl'   => $this->set_notify_url(),
-			),
-			
-			'deviceDetails'     => SC_CLASS::get_device_details(),
-			'userTokenId'       => $this->get_param('billing_email', 'mail', '', $ajax_params),
-			
-			'billingAddress'	=> array(
-				'firstName'	=> $this->get_param('billing_first_name', 'string', '', $ajax_params),
-				'lastName'	=> $this->get_param('billing_last_name', 'string', '', $ajax_params),
-				'address'	=> $this->get_param('billing_address_1', 'string', '', $ajax_params)
-								. ' ' . $this->get_param('billing_address_1', 'string', '', $ajax_params),
-				'phone'		=> $this->get_param('billing_phone', 'string', '', $ajax_params),
-				'zip'		=> $this->get_param('billing_postcode', 'int', 0, $ajax_params),
-				'city'		=> $this->get_param('billing_city', 'string', '', $ajax_params),
-				'country'	=> $this->get_param('billing_country', 'string', '', $ajax_params),
-				'email'		=> $this->get_param('billing_email', 'mail', '', $ajax_params),
-			),
-			
-			'shippingAddress'	=> array(
-				'firstName'	=> $this->get_param('shipping_first_name', 'string', '', $ajax_params),
-				'lastName'  => $this->get_param('shipping_last_name', 'string', '', $ajax_params),
-				'address'   => $this->get_param('shipping_address_1', 'string', '', $ajax_params)
-								. ' ' . $this->get_param('shipping_address_2', 'string', '', $ajax_params),
-				'zip'       => $this->get_param('shipping_postcode', 'string', '', $ajax_params),
-				'city'      => $this->get_param('shipping_city', 'string', '', $ajax_params),
-				'country'   => $this->get_param('shipping_country', 'string', '', $ajax_params),
-			),
-			
-			'webMasterId'       => $this->webMasterId,
-			'paymentOption'        => array('card' => array('threeD' => array('isDynamic3D' => 1))),
-			'transactionType'    => $this->sc_get_setting('payment_action'),
-			'merchantDetails'	=> array(
-				'customField1' => json_encode($subscr_data), // put subscr data here
-				'customField2' => json_encode($products_data) // item details
-			),
-		);
-		
-		$oo_params['userDetails'] = $oo_params['billingAddress'];
-		
-		$oo_params['checksum'] = hash(
-			$this->sc_get_setting('hash_type'),
-			$this->sc_get_setting('merchantId') . $this->sc_get_setting('merchantSiteId') . $oo_params['clientRequestId']
-				. $oo_params['amount'] . $oo_params['currency'] . $time . $this->sc_get_setting('secret')
-		);
-		
-		//      $resp = SC_CLASS::call_rest_api(
-		//          $this->getEndPointBase() . 'openOrder.do',
-		//          $oo_params
-		//      );
-		$resp = $this->call_rest_api('openOrder.do', $oo_params);
-		
-		if (
-			empty($resp['status'])
-			|| empty($resp['sessionToken'])
-			|| 'SUCCESS' != $resp['status']
-		) {
-			if ($is_ajax) {
-				wp_send_json(array(
-					'status'	=> 0,
-					'msg'		=> $resp
-				));
-				wp_die();
-			} else {
-				return false;
-			}
-		}
-		
-		// set them to session for the check before submit the data to the webSDK
-		$_SESSION['nuvei_last_open_order_details'] = array(
-			'amount'			=> $oo_params['amount'],
-			'items'				=> $oo_params['merchantDetails']['customField2'],
-			'sessionToken'		=> $resp['sessionToken'],
-			'userTokenId'		=> $oo_params['userTokenId'],
-			'clientRequestId'	=> $oo_params['clientRequestId'],
-			'orderId'			=> $resp['orderId'],
-		);
-		
-		if ($is_ajax) {
-			wp_send_json(array(
-				'status'        => 1,
-				'sessionToken'    => $resp['sessionToken']
-			));
-			wp_die();
-		}
-		
-		return array(
-			'oo_params' => $oo_params,
-			'resp' => $resp,
-			'time' => $time
-		);
+		exit;
 	}
 	
 	public function delete_user_upo() {
@@ -1521,7 +1412,7 @@ class WC_SC extends WC_Payment_Gateway {
 				)
 			);
 
-			wp_die();
+			exit;
 		}
 		
 		if (!is_user_logged_in()) {
@@ -1532,7 +1423,7 @@ class WC_SC extends WC_Payment_Gateway {
 				)
 			);
 
-			wp_die();
+			exit;
 		}
 		
 		$curr_user = wp_get_current_user();
@@ -1545,7 +1436,7 @@ class WC_SC extends WC_Payment_Gateway {
 				)
 			);
 
-			wp_die();
+			exit;
 		}
 		
 		$timeStamp = gmdate('YmdHis', time());
@@ -1565,7 +1456,8 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		//      $resp = SC_CLASS::call_rest_api($this->getEndPointBase() . 'deleteUPO.do', $params);
-		$resp = $this->call_rest_api('deleteUPO.do', $params);
+		//      $resp = $this->callRestApi('deleteUPO.do', $params);
+		$resp = $this->callRestApi('deleteUPO', $params);
 		
 		if (empty($resp['status']) || 'SUCCESS' != $resp['status']) {
 			$msg = !empty($resp['reason']) ? $resp['reason'] : '';
@@ -1578,11 +1470,11 @@ class WC_SC extends WC_Payment_Gateway {
 				)
 			);
 
-			wp_die();
+			exit;
 		}
 		
 		wp_send_json(array('status' => 'success'));
-		wp_die();
+		exit;
 	}
 	
 	/**
@@ -1686,7 +1578,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'status' => 0,
 				'msg' => __('Problem with the Products IDs.', 'nuvei')
 			));
-			wp_die();
+			exit;
 		}
 		
 		$prod_factory  = new WC_Product_Factory();
@@ -1710,7 +1602,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'status' => 0,
 				'msg' => __('There are no added Products to the Cart.', 'nuvei'),
 			));
-			wp_die();
+			exit;
 		}
 		
 		$cart_url = wc_get_cart_url();
@@ -1725,7 +1617,7 @@ class WC_SC extends WC_Payment_Gateway {
 			'msg'			=> $msg,
 			'redirect_url'	=> wc_get_cart_url(),
 		));
-		wp_die();
+		exit;
 	}
 	
 	/**
@@ -1753,17 +1645,13 @@ class WC_SC extends WC_Payment_Gateway {
 				. $params['planStatus'] . $time . $this->sc_get_setting('secret')
 		);
 		
-		//      $resp = SC_CLASS::call_rest_api(
-		//          $this->getEndPointBase() . 'getPlansList.do',
-		//          $params
-		//      );
-		$resp = $this->call_rest_api('getPlansList.do', $params);
+		$resp = $this->callRestApi('getPlansList', $params);
 		
 		if (empty($resp) || !is_array($resp) || 'SUCCESS' != $resp['status']) {
 			$this->create_log('Get Plans response error.');
 			
 			wp_send_json(array('status' => 0));
-			wp_die();
+			exit;
 		}
 		
 		if (file_put_contents(plugin_dir_path(__FILE__) . '/tmp/sc_plans.json', json_encode($resp['plans']))) {
@@ -1771,7 +1659,7 @@ class WC_SC extends WC_Payment_Gateway {
 				'status' => 1,
 				'time' => gmdate('Y-m-d H:i:s')
 			));
-			wp_die();
+			exit;
 		}
 		
 		$this->create_log(
@@ -1780,7 +1668,7 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 		
 		wp_send_json(array('status' => 0));
-		wp_die();
+		exit;
 	}
 	
 	public function get_subscr_fields() {
@@ -1795,7 +1683,7 @@ class WC_SC extends WC_Payment_Gateway {
 	 * @param string $title
 	 */
 	public function create_log( $data, $title = '') {
-		$logs_path = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR;
+		$logs_path = $this->plugin_path . 'logs' . DIRECTORY_SEPARATOR;
 		
 		// path is different fore each plugin
 		if (!is_dir($logs_path) || $this->sc_get_setting('save_logs') != 'yes') {
@@ -1806,6 +1694,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$string	= '';
 
 		if (is_array($data)) {
+			// do not log accounts if on prod
 			if ($this->sc_get_setting('test') == 'no') {
 				if (isset($data['userAccountDetails']) && is_array($data['userAccountDetails'])) {
 					$data['userAccountDetails'] = 'account details';
@@ -1817,8 +1706,9 @@ class WC_SC extends WC_Payment_Gateway {
 					$data['paymentOption'] = 'payment options details';
 				}
 			}
+			// do not log accounts if on prod
 			
-			if (isset($data['paymentMethods'])) {
+			if (!empty($data['paymentMethods']) && is_array($data['paymentMethods'])) {
 				$data['paymentMethods'] = json_encode($data['paymentMethods']);
 			}
 			
@@ -1845,75 +1735,264 @@ class WC_SC extends WC_Payment_Gateway {
 		$string .= $d . "\r\n\r\n";
 		
 		file_put_contents(
-			SC_LOGS_DIR . gmdate('Y-m-d', time()) . '.txt',
-		//          gmdate('H:i:s', time()) . ': ' . $string . "\r\n",
+			$logs_path . gmdate('Y-m-d', time()) . '.txt',
 			gmdate('H:i:s', time()) . ': ' . $string,
 			FILE_APPEND
 		);
 	}
 	
 	/**
-	 * Function check_cart
-	 * Call it via Ajax just before submit the payment to the webSDK
+	 * Function is_order_valid
+	 * Checks if the Order belongs to WC_Order and if the order was made
+	 * with Nuvei payment module.
+	 * 
+	 * @param int|string $order_id
+	 * @param bool $return - return the order
+	 * 
+	 * @return bool|WC_Order
 	 */
-	public function check_cart() {
+	public function is_order_valid( $order_id, $return = false) {
+		$this->sc_order = wc_get_order( $order_id );
+		
+		if ( ! is_a( $this->sc_order, 'WC_Order') ) {
+			$this->create_log('is_order_valid() Error - Provided Order ID is not a WC Order');
+			
+			if ($return) {
+				return false;
+			}
+			
+			echo wp_json_encode('is_order_valid() Error - Provided Order ID is not a WC Order');
+			exit;
+		}
+		
+		if ('sc' !== $this->sc_order->get_payment_method()) {
+			$this->create_log($this->sc_order->get_payment_method(), 'DMN Error - the order does not belongs to Nuvei.');
+			
+			if ($return) {
+				return false;
+			}
+			
+			echo wp_json_encode('DMN Error - the order does not belongs to Nuvei.');
+			exit;
+		}
+		
+		return $this->sc_order;
+	}
+	
+	/**
+	 * Function open_order
+	 * 
+	 * First try to Update the Order. If fail request new OpenOrder.
+	 * 
+	 * @global Woocommerce $woocommerce
+	 * @param boolean $is_ajax
+	 * 
+	 * @return mixed
+	 */
+	public function open_order( $is_ajax = false ) {
 		global $woocommerce;
 		
-		$update_cart = false;
+		$time          = gmdate('YmdHis');
+		$uniq_str      = $time . '_' . uniqid();
+		$ajax_params   = array();
+		$subscr_data   = array();
+		$products_data = array();
 		
-		$this->create_log($_SESSION['nuvei_last_open_order_details'], 'check_cart() - nuvei_last_open_order_details');
+		# try to update Order
+		$resp = $this->update_order(false);
 		
-		if (empty($_SESSION['nuvei_last_open_order_details'])) {
-			$update_cart = true;
-		} else {
-			$session_amount	= (string) round($_SESSION['nuvei_last_open_order_details']['amount'], 2);
-			//          $session_items  = json_decode($_SESSION['items'], true);
-			
-			$cart_st     = $this->get_param('sessionToken');
-			$cart_amount = (string) round($woocommerce->cart->total, 2);
-			$cart_items  = array();
-			
-			foreach ($woocommerce->cart->get_cart() as $item_id => $item) {
-				$cart_items[$item['product_id']] = array(
-					'quantity'  => $item['quantity'],
-					'price'     => get_post_meta($item['product_id'] , '_price', true),
-				);
+		if (!empty($resp['status']) && 'SUCCESS' == $resp['status']) {
+			if ($is_ajax) {
+				wp_send_json(array(
+					'status'        => 1,
+					'sessionToken'	=> $resp['sessionToken']
+				));
+				exit;
 			}
-			
-			// compare
-			if (
-				empty($_SESSION['nuvei_last_open_order_details']['sessionToken'])
-				|| empty($cart_st)
-				|| empty($cart_items)
-				|| empty($_SESSION['nuvei_last_open_order_details']['orderId'])
-			//              || empty($session_items)
-				|| $_SESSION['nuvei_last_open_order_details']['sessionToken'] != $cart_st
-				|| $session_amount != $cart_amount
-			//              || !empty(array_diff($cart_items, $session_items))
-			) {
-				$update_cart = true;
+
+			return $resp;
+		}
+		# try to update Order END
+		
+		if (!empty($this->get_param('scFormData'))) {
+			parse_str($this->get_param('scFormData'), $ajax_params); 
+		}
+		
+		// check for product with subscription
+		foreach ($woocommerce->cart->get_cart() as $item_id => $item) {
+			// check for enabled subscription
+			if (current(get_post_meta($item['product_id'], '_sc_subscr_enabled')) == '1') {
+				// mandatory data
+				$subscr_data[$item['product_id']] = array(
+					'planId' => current(get_post_meta($item['product_id'], '_sc_subscr_plan_id')),
+					'initialAmount' => number_format(current(get_post_meta(
+						$item['product_id'], '_sc_subscr_initial_amount')), 2, '.', ''),
+					'recurringAmount' => number_format(current(get_post_meta(
+						$item['product_id'], '_sc_subscr_recurr_amount')), 2, '.', ''),
+				);
 				
-				$this->create_log(
-					array(
-						'checkout session token'	=> $cart_st,
-						'current cart amount'		=> $cart_amount,
-					),
-					'check_cart() last OpenOrder data and new Cart data problem.'
-				);
+				# optional data
+				$recurr_unit   = current(get_post_meta($item['product_id'], '_sc_subscr_recurr_units'));
+				$recurr_period = current(get_post_meta($item['product_id'], '_sc_subscr_recurr_period'));
+				$subscr_data[$item['product_id']]['recurringPeriod'][$recurr_unit] = $recurr_period;
+
+				$trial_unit   = current(get_post_meta($item['product_id'], '_sc_subscr_trial_units'));
+				$trial_period = current(get_post_meta($item['product_id'], '_sc_subscr_trial_period'));
+				$subscr_data[$item['product_id']]['startAfter'][$trial_unit] = $trial_period;
+
+				$end_after_unit   = current(get_post_meta($item['product_id'], '_sc_subscr_end_after_units'));
+				$end_after_period = current(get_post_meta($item['product_id'], '_sc_subscr_end_after_period'));
+				$subscr_data[$item['product_id']]['endAfter'][$end_after_unit] = $end_after_period;
+				# optional data END
+			}
+			
+			$products_data[$item['product_id']] = array(
+				'quantity'	=> $item['quantity'],
+				'price'		=> get_post_meta($item['product_id'] , '_price', true),
+			);
+		}
+		// check for product with subscription END
+		
+		$oo_params = array(
+			'merchantId'        => $this->sc_get_setting('merchantId'),
+			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
+			'clientRequestId'	=> $uniq_str,
+			'clientUniqueId'    => $uniq_str . '_wc_cart',
+			'amount'            => $woocommerce->cart->total,
+			'currency'          => get_woocommerce_currency(),
+			'timeStamp'         => $time,
+			
+			'urlDetails'        => array(
+				'notificationUrl'   => $this->set_notify_url(),
+			),
+			
+			'deviceDetails'     => SC_CLASS::get_device_details(),
+			'userTokenId'       => $this->get_param('billing_email', 'mail', '', $ajax_params),
+			
+			'billingAddress'	=> array(
+				'firstName'	=> $this->get_param('billing_first_name', 'string', '', $ajax_params),
+				'lastName'	=> $this->get_param('billing_last_name', 'string', '', $ajax_params),
+				'address'	=> $this->get_param('billing_address_1', 'string', '', $ajax_params)
+								. ' ' . $this->get_param('billing_address_1', 'string', '', $ajax_params),
+				'phone'		=> $this->get_param('billing_phone', 'string', '', $ajax_params),
+				'zip'		=> $this->get_param('billing_postcode', 'int', 0, $ajax_params),
+				'city'		=> $this->get_param('billing_city', 'string', '', $ajax_params),
+				'country'	=> $this->get_param('billing_country', 'string', '', $ajax_params),
+				'email'		=> $this->get_param('billing_email', 'mail', '', $ajax_params),
+			),
+			
+			'shippingAddress'	=> array(
+				'firstName'	=> $this->get_param('shipping_first_name', 'string', '', $ajax_params),
+				'lastName'  => $this->get_param('shipping_last_name', 'string', '', $ajax_params),
+				'address'   => $this->get_param('shipping_address_1', 'string', '', $ajax_params)
+								. ' ' . $this->get_param('shipping_address_2', 'string', '', $ajax_params),
+				'zip'       => $this->get_param('shipping_postcode', 'string', '', $ajax_params),
+				'city'      => $this->get_param('shipping_city', 'string', '', $ajax_params),
+				'country'   => $this->get_param('shipping_country', 'string', '', $ajax_params),
+			),
+			
+			'webMasterId'       => $this->webMasterId,
+			'paymentOption'        => array('card' => array('threeD' => array('isDynamic3D' => 1))),
+			'transactionType'    => $this->sc_get_setting('payment_action'),
+			'merchantDetails'	=> array(
+				'customField1' => json_encode($subscr_data), // put subscr data here
+				'customField2' => json_encode($products_data), // item details
+				'customField3' => time(), // open order create time
+			),
+		);
+		
+		$oo_params['userDetails'] = $oo_params['billingAddress'];
+		
+		$oo_params['checksum'] = hash(
+			$this->sc_get_setting('hash_type'),
+			$this->sc_get_setting('merchantId') . $this->sc_get_setting('merchantSiteId') . $oo_params['clientRequestId']
+				. $oo_params['amount'] . $oo_params['currency'] . $time . $this->sc_get_setting('secret')
+		);
+		
+		//      $resp = $this->callRestApi('openOrder.do', $oo_params);
+		$resp = $this->callRestApi('openOrder', $oo_params);
+		
+		if (
+			empty($resp['status'])
+			|| empty($resp['sessionToken'])
+			|| 'SUCCESS' != $resp['status']
+		) {
+			if ($is_ajax) {
+				wp_send_json(array(
+					'status'	=> 0,
+					'msg'		=> $resp
+				));
+				exit;
+			} else {
+				return false;
 			}
 		}
 		
-		if (!$update_cart) {
-			echo wp_json_encode(array(
-				success			=> 1,
-				isCartChanged	=> 0
+		// set them to session for the check before submit the data to the webSDK
+		$_SESSION['nuvei_last_open_order_details'] = array(
+			'amount'			=> $oo_params['amount'],
+			'merchantDetails'	=> $oo_params['merchantDetails'],
+			'sessionToken'		=> $resp['sessionToken'],
+			'userTokenId'		=> $oo_params['userTokenId'],
+			'clientRequestId'	=> $oo_params['clientRequestId'],
+			'orderId'			=> $resp['orderId'],
+			'billingAddress'	=> array('country' => $oo_params['billingAddress']['country']),
+		);
+		
+		if ($is_ajax) {
+			wp_send_json(array(
+				'status'        => 1,
+				'sessionToken'    => $resp['sessionToken']
 			));
-			wp_die();
+			exit;
 		}
 		
-		$time = gmdate('YmdHis');
-		//      $unique_string  = $time . '_' . uniqid();
+		return array_merge($resp, $oo_params);
 		
+		//      return array(
+		//          'oo_params' => $oo_params,
+		//          'resp' => $resp,
+		//          'time' => $time
+		//      );
+	}
+	
+	/**
+	 * Function update_order
+	 * 
+	 * @return array
+	 */
+	private function update_order() {
+		$this->create_log(
+			isset($_SESSION['nuvei_last_open_order_details']) ? $_SESSION['nuvei_last_open_order_details'] : '',
+			'update_order() - session[nuvei_last_open_order_details]'
+		);
+		
+		if (
+			empty($_SESSION['nuvei_last_open_order_details'])
+			|| empty($_SESSION['nuvei_last_open_order_details']['sessionToken'])
+			|| empty($_SESSION['nuvei_last_open_order_details']['orderId'])
+			|| empty($_SESSION['nuvei_last_open_order_details']['userTokenId'])
+			|| empty($_SESSION['nuvei_last_open_order_details']['clientRequestId'])
+		) {
+			$this->create_log('update_order() - Missing last Order session data.');
+			
+			return array('status' => 'ERROR');
+		}
+		
+		global $woocommerce;
+		
+		$time        = gmdate('YmdHis');
+		$cart_amount = (string) round($woocommerce->cart->total, 2);
+		$cart_items  = array();
+
+		// get items
+		foreach ($woocommerce->cart->get_cart() as $item_id => $item) {
+			$cart_items[$item['product_id']] = array(
+				'quantity'  => $item['quantity'],
+				'price'     => get_post_meta($item['product_id'] , '_price', true),
+			);
+		}
+
 		// create Order upgrade
 		$params = array(
 			'sessionToken'		=> $_SESSION['nuvei_last_open_order_details']['sessionToken'],
@@ -1931,7 +2010,10 @@ class WC_SC extends WC_Payment_Gateway {
 					'quantity'	=> 1
 				)
 			),
-			'merchantDetails'   => array('customField2' => $cart_items),
+			'merchantDetails'   => array(
+				'customField2' => json_encode($cart_items), // items
+				'customField3' => time(), // update time
+			),
 			'timeStamp'			=> $time,
 		);
 		
@@ -1941,41 +2023,23 @@ class WC_SC extends WC_Payment_Gateway {
 				. $params['amount'] . $params['currency'] . $time . $this->sc_get_setting('secret')
 		);
 		
-		$resp = $this->call_rest_api($this->getEndPointBase() . 'updateOrder.do', $params);
-		
-		# Errors
-		if (!$resp || !isset($resp['status']) || 'SUCCESS' != $resp['status']) {
-			echo wp_json_encode(array(
-				success			=> 0,
-				isCartChanged	=> 1,
-				message			=> 'Response problem'
-			));
-			wp_die();
-		}
+		$resp = $this->callRestApi('updateOrder', $params);
 		
 		# Success
 		if (!empty($resp['status']) && 'SUCCESS' == $resp['status']) {
-			$_SESSION['nuvei_last_open_order_details']['amount'] = $cart_amount;
-			$_SESSION['nuvei_last_open_order_details']['items']  = $params['merchantDetails']['customField2'];
+			$_SESSION['nuvei_last_open_order_details']['amount']          = $cart_amount;
+			$_SESSION['nuvei_last_open_order_details']['merchantDetails'] = $params['merchantDetails'];
 			
-			echo wp_json_encode(array(
-				success			=> 1,
-				isCartChanged	=> 1,
-				amount			=> $cart_amount
-			));
-			wp_die();
+			return array_merge($resp, $params);
 		}
 		
-		# Unknown Error
-		echo wp_json_encode(array(
-			success			=> 0,
-			isCartChanged	=> 1
-		));
-		wp_die();
+		$this->create_log('update_order() - Order update was not successful.');
+
+		return array('status' => 'ERROR');
 	}
 	
 	/**
-	 * Function call_rest_api
+	 * Function callRestApi
 	 * Call Rest Api from here for easy log of details
 	 * 
 	 * @param string $method - method_name.do
@@ -1983,17 +2047,21 @@ class WC_SC extends WC_Payment_Gateway {
 	 * 
 	 * @return mixed $resp
 	 */
-	private function call_rest_api( $method, $params) {
+	private function callRestApi( $method, $params) {
 		$resp = '';
+		$url  = $this->getEndPointBase() . $method . '.do';
 		
-		$url = $this->getEndPointBase() . $method;
+		if (empty($method)) {
+			$this->create_log($url, 'callRestApi() Error - the passed method can not be empty.');
+			return false;
+		}
 		
 		if (!filter_var($url, FILTER_VALIDATE_URL)) {
 			$this->create_log($url, 'call_rest_api() Error - the passed url is not valid.');
 			return false;
 		}
 		
-		if (!is_array($params) && !is_object($params)) {
+		if (!is_array($params)) {
 			$this->create_log($params, 'call_rest_api() Error - the passed params parameter is not array ot object.');
 			return false;
 		}
@@ -2006,11 +2074,12 @@ class WC_SC extends WC_Payment_Gateway {
 			'REST API call (before validation)'
 		);
 
-		$resp = SC_CLASS::call_rest_api($url, $params);
+		$resp		= SC_CLASS::call_rest_api($url, $params);
+		$resp_array	= json_decode($resp, true);
 
-		$this->create_log($resp, 'Rest API response');
+		$this->create_log(!empty($resp_array) ? $resp_array : $resp, 'Rest API response');
 		
-		return $resp;
+		return $resp_array;
 	}
 	
 	private function sc_get_order_data( $TransactionID) {
@@ -2076,9 +2145,11 @@ class WC_SC extends WC_Payment_Gateway {
 					$currency_code   = $this->sc_order->get_currency();
 					$currency_symbol = get_woocommerce_currency_symbol( $currency_code );
 					
-					$message .= '<br/>' . __('Refund Amount') . ': ' . $currency_symbol
-						. number_format($refunds[$this->get_param('TransactionID', 'int')]['refund_amount'], 2, '.', '')
-						. '<br/>' . __('Refund') . ' #' . $refunds[$this->get_param('TransactionID', 'int')]['wc_id'];
+					if (isset($refunds[$this->get_param('TransactionID', 'int')]['refund_amount'])) {
+						$message .= '<br/>' . __('Refund Amount') . ': ' . $currency_symbol
+							. number_format($refunds[$this->get_param('TransactionID', 'int')]['refund_amount'], 2, '.', '')
+							. '<br/>' . __('Refund') . ' #' . $refunds[$this->get_param('TransactionID', 'int')]['wc_id'];
+					}
 					
 					if (round($this->sc_order->get_total(), 2) <= $this->sc_sum_order_refunds()) {
 						$status = 'refunded';
@@ -2105,6 +2176,14 @@ class WC_SC extends WC_Payment_Gateway {
 							. ' ' . $this->sc_order->get_currency() . '!';
 						
 						$status = 'failed';
+						
+						$this->create_log(
+							array(
+								'order_amount'	=> $order_amount,
+								'dmn_amount'	=> $dmn_amount,
+							),
+							'DMN amount and Order amount do not much.'
+						);
 					}
 				}
 				
@@ -2234,9 +2313,28 @@ class WC_SC extends WC_Payment_Gateway {
 		return $default;
 	}
 	
-	private function sc_get_order_by_tans_id( $trans_id, $create_order = false) {
+	/**
+	 * Function get_order_by_trans_id
+	 * 
+	 * @param int $trans_id
+	 * @param string $transactionType
+	 * 
+	 * @return int
+	 */
+	private function get_order_by_trans_id( $trans_id, $transactionType = '') {
 		// try to get Order ID by its meta key
-		$tries = 0;
+		$tries				= 0;
+		$max_tries			= 10;
+		$order_request_time	= $this->get_param('customField3', 'int'); // time of create/update order
+		
+		// do not search more than once if the DMN response time is more than 1 houre before now
+		if (
+			$order_request_time > 0
+			&& in_array($transactionType, array('Auth', 'Sale', 'Credit', 'Refund'), true)
+			&& ( time() - $order_request_time > 3600 )
+		) {
+			$max_tries = 0;
+		}
 
 		do {
 			$tries++;
@@ -2246,11 +2344,18 @@ class WC_SC extends WC_Payment_Gateway {
 			if (empty($res[0]->post_id)) {
 				sleep(3);
 			}
-		} while ($tries <= 10 && empty($res[0]->post_id));
+		} while ($tries <= $max_tries && empty($res[0]->post_id));
 
 		if (empty($res[0]->post_id)) {
-			$this->create_log('The DMN didn\'t wait for the Order creation. Exit.');
-			echo 'The DMN didn\'t wait for the Order creation. Exit.';
+			$this->create_log(
+				array(
+					'trans_id' => $trans_id,
+					'tries' => $tries
+				),
+				'The DMN didn\'t wait for the Order creation. Exit.'
+			);
+			
+			echo wp_json_encode('The DMN didn\'t wait for the Order creation. Exit.');
 			exit;
 		}
 
@@ -2258,74 +2363,66 @@ class WC_SC extends WC_Payment_Gateway {
 	}
 	
 	/**
-	 * Function sc_is_order_valid
-	 * Checks if the Order belongs to WC_Order and if the order was made
-	 * with Nuvei payment module.
-	 * 
-	 * @param int|string $order_id
-	 */
-	private function sc_is_order_valid( $order_id) {
-		$this->sc_order = wc_get_order( $order_id );
-		
-		if ( ! is_a( $this->sc_order, 'WC_Order') ) {
-			$this->create_log('DMN Error - Provided Order ID is not a WC Order');
-			echo 'DMN Error - Provided Order ID is not a WC Order';
-			exit;
-		}
-		
-		if ('sc' !== $this->sc_order->get_payment_method()) {
-			$this->create_log($this->sc_order->get_payment_method(), 'DMN Error - the order does not belongs to Nuvei.');
-			echo esc_html('DMN Error - the order does not belongs to Nuvei.');
-			exit;
-		}
-	}
-	
-	/**
-	 * Function sc_create_refund_record
+	 * Function create_refund_record
 	 * 
 	 * @param int $order_id
-	 * @param string $reason
+	 * 
 	 * @return int the order id
 	 */
-	private function sc_create_refund_record( $order_id, $reason = '') {
-		$this->sc_is_order_valid($order_id);
-		
-		if ( !in_array($this->sc_order->get_status(), array('completed', 'processing')) ) {
-			$this->create_log(
-				$this->sc_order->get_status(),
-				'DMN Error for Cpanel Refund - the Order status does not allow refunds. The status is:'
-			);
-			echo 'DMN Error for Cpanel Refund - the Order status does not allow refunds.';
-			exit;
-		}
-		
+	private function create_refund_record( $order_id) {
+		$refunds	= array();
 		$ref_amount = 0;
 		$tries		= 0;
+		$ref_tr_id	= $this->get_param('TransactionID', 'int');
 		
+		// there is chance of slow saving of meta data (in create_refund_record()), so let's wait
 		do {
+			$this->is_order_valid($order_id);
+		
+			if ( !in_array($this->sc_order->get_status(), array('completed', 'processing')) ) {
+				$this->create_log(
+					$this->sc_order->get_status(),
+					'DMN Error for Cpanel Refund - the Order status does not allow refunds. The status is:'
+				);
+
+				echo wp_json_encode(array('DMN Error for Cpanel Refund - the Order status does not allow refunds.'));
+				exit;
+			}
+			
 			$refunds = json_decode($this->sc_order->get_meta('_sc_refunds'), true);
+			//          $refunds = json_decode(get_post_meta($order_id, '_sc_refunds'), true);
 			$tries++;
 			
-			$this->create_log($tries, 'Wait for Refund meta data for Order #' . $order_id);
-			sleep(2);
-		} while (empty($refunds[$this->get_param('TransactionID', 'int')]) && $tries < 5);
+			$this->create_log(
+				array(
+					'order_id'	=> $order_id,
+					'ref_tr_id'	=> $ref_tr_id,
+					'tries'		=> $tries,
+					'refunds'	=> $refunds,
+				),
+				'create_refund_record() Wait for Refund meta data for Order'
+			);
+			sleep(3);
+		} while (empty($refunds[$ref_tr_id]) && $tries < 5);
 		
-		$this->create_log($refunds, 'Saved refunds for Order #' . $order_id);
+		//      $refunds = json_decode($this->sc_order->get_meta('_sc_refunds'), true);
 		
+		$this->create_log($refunds, 'create_refund_record() Saved refunds for Order #' . $order_id);
+		
+		// check for DMN trans ID in the refunds
 		if (
-			!empty($refunds[$this->get_param('TransactionID', 'int')])
-			&& 'pending' == $refunds[$this->get_param('TransactionID', 'int')]['status']
-			&& !empty($refunds[$this->get_param('TransactionID', 'int')]['refund_amount'])
+			!empty($refunds[$ref_tr_id])
+			&& 'pending' == $refunds[$ref_tr_id]['status']
+			&& !empty($refunds[$ref_tr_id]['refund_amount'])
 		) {
-			$ref_amount = $refunds[$this->get_param('TransactionID', 'int')]['refund_amount'];
+			$ref_amount = $refunds[$ref_tr_id]['refund_amount'];
 		}
 		
 		// in case of CPanel refund - add Refund meta data here
 		if (0 == $ref_amount && strpos($this->get_param('clientRequestId'), 'gwp_') !== false) {
 			$ref_amount = $this->get_param('totalAmount', 'float');
 			
-			$this->sc_save_refund_meta_data(
-				$this->sc_order,
+			$this->save_refund_meta_data(
 				$this->get_param('TransactionID'),
 				$ref_amount
 			);
@@ -2338,18 +2435,19 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		
 		$refund = wc_create_refund(array(
-			'amount'         => round(floatval($ref_amount), 2),
-			'order_id'       => $order_id,
+			'amount'	=> round(floatval($ref_amount), 2),
+			'order_id'	=> $order_id,
 		));
 		
 		if (is_a($refund, 'WP_Error')) {
-			$this->create_log($refund, 'DMN Error for Cpanel Refund - the Refund process in WC returns error: ');
-			echo 'DMN Error for Cpanel Refund - the Refund process in WC returns error.';
+			$this->create_log($refund, 'create_refund_record() - the Refund process in WC returns error: ');
+			
+			echo wp_json_encode(array('create_refund_record() - the Refund process in WC returns error.'));
 			exit;
 		}
 		
-		$refunds[$this->get_param('TransactionID', 'int')]['status'] = 'approved';
-		$refunds[$this->get_param('TransactionID', 'int')]['wc_id']  = $refund->get_id();
+		$refunds[$ref_tr_id]['status'] = 'approved';
+		$refunds[$ref_tr_id]['wc_id']  = $refund->get_id();
 		
 		$this->sc_order->update_meta_data('_sc_refunds', json_encode($refunds));
 		$this->sc_order->save();
@@ -2375,15 +2473,15 @@ class WC_SC extends WC_Payment_Gateway {
 		return round($sum, 2);
 	}
 	
-	private function sc_save_refund_meta_data( $order, $trans_id, $ref_amount) {
-		$refunds = json_decode($order->get_meta('_sc_refunds'), true);
+	private function save_refund_meta_data( $trans_id, $ref_amount) {
+		$refunds = json_decode($this->sc_order->get_meta('_sc_refunds'), true);
 		
 		if (empty($refunds)) {
 			$refunds = array();
 		}
 		
-		$this->create_log($refunds, 'Saved Refunds meta data before add the current one.');
-		$this->create_log($ref_amount, '$ref_amount');
+		$this->create_log($refunds, 'save_refund_meta_data() Saved Refunds meta data before add the current one.');
+		$this->create_log($ref_amount, 'save_refund_meta_data ref_amount');
 		
 		// add the new refund
 		$refunds[$trans_id] = array(
@@ -2391,10 +2489,54 @@ class WC_SC extends WC_Payment_Gateway {
 			'status'		=> 'pending'
 		);
 
-		$order->update_meta_data('_sc_refunds', json_encode($refunds));
-		$order->save();
+		$this->sc_order->update_meta_data('_sc_refunds', json_encode($refunds));
+		$order_id = $this->sc_order->save();
 		
-		$this->create_log(json_decode($order->get_meta('_sc_refunds'), true), 'Saved Refunds after the request.');
+		$this->create_log(
+			json_decode($this->sc_order->get_meta('_sc_refunds'), true),
+			'save_refund_meta_data() Saved Refunds after the request.'
+		);
+		
+		return $order_id;
+	}
+	
+	/**
+	 * Function set_cuid
+	 * 
+	 * Set client unique id.
+	 * We change it only for Sandbox (test) mode.
+	 * 
+	 * @param int $order_id
+	 * @return int|string
+	 */
+	private function set_cuid( $order_id) {
+		if ('yes' != $this->test) {
+			return (int) $order_id;
+		}
+		
+		return $order_id . '_' . time() . $this->cuid_postfix;
+	}
+	
+	/**
+	 * Function get_cuid
+	 * 
+	 * Get client unique id.
+	 * We change it only for Sandbox (test) mode.
+	 * 
+	 * @return int|string
+	 */
+	private function get_cuid() {
+		$clientUniqueId = $this->get_param('clientUniqueId');
+		
+		if ('yes' != $this->test) {
+			return $clientUniqueId;
+		}
+		
+		if (strpos($clientUniqueId, $this->cuid_postfix) !== false) {
+			return current(explode('_', $clientUniqueId));
+		}
+		
+		return $clientUniqueId;
 	}
 	
 }

@@ -19,7 +19,7 @@
 	bottom: 0;
 	left: 0;
 	right: 0;
-	z-index: 99999;
+	z-index: 9999;
 	background: rgba(0,0,0,0.5);
 }
 
@@ -142,6 +142,11 @@
 	font-weight: normal;
 }
 
+.SfcField img {
+	margin: 0 auto;
+	max-width: 15px;
+}
+
 #sc_second_step_form #sc_upos_list .SfcField { max-width: 100px; }
 
 #sc_second_step_form .SfcField iframe {
@@ -195,7 +200,7 @@
 }
 
 /* for the 3DS modal */
-#sc_second_step_form .sfcModal-dialog {
+.sfcModal-dialog {
 	width: 50%;
 	margin: 0 auto;
 	margin-top: 10%;

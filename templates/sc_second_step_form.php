@@ -27,7 +27,7 @@
 	
 	<?php wp_nonce_field('sc_checkout', 'sc_nonce'); ?>
 
-	<button type="button" onclick="scCheckCart()" class="button alt" name="woocommerce_checkout_place_order" value="<?php echo esc_html_e('Pay'); ?>" data-value="<?php echo esc_html_e('Pay'); ?>" data-default-text="Place order"><?php echo esc_html_e('Pay'); ?></button>
+	<button type="button" onclick="scUpdateCart()" class="button alt" name="woocommerce_checkout_place_order" value="<?php echo esc_html_e('Pay'); ?>" data-value="<?php echo esc_html_e('Pay'); ?>" data-default-text="Place order"><?php echo esc_html_e('Pay'); ?></button>
 	
 	<script>
 		var locale			= "<?php echo esc_js($this->formatLocation(get_locale())); ?>";

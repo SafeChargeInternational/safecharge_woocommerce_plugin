@@ -1,13 +1,19 @@
 *** WooCommerce Extension Template Changelog ***
 
 version 3.4
-	* SC_CLASS create_log method is deprecated.
+	* For PayPal Sandbox problems with duplicated InvoiceIDs, modify the clientUniqueId parameter for Sandbox APM payments. Check set_cuid() and get_cuid() methods in WC_SC class.
+	* Change in the callRestApi() method parameter.
+	* Fix for the case when the merchant create an Order from the Admin.
+	* Use "echo wp_json_encode" every time when return message to the DMN server.
+	* Always start Order process with UpdateOrder request. Use this method before APMs step and when submit payment form, to catch any possible changes in the Cart.
+	* When we get Approve DMN for Auth or Sale, one hour or more after its creation, stop process after first search, if not find an Order.
+	* When we get Decline DMN for Refund, stop process after first search, if not find an Order.
+	* SC_CLASS create_log method was removed.
 	* When create updateOrder request pass the cart items in it.
 	* Do not pass amount and currency in the webSDK request anymore.
-	* When CC payment is declined wse same session and order.
-	* After click the pay button on APMs page, we check for changes in the Cart. If there are changes, we update the Order and return the new Order Amount, so can pass it into webSDK call.
+	* When CC payment is declined do not get new sessionToken, use the old one.
 	* Added loading popup on APMs step.
-	* Void button is available for Failed Orders.
+	* Void button was enabled for Failed Orders.
 	* Added create_log method in WC_SC class.
 	* When site is in Test Mode log account details.
 	* Plugin was rebranded.
@@ -15,13 +21,12 @@ version 3.4
 	* Fix for the new Netteler behavior.
 	* Verify Nonce in process_payment().
 	* Code refactoring.
-	* The Test Mode option was replaced with Side Mode dropdown.
+	* The Test Mode option was replaced with "Site Mode" dropdown.
 	* In required dropdowns was add "Select an option..." option.
 	* Mandatory settings are marked with *.
 	* Skip additional check for ipAddress parameter. It is checked when we get it.
 	* Compatible with "WooCommerce Multi-Step Checkout" plugin.
-	* Removed Manual Refund button.
-	* No need to create manual refund record after a Refund from CPanel.
+	* No need to create manual refund record after a Refund from CPanel. Removed Manual Refund button.
 	* Now refunds records in WC are saved after the Refund DMNs. The info for the Refunds is stored as Order meta data.
 	* Update plugins settings hook was moved to WC_SC Class.
 	* SC_Versions_Resolver class was removed.

@@ -20,16 +20,16 @@ var scDeleteUpoFlag = false;
 var elementClasses = {
 	focus	: 'focus',
 	empty	: 'empty',
-	invalid	: 'invalid',
+	invalid	: 'invalid'
 };
 // styles for the fields
 var fieldsStyle = {
 	base: {
-		fontSize: 15.5
-		,fontFamily: 'sans-serif'
-		,color: '#43454b'
-		,fontSmoothing: 'antialiased'
-		,'::placeholder': {
+		fontSize: '15px',
+		fontFamily: 'sans-serif',
+		color: '#43454b',
+		fontSmoothing: 'antialiased',
+		'::placeholder': {
 			color: 'gray'
 		}
 	}
@@ -38,13 +38,11 @@ var fieldsStyle = {
 var scMerchantId, scMerchantSiteId, scOpenOrderToken, webMasterId, scUserTokenId, locale;
 
 /**
- * Function scCheckCart
+ * Function scUpdateCart
  * The first step of the checkout validation
- * 
- * @returns {undefined}
  */
-function scCheckCart() {
-	console.log('scCheckCart()');
+function scUpdateCart() {
+	console.log('scUpdateCart()');
 	
 	jQuery('#sc_loader_background').show();
 	
@@ -61,29 +59,32 @@ function scCheckCart() {
 		data: {
 			action			: 'sc-ajax-action',
 			security		: scTrans.security,
-			checkCart		: 1,
-			sessionToken	: scOpenOrderToken
+			sc_request		: 'updateOrder'
 		},
 		dataType: 'json'
 	})
 		.fail(function(){
-			console.error('Cart check failed.');
 			scValidateAPMFields();
 		})
 		.done(function(resp) {
 			console.log(resp);
-	
-//			if (
-//				resp === null
-//				|| ! resp.hasOwnProperty('success')
-//				|| ! resp.hasOwnProperty('isCartChanged')
-//				|| resp.success == 0
-//			) {
-//				console.error('Cart check error.');
-//			}
-//			else {
-//				console.error('Cart check report - cart was not changed or there is no amount.');
-//			}
+			
+			if(
+				resp.hasOwnProperty('sessionToken')
+				&& '' != resp.sessionToken
+				&& resp.sessionToken != scData.sessionToken
+			) {
+				scData.sessionToken = resp.sessionToken;
+				jQuery('#lst').val(resp.sessionToken);
+				
+				sfc			= SafeCharge(scData);
+				scFields	= sfc.fields({ locale: locale });
+				
+				scFormFalse(scTrans.paymentError);
+				
+				jQuery('#sc_second_step_form .input-radio').prop('checked', false);
+				jQuery('.apm_fields, #sc_loader_background').hide();
+			}
 			
 			scValidateAPMFields();
 		});
@@ -142,8 +143,6 @@ function scValidateAPMFields() {
 		sessionToken    : scOpenOrderToken,
 		merchantId      : scMerchantId,
 		merchantSiteId  : scMerchantSiteId,
-//		currency        : scOrderCurr,
-//		amount          : scOrderAmount,
 		webMasterId		: scTrans.webMasterId,
 		userTokenId		: scUserTokenId
 	};
@@ -154,8 +153,6 @@ function scValidateAPMFields() {
 	if (selectedPM == 'cc_card') {
 		if (
 			typeof scOpenOrderToken == 'undefined'
-//			|| typeof scOrderAmount == 'undefined'
-//			|| typeof scOrderCurr == 'undefined'
 			|| typeof scMerchantId == 'undefined'
 			|| typeof scMerchantSiteId == 'undefined'
 		) {
@@ -297,10 +294,6 @@ function afterSdkResponse(resp) {
 		}
 		else if (resp.result == 'DECLINED') {
 			scFormFalse(scTrans.paymentDeclined);
-
-//			jQuery('#sc_card_number, #sc_card_expiry, #sc_card_cvc').html('');
-//			scCard = null;
-//			getNewSessionToken();
 		}
 		else {
 			if (resp.errorDescription != 'undefined' && resp.errorDescription != '') {
@@ -607,21 +600,34 @@ function scPrintApms(data) {
 }
 
 jQuery(function() {
-	jQuery('body').on('click', '.apm_title', function() {
+//	jQuery('body').on('click', '.apm_title', function() {
+	jQuery('body').on('change', 'input[name="sc_payment_method"]', function() {
+		console.log('click on APM/UPO');
+		
+		// hide all containers with fields
+		jQuery('.apm_fields').hide();
+		
 		if(scDeleteUpoFlag) {
+			console.log('scDeleteUpoFlag', scDeleteUpoFlag);
+			
 			scDeleteUpoFlag = false;
 			return;
 		}
 		
-		var clickedTitle	= jQuery(this);
-		var currInput		= jQuery('input[name="sc_payment_method"]:checked');
+		var currInput		= jQuery(this);
+		var filedsToShowId	= currInput.closest('li').find('.apm_fields').attr('id');
 		
+
 		// reset sc fields holders
 		cardNumber = sfcFirstField = cardExpiry = cardCvc = null;
 		if(lastCvcHolder !== '') {
 			jQuery(lastCvcHolder).html('');
 		}
 		
+		if('undefined' != filedsToShowId) {
+			jQuery('#' + filedsToShowId).slideToggle('fast');
+		}
+
 		// load webSDK fields
 		if(currInput.val() == 'cc_card') {
 			jQuery('#sc_card_number').html('');
@@ -653,21 +659,16 @@ jQuery(function() {
 			&& currInput.attr('data-upo-name') === 'cc_card'
 		) {
 			lastCvcHolder = '#sc_upo_' + currInput.val() + '_cvc';
-			
+
 			cardCvc = scFields.create('ccCvc', {
 				classes: elementClasses
 				,style: fieldsStyle
 			});
 			cardCvc.attach(lastCvcHolder);
 		}
-		
+
 		jQuery('.SfcField').addClass('input-text');
 		// load webSDK fields END
-		
-		// hide all containers with fields
-		jQuery('.apm_fields').hide();
-		
-		clickedTitle.closest('li').find('.apm_fields').slideToggle('slow');
 	});
 	
 	// change text on Place order button

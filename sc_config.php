@@ -36,5 +36,3 @@ define('SC_RESP_TRANS_TYPE', '_transactionType');
 define('SC_PAYMENT_METHOD', '_paymentMethod');
 define('SC_ORDER_HAS_REFUND', '_scHasRefund');
 define('SC_SOURCE_APPLICATION', 'WOOCOMMERCE_PLUGIN');
-/** @deprecated */
-define('SC_LOGS_DIR', dirname(__FILE__) . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR);
