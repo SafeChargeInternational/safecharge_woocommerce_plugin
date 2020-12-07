@@ -66,7 +66,6 @@ function woocommerce_sc_init() {
 		
 		if ( empty( $errors->errors ) && 'sc' == $data['payment_method'] ) {
 			if (empty($wc_sc->get_param('sc_payment_method'))) {
-				//              $content = $wc_sc->sc_get_payment_methods('');
 				$content = $wc_sc->get_payment_methods();
 			} 
 		}
@@ -219,8 +218,7 @@ function sc_enqueue_wo_files( $styles) {
 	global $wc_sc;
 	global $wpdb;
 	
-	$plugin_dir = basename(dirname(__FILE__));
-	$plugin_url = WP_PLUGIN_URL;
+	$plugin_url = plugin_dir_url(__FILE__);
 	
 	if (
 		( isset($_SERVER['HTTPS']) && 'on' == $_SERVER['HTTPS'] )
@@ -234,7 +232,7 @@ function sc_enqueue_wo_files( $styles) {
 	// novo style
 	wp_register_style(
 		'sc_style',
-		$plugin_url . '/' . $plugin_dir . '/css/sc_style.css',
+		$plugin_url . 'css/sc_style.css',
 		'',
 		'2.2',
 		'all'
@@ -253,7 +251,7 @@ function sc_enqueue_wo_files( $styles) {
 	// main JS
 	wp_register_script(
 		'sc_js_public',
-		$plugin_url . '/' . $plugin_dir . '/js/sc_public.js',
+		$plugin_url . 'js/sc_public.js',
 		array('jquery'),
 		'1'
 	);
@@ -261,7 +259,7 @@ function sc_enqueue_wo_files( $styles) {
 	// reorder js
 	wp_register_script(
 		'sc_js_reorder',
-		$plugin_url . '/' . $plugin_dir . '/js/sc_reorder.js',
+		$plugin_url . 'js/sc_reorder.js',
 		array('jquery'),
 		'1'
 	);
@@ -349,8 +347,7 @@ function sc_enqueue( $hook) {
 	}
 	
 	# load external files
-	$plugin_dir = basename(dirname(__FILE__));
-	$plugin_url = WP_PLUGIN_URL;
+	$plugin_url = plugin_dir_url(__FILE__);
 	
 	if (
 		( isset($_SERVER['HTTPS']) && 'on' == $_SERVER['HTTPS'] )
@@ -366,7 +363,7 @@ function sc_enqueue( $hook) {
 		// main JS
 		wp_register_script(
 			'sc_js_admin',
-			$plugin_url . '/' . $plugin_dir . '/js/sc_admin.js',
+			$plugin_url . 'js/sc_admin.js',
 			array('jquery'),
 			'1'
 		);
@@ -697,8 +694,6 @@ function sc_add_product_subscr_data_fields() {
 	if (!empty($tmp)) {
 		$sc_subscr_enabled = $tmp[0];
 	}
-		
-	var_dump($sc_subscr_enabled);
 		
 	//      woocommerce_wp_checkbox(array( 
 	//          'id'            => '_sc_subscr_enabled', 
