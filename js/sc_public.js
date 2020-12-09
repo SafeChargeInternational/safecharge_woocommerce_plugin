@@ -615,9 +615,8 @@ jQuery(function() {
 		}
 		
 		var currInput		= jQuery(this);
-		var filedsToShowId	= currInput.closest('li').find('.apm_fields').attr('id');
+		var filedsToShowId	= currInput.closest('li').find('.apm_fields');
 		
-
 		// reset sc fields holders
 		cardNumber = sfcFirstField = cardExpiry = cardCvc = null;
 		if(lastCvcHolder !== '') {
@@ -625,10 +624,10 @@ jQuery(function() {
 		}
 		
 		if('undefined' != filedsToShowId) {
-			jQuery('#' + filedsToShowId).slideToggle('fast');
+			filedsToShowId.slideToggle('fast');
 		}
 
-		// load webSDK fields
+		// CC - load webSDK fields
 		if(currInput.val() == 'cc_card') {
 			jQuery('#sc_card_number').html('');
 			cardNumber = sfcFirstField = scFields.create('ccNumber', {
@@ -653,7 +652,7 @@ jQuery(function() {
 			});
 			cardCvc.attach(lastCvcHolder);
 		}
-		else if(
+		else if( // CC UPO - load webSDK fields
 			!isNaN(currInput.val())
 			&& typeof currInput.attr('data-upo-name') != 'undefined'
 			&& currInput.attr('data-upo-name') === 'cc_card'

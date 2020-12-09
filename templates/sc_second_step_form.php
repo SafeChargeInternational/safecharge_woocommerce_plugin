@@ -1,4 +1,5 @@
 <div id="sc_checkout_messages"></div>
+
 <div id="sc_second_step_form" style="display: none;">
 	<style><?php echo esc_html(trim($this->sc_get_setting('merchant_style'))); ?></style>
 	
@@ -12,7 +13,7 @@
 
 			<div class="sc_content">
 				<h3>
-					<img src="<?php echo esc_attr($this->plugin_url); ?>icons/loader.gif" alt="loading..." />
+					<img src="<?php echo esc_attr($plugin_url); ?>icons/loader.gif" alt="loading..." />
 					<?php echo esc_html_e('Processing your Payment...', 'nuvei'); ?>
 				</h3>
 			</div>
@@ -27,11 +28,12 @@
 	
 	<?php wp_nonce_field('sc_checkout', 'sc_nonce'); ?>
 
-	<button type="button" onclick="scUpdateCart()" class="button alt" name="woocommerce_checkout_place_order" value="<?php echo esc_html_e('Pay'); ?>" data-value="<?php echo esc_html_e('Pay'); ?>" data-default-text="Place order"><?php echo esc_html_e('Pay'); ?></button>
+	<button type="button" onclick="scUpdateCart()" class="button alt" name="woocommerce_checkout_place_order" value="<?php echo esc_html_e('Pay'); ?>" data-value="<?php echo esc_html_e('Pay'); ?>" data-default-text="Place order">
+		<?php echo esc_html_e('Pay'); ?>
+	</button>
 	
 	<script>
 		var locale			= "<?php echo esc_js($this->formatLocation(get_locale())); ?>";
-//		scOrderCurr			= "<?php echo esc_js(get_woocommerce_currency()); ?>";
 		scMerchantId		= scData.merchantId = "<?php echo esc_js($this->sc_get_setting('merchantId')); ?>";
 		scMerchantSiteId	= scData.merchantSiteId = "<?php echo esc_js($this->sc_get_setting('merchantSiteId')); ?>";
 

@@ -56,8 +56,8 @@ function woocommerce_sc_init() {
 	add_action('wp_ajax_sc-ajax-action', 'sc_ajax_action');
 	add_action('wp_ajax_nopriv_sc-ajax-action', 'sc_ajax_action');
 	
-	// insert Custom Merchat style
-	add_action( 'woocommerce_checkout_after_order_review', array($wc_sc, 'sc_insert_merchant_style'), 10, 1 );
+	// add the APMs step with the custom merchant style, if any
+	add_action( 'woocommerce_checkout_after_order_review', array($wc_sc, 'add_apms_step'), 10, 1 );
 	
 	// if validation success get order details
 	add_action('woocommerce_after_checkout_validation', function( $data, $errors) {

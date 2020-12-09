@@ -576,10 +576,13 @@ class WC_SC extends WC_Payment_Gateway {
 		);
 	}
 	
-	public function sc_insert_merchant_style( $data) {
+	public function add_apms_step( $data) {
 		ob_start();
+		
+		$plugin_url = plugin_dir_url(__FILE__);
 		require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'templates/sc_second_step_form.php';
-		$html = ob_get_contents();
+		
+//		$html = ob_get_contents();
 		ob_end_flush();
 	}
 	
@@ -1637,6 +1640,37 @@ class WC_SC extends WC_Payment_Gateway {
 			echo wp_json_encode('DMN Error - the order does not belongs to Nuvei.');
 			exit;
 		}
+		
+		// can we override Order status (state)
+		$ord_status = strtolower($this->sc_order->get_status());
+		
+		if ( in_array($ord_status, array('cancelled', 'refunded')) ) {
+			$this->create_log($this->sc_order->get_payment_method(), 'DMN Error - can not override status of Voided/Refunded Order.');
+			
+			if ($return) {
+				return false;
+			}
+			
+			echo wp_json_encode('DMN Error - can not override status of Voided/Refunded Order.');
+			exit;
+		}
+		
+		if (
+			'completed' == $ord_status
+			&& 'auth' == strtolower(Tools::getValue('transactionType'))
+		) {
+			$this->create_log($this->sc_order->get_payment_method(), 'DMN Error - can not override status Completed with Auth.');
+			
+			if ($return) {
+				return false;
+			}
+			
+			echo wp_json_encode('DMN Error - can not override status Completed with Auth.');
+			exit;
+		}
+		
+		
+		// can we override Order status (state) END
 		
 		return $this->sc_order;
 	}

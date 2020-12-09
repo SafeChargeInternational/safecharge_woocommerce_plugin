@@ -1,6 +1,9 @@
 *** WooCommerce Extension Template Changelog ***
 
 version 3.4
+	* Changed a variable name in a tamplate.
+	* In sc_public.js toggle APM field holder by class, not by ID.
+	* Changed a method name.
 	* For PayPal Sandbox problems with duplicated InvoiceIDs, modify the clientUniqueId parameter for Sandbox APM payments. Check set_cuid() and get_cuid() methods in WC_SC class.
 	* Change in the callRestApi() method parameter.
 	* Fix for the case when the merchant create an Order from the Admin.
