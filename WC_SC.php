@@ -582,7 +582,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$plugin_url = plugin_dir_url(__FILE__);
 		require_once dirname(__FILE__) . DIRECTORY_SEPARATOR . 'templates/sc_second_step_form.php';
 		
-//		$html = ob_get_contents();
+		//      $html = ob_get_contents();
 		ob_end_flush();
 	}
 	
