@@ -15,7 +15,7 @@ if (!session_id()) {
 class WC_SC extends WC_Payment_Gateway {
 	# payments URL
 	private $webMasterId	= 'WooCommerce ';
-	private $stop_dmn		= 0; // when 1 - stops the DMN for testing
+	private $stop_dmn		= 1; // when 1 - stops the DMN for testing
 	private $plugin_version	= '3.4';
 	private $cuid_postfix	= '_sandbox_apm'; // postfix for Sandbox APM payments
 	private $sc_order;
@@ -737,7 +737,8 @@ class WC_SC extends WC_Payment_Gateway {
 	public function process_dmns( $params = array()) {
 		$this->create_log($_REQUEST, 'DMN params');
 		
-		if ($this->get_param('stopDMN', 'int') == 1) {
+		// stop DMNs only on test mode
+		if ($this->get_param('stopDMN', 'int') == 1 && $this->sc_get_setting('test') == 'yes') {
 			$params            = $_REQUEST;
 			$params['stopDMN'] = 0;
 			
