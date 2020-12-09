@@ -1,6 +1,7 @@
 *** WooCommerce Extension Template Changelog ***
 
 version 3.4
+	* stopDMN command works only when site is Sandbox mode.
 	* Changed a variable name in a tamplate.
 	* In sc_public.js toggle APM field holder by class, not by ID.
 	* Changed a method name.
