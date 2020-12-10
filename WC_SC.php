@@ -15,7 +15,7 @@ if (!session_id()) {
 class WC_SC extends WC_Payment_Gateway {
 	# payments URL
 	private $webMasterId	= 'WooCommerce ';
-	private $stop_dmn		= 1; // when 1 - stops the DMN for testing
+	private $stop_dmn		= 0; // when 1 - stops the DMN for testing
 	private $plugin_version	= '3.4';
 	private $cuid_postfix	= '_sandbox_apm'; // postfix for Sandbox APM payments
 	private $sc_order;
@@ -593,7 +593,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$resp_data = array(); // use it in the template
 		# OpenOrder
 		$oo_data = $this->open_order();
-			
+		
 		if (!$oo_data) {
 			wp_send_json(array(
 				'result'	=> 'failure',
@@ -610,10 +610,10 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		# get APMs
 		$time     = gmdate('YmdHis', time());
-		$currency = !empty($oo_params['currency']) ? $oo_params['currency'] : get_woocommerce_currency();
+		$currency = !empty($oo_data['currency']) ? $oo_data['currency'] : get_woocommerce_currency();
 		
-		if (!empty($oo_params['billingAddress']['country'])) {
-			$countryCode = $oo_params['billingAddress']['country'];
+		if (!empty($oo_data['billingAddress']['country'])) {
+			$countryCode = $oo_data['billingAddress']['country'];
 		} elseif (!empty($_SESSION['nuvei_last_open_order_details']['billingAddress']['country'])) {
 			$countryCode = $_SESSION['nuvei_last_open_order_details']['billingAddress']['country'];
 		} else {
@@ -637,7 +637,6 @@ class WC_SC extends WC_Payment_Gateway {
 				. $time . $this->sc_get_setting('secret')
 		);
 
-		//      $apms_data = $this->callRestApi('getMerchantPaymentMethods.do', $apms_params);
 		$apms_data = $this->callRestApi('getMerchantPaymentMethods', $apms_params);
 		
 		if (!is_array($apms_data) || empty($apms_data['paymentMethods'])) {
@@ -1658,7 +1657,7 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		if (
 			'completed' == $ord_status
-			&& 'auth' == strtolower(Tools::getValue('transactionType'))
+			&& 'auth' == strtolower($this->get_param('transactionType'))
 		) {
 			$this->create_log($this->sc_order->get_payment_method(), 'DMN Error - can not override status Completed with Auth.');
 			
@@ -1669,8 +1668,6 @@ class WC_SC extends WC_Payment_Gateway {
 			echo wp_json_encode('DMN Error - can not override status Completed with Auth.');
 			exit;
 		}
-		
-		
 		// can we override Order status (state) END
 		
 		return $this->sc_order;
@@ -1696,7 +1693,7 @@ class WC_SC extends WC_Payment_Gateway {
 		$products_data = array();
 		
 		# try to update Order
-		$resp = $this->update_order(false);
+		$resp = $this->update_order();
 		
 		if (!empty($resp['status']) && 'SUCCESS' == $resp['status']) {
 			if ($is_ajax) {
@@ -1750,6 +1747,8 @@ class WC_SC extends WC_Payment_Gateway {
 		}
 		// check for product with subscription END
 		
+		$addresses = $this->get_order_addresses();
+		
 		$oo_params = array(
 			'merchantId'        => $this->sc_get_setting('merchantId'),
 			'merchantSiteId'    => $this->sc_get_setting('merchantSiteId'),
@@ -1765,32 +1764,12 @@ class WC_SC extends WC_Payment_Gateway {
 			
 			'deviceDetails'     => SC_CLASS::get_device_details(),
 			'userTokenId'       => $this->get_param('billing_email', 'mail', '', $ajax_params),
-			
-			'billingAddress'	=> array(
-				'firstName'	=> $this->get_param('billing_first_name', 'string', '', $ajax_params),
-				'lastName'	=> $this->get_param('billing_last_name', 'string', '', $ajax_params),
-				'address'	=> $this->get_param('billing_address_1', 'string', '', $ajax_params)
-								. ' ' . $this->get_param('billing_address_1', 'string', '', $ajax_params),
-				'phone'		=> $this->get_param('billing_phone', 'string', '', $ajax_params),
-				'zip'		=> $this->get_param('billing_postcode', 'int', 0, $ajax_params),
-				'city'		=> $this->get_param('billing_city', 'string', '', $ajax_params),
-				'country'	=> $this->get_param('billing_country', 'string', '', $ajax_params),
-				'email'		=> $this->get_param('billing_email', 'mail', '', $ajax_params),
-			),
-			
-			'shippingAddress'	=> array(
-				'firstName'	=> $this->get_param('shipping_first_name', 'string', '', $ajax_params),
-				'lastName'  => $this->get_param('shipping_last_name', 'string', '', $ajax_params),
-				'address'   => $this->get_param('shipping_address_1', 'string', '', $ajax_params)
-								. ' ' . $this->get_param('shipping_address_2', 'string', '', $ajax_params),
-				'zip'       => $this->get_param('shipping_postcode', 'string', '', $ajax_params),
-				'city'      => $this->get_param('shipping_city', 'string', '', $ajax_params),
-				'country'   => $this->get_param('shipping_country', 'string', '', $ajax_params),
-			),
-			
+			'billingAddress'	=> isset($addresses['billingAddress']) ? $addresses['billingAddress'] : array(),
+			'shippingAddress'	=> isset($addresses['shippingAddress']) ? $addresses['shippingAddress'] : array(),
 			'webMasterId'       => $this->webMasterId,
 			'paymentOption'        => array('card' => array('threeD' => array('isDynamic3D' => 1))),
 			'transactionType'    => $this->sc_get_setting('payment_action'),
+			
 			'merchantDetails'	=> array(
 				'customField1' => json_encode($subscr_data), // put subscr data here
 				'customField2' => json_encode($products_data), // item details
@@ -1832,7 +1811,7 @@ class WC_SC extends WC_Payment_Gateway {
 			'userTokenId'		=> $oo_params['userTokenId'],
 			'clientRequestId'	=> $oo_params['clientRequestId'],
 			'orderId'			=> $resp['orderId'],
-			'billingAddress'	=> array('country' => $oo_params['billingAddress']['country']),
+			'billingAddress'	=> $oo_params['billingAddress'],
 		);
 		
 		if ($is_ajax) {
@@ -1871,12 +1850,14 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		global $woocommerce;
 		
+		$cart        = $woocommerce->cart;
 		$time        = gmdate('YmdHis');
-		$cart_amount = (string) round($woocommerce->cart->total, 2);
+		$cart_amount = (string) round($cart->total, 2);
 		$cart_items  = array();
+		$addresses   = $this->get_order_addresses();
 
 		// get items
-		foreach ($woocommerce->cart->get_cart() as $item_id => $item) {
+		foreach ($cart->get_cart() as $item_id => $item) {
 			$cart_items[$item['product_id']] = array(
 				'quantity'  => $item['quantity'],
 				'price'     => get_post_meta($item['product_id'] , '_price', true),
@@ -1893,6 +1874,10 @@ class WC_SC extends WC_Payment_Gateway {
 			'clientRequestId'	=> $_SESSION['nuvei_last_open_order_details']['clientRequestId'],
 			'currency'			=> get_woocommerce_currency(),
 			'amount'			=> $cart_amount,
+			'billingAddress'	=> isset($addresses['billingAddress']) ? $addresses['billingAddress'] : array(),
+			'shippingAddress'	=> isset($addresses['shippingAddress']) ? $addresses['shippingAddress'] : array(),
+			'timeStamp'			=> $time,
+			
 			'items'				=> array(
 				array(
 					'name'		=> 'wc_order',
@@ -1900,12 +1885,14 @@ class WC_SC extends WC_Payment_Gateway {
 					'quantity'	=> 1
 				)
 			),
+			
 			'merchantDetails'   => array(
 				'customField2' => json_encode($cart_items), // items
 				'customField3' => time(), // update time
 			),
-			'timeStamp'			=> $time,
 		);
+		
+		$params['userDetails'] = $params['billingAddress'];
 		
 		$params['checksum'] = hash(
 			$this->sc_get_setting('hash_type'),
@@ -1917,8 +1904,9 @@ class WC_SC extends WC_Payment_Gateway {
 		
 		# Success
 		if (!empty($resp['status']) && 'SUCCESS' == $resp['status']) {
-			$_SESSION['nuvei_last_open_order_details']['amount']          = $cart_amount;
-			$_SESSION['nuvei_last_open_order_details']['merchantDetails'] = $params['merchantDetails'];
+			$_SESSION['nuvei_last_open_order_details']['amount']					= $cart_amount;
+			$_SESSION['nuvei_last_open_order_details']['merchantDetails']			= $params['merchantDetails'];
+			$_SESSION['nuvei_last_open_order_details']['billingAddress']['country']	= $params['billingAddress']['country'];
 			
 			return array_merge($resp, $params);
 		}
@@ -1926,6 +1914,126 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->create_log('update_order() - Order update was not successful.');
 
 		return array('status' => 'ERROR');
+	}
+	
+	/**
+	 * Function get_order_addresses
+	 * 
+	 * Help function to generate Billing and Shipping details.
+	 * 
+	 * @global Woocommerce $woocommerce
+	 * @return array
+	 */
+	private function get_order_addresses() {
+		global $woocommerce;
+		
+		$form_params = array();
+		$addresses   = array();
+		$cart        = $woocommerce->cart;
+		
+		if (!empty($this->get_param('scFormData'))) {
+			parse_str($this->get_param('scFormData'), $form_params); 
+		}
+		
+		# set params
+		// billing
+		$bfn = $this->get_param('billing_first_name', 'string', '', $form_params);
+		if (empty($bfn)) {
+			$bfn = $cart->get_customer()->get_billing_first_name();
+		}
+		
+		$bln = $this->get_param('billing_last_name', 'string', '', $form_params);
+		if (empty($bln)) {
+			$bln = $cart->get_customer()->get_billing_last_name();
+		}
+		
+		$ba = $this->get_param('billing_address_1', 'string', '', $form_params)
+			. ' ' . $this->get_param('billing_address_1', 'string', '', $form_params);
+		if (empty($ba)) {
+			$ba = $cart->get_customer()->get_billing_address() . ' '
+				. $cart->get_customer()->get_billing_address_2();
+		}
+		
+		$bp = $this->get_param('billing_phone', 'string', '', $form_params);
+		if (empty($bp)) {
+			$bp = $cart->get_customer()->get_billing_phone();
+		}
+		
+		$bz = $this->get_param('billing_postcode', 'int', 0, $form_params);
+		if (empty($bz)) {
+			$bz = $cart->get_customer()->get_billing_postcode();
+		}
+		
+		$bc = $this->get_param('billing_city', 'string', '', $form_params);
+		if (empty($bc)) {
+			$bc = $cart->get_customer()->get_billing_city();
+		}
+		
+		$bcn = $this->get_param('billing_country', 'string', '', $form_params);
+		if (empty($bcn)) {
+			$bcn = $cart->get_customer()->get_billing_country();
+		}
+		
+		$be = $this->get_param('billing_email', 'mail', '', $form_params);
+		if (empty($be)) {
+			$be = $cart->get_customer()->get_billing_email();
+		}
+		
+		// shipping
+		$sfn = $this->get_param('shipping_first_name', 'string', '', $form_params);
+		if (empty($sfn)) {
+			$sfn = $cart->get_customer()->get_shipping_first_name();
+		}
+		
+		$sln = $this->get_param('shipping_last_name', 'string', '', $form_params);
+		if (empty($sln)) {
+			$sln = $cart->get_customer()->get_shipping_last_name();
+		}
+		
+		$sa = $this->get_param('shipping_address_1', 'string', '', $form_params)
+			. ' ' . $this->get_param('shipping_address_2', 'string', '', $form_params);
+		if (empty($sa)) {
+			$sa = $cart->get_customer()->get_shipping_address() . ' '
+				. $cart->get_customer()->get_shipping_address_2();
+		}
+		
+		$sz = $this->get_param('shipping_postcode', 'string', '', $form_params);
+		if (empty($sz)) {
+			$sz = $cart->get_customer()->get_shipping_postcode();
+		}
+		
+		$sc = $this->get_param('shipping_city', 'string', '', $form_params);
+		if (empty($sc)) {
+			$sc = $cart->get_customer()->get_shipping_city();
+		}
+		
+		$scn = $this->get_param('shipping_country', 'string', '', $form_params);
+		if (empty($scn)) {
+			$scn = $cart->get_customer()->get_shipping_country();
+		}
+		# set params END
+		
+		return array(
+			'billingAddress'	=> array(
+				'firstName'	=> $bfn,
+				'lastName'	=> $bln,
+				'address'	=> $ba,
+				'phone'		=> $bp,
+				'zip'		=> $bz,
+				'city'		=> $bc,
+				'country'	=> $bcn,
+				'email'		=> $be,
+			),
+			
+			'shippingAddress'	=> array(
+				'firstName'	=> $sfn,
+				'lastName'  => $sln,
+				'address'   => $sa,
+				'zip'       => $sz,
+				'city'      => $sc,
+				'country'   => $scn,
+			),
+		);
 	}
 	
 	/**

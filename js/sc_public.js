@@ -447,16 +447,23 @@ function deleteScUpo(upoId) {
 function scPrintApms(data) {
 	console.log('scPrintApms()');
 	
-	jQuery("form.woocommerce-checkout *:not(form.woocommerce-checkout, #sc_second_step_form *, #sc_checkout_messages), .woocommerce-form-coupon-toggle").hide();
+	if(jQuery('.wpmc-step-payment').length > 0) { // multi-step checkout
+		console.log('multi-step checkout');
+		
+		jQuery("form.woocommerce-checkout .wpmc-step-payment *:not(form.woocommerce-checkout, #sc_second_step_form *, #sc_checkout_messages), .woocommerce-form-coupon-toggle").hide();
+	}
+	else { // default checkout
+		console.log('default checkout');
+		
+		jQuery("form.woocommerce-checkout *:not(form.woocommerce-checkout, #sc_second_step_form *, #sc_checkout_messages), .woocommerce-form-coupon-toggle").hide();
+	}
+	
 	jQuery("form.woocommerce-checkout #sc_second_step_form").show();
-//	jQuery("form.woocommerce-checkout").attr('action', data.endPointUrl + 'payment.do');
-//	jQuery("form.woocommerce-checkout").attr('action', data.siteUrl . '/?wc-api=process-order&order_id=' . $order_id);
 	
 	jQuery(window).scrollTop(0);
 	jQuery('#lst').val(data.sessonToken);
 	
 	scOpenOrderToken			= data.sessonToken;
-//	scOrderAmount				= data.orderAmount;
 	scUserTokenId				= data.userTokenId;
 	scData.sessionToken			= data.sessonToken;
 	scData.sourceApplication	= scTrans.webMasterId;
@@ -600,7 +607,6 @@ function scPrintApms(data) {
 }
 
 jQuery(function() {
-//	jQuery('body').on('click', '.apm_title', function() {
 	jQuery('body').on('change', 'input[name="sc_payment_method"]', function() {
 		console.log('click on APM/UPO');
 		
@@ -683,6 +689,17 @@ jQuery(function() {
 	jQuery('body').on('click', '#sc_second_step_form span.dashicons-trash', function(e) {
 		e.preventDefault();
 		deleteScUpo(jQuery(this).attr('data-upo-id'));
+	});
+	
+	// when on multistep checkout -> APMs view, someone click on previous button
+	jQuery('body').on('click', '#wpmc-prev', function() {
+		if(jQuery('#sc_second_step_form').css('display') == 'block') {
+			jQuery("form.woocommerce-checkout .wpmc-step-payment *:not(.payment_box, form.woocommerce-checkout, #sc_second_step_form *, #sc_checkout_messages), .woocommerce-form-coupon-toggle").show('slow');
+			
+			jQuery("form.woocommerce-checkout #sc_second_step_form").hide();
+			
+			jQuery('input[name="payment_method"]').prop('checked', false);
+		}
 	});
 });
 // document ready function END

@@ -1,6 +1,7 @@
 *** WooCommerce Extension Template Changelog ***
 
 version 3.4
+	* Added help function to collect addresses for openOrder and updateOrder.
 	* stopDMN command works only when site is Sandbox mode.
 	* Changed a variable name in a tamplate.
 	* In sc_public.js toggle APM field holder by class, not by ID.
@@ -10,8 +11,8 @@ version 3.4
 	* Fix for the case when the merchant create an Order from the Admin.
 	* Use "echo wp_json_encode" every time when return message to the DMN server.
 	* Always start Order process with UpdateOrder request. Use this method before APMs step and when submit payment form, to catch any possible changes in the Cart.
-	* When we get Approve DMN for Auth or Sale, one hour or more after its creation, stop process after first search, if not find an Order.
-	* When we get Decline DMN for Refund, stop process after first search, if not find an Order.
+	* When we get Approve DMN for Auth or Sale, one hour or more after its creation, try to search only once for an Order.
+	* When we get Decline DMN for Refund, try to search only once for an Order.
 	* SC_CLASS create_log method was removed.
 	* When create updateOrder request pass the cart items in it.
 	* Do not pass amount and currency in the webSDK request anymore.

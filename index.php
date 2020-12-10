@@ -9,7 +9,7 @@
  * Require at least: 4.7
  * Tested up to: 5.5.3
  * WC requires at least: 3.0
- * WC tested up to: 4.7.1
+ * WC tested up to: 4.7.0
 */
 
 defined('ABSPATH') || die('die');
@@ -253,7 +253,7 @@ function sc_enqueue_wo_files( $styles) {
 		'sc_js_public',
 		$plugin_url . 'js/sc_public.js',
 		array('jquery'),
-		'1'
+		'1.1'
 	);
 	
 	// reorder js
