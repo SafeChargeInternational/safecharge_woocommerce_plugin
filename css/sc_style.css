@@ -13,22 +13,62 @@
 }
 
 #sc_second_step_form #sc_loader_background {
-	position: absolute;
-	top: 0px;
-	left: 0px;
-	background: rgba(255, 255, 255, 0.5);
-	width: 100%;
-	height: 100%;
 	display: none;
-	z-index: 10px;
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	z-index: 9999;
+	background: rgba(0,0,0,0.5);
+}
+
+#sc_second_step_form #sc_loader_background .sc_modal {
+	position: relative;
+	width: 100%;
+	background: white;
+	max-width: 600px;
+	margin: 60px auto;
+	font-size: 1rem;
+	padding: 30px;
+	text-align: center;
+
+
+}
+
+#sc_second_step_form #sc_loader_background .sc_header {
+	text-align: right;
+	font-size: 1.375rem;
+}
+
+#sc_second_step_form #sc_loader_background .sc_content {
+	margin-top: 40px;
+}
+
+#sc_second_step_form #sc_loader_background .sc_header span {
+	font-weight: bolder;
+	cursor: pointer;
 }
 
 #sc_second_step_form #sc_loader_background img {
-	position: fixed;
-	left: 50%;
-	margin-left: -32px;
-	top: 50%;
-	margin-top: -32px;
+	max-width: 18px;
+	display: inline;
+}
+
+#sc_second_step_form .woocommerce-error, #content .woocommerce-warning {
+	background-color: #e2401c;
+	list-style: none;
+	padding: 1em 1.618em;
+	margin-bottom: 2.617924em;
+	margin-left: 0;
+	border-radius: 2px;
+	color: #fff;
+	clear: both;
+	border-left: 0.6180469716em solid rgba(0, 0, 0, 0.15);
+}
+
+#content .woocommerce-warning {
+	background-color: orange;
 }
 
 #sc_second_step_form h3 {
@@ -102,6 +142,11 @@
 	font-weight: normal;
 }
 
+.SfcField img {
+	margin: 0 auto;
+	max-width: 15px;
+}
+
 #sc_second_step_form #sc_upos_list .SfcField { max-width: 100px; }
 
 #sc_second_step_form .SfcField iframe {
@@ -122,7 +167,7 @@
 	padding: 0.6180469716em;
 }
 
-#sc_second_step_form a.button, #sc_second_step_form button#place_order {
+#sc_second_step_form a.button, #sc_second_step_form button {
 	width: auto;
 	line-height: 0.6;
 	font-size: 15px;
@@ -137,15 +182,58 @@
 	color: #333333;
 }
 
-#sc_second_step_form button#place_order {
+#sc_second_step_form button {
+	background-color: #333333;
+	border-color: #333333;
+	color: #ffffff;
+	width: 100%;
+	font: inherit;
+    font-weight: inherit;
+	font-weight: 600;
+	font-size: 1.41575em;
+}
+
+#sc_second_step_form button:hover {
 	background-color: #1a1a1a;
-	border-color: #1a1a1a;
-	color: white;
+	border-color: #2c2d33;
+	color: #ffffff;
 }
 
 /* for the 3DS modal */
-#sc_second_step_form .sfcModal-dialog {
+.sfcModal-dialog {
 	width: 50%;
 	margin: 0 auto;
 	margin-top: 10%;
+}
+
+#sc_reorder_btn {
+	width: 100%;
+	font-size: 1.41575em;
+	background-color: #333333;
+	/*border-color: #333333;*/
+	color: #ffffff;
+	border: 0;
+	border-radius: 0;
+	/*background: none;*/
+	cursor: pointer;
+	padding: 0.6180469716em 1.41575em;
+	text-decoration: none;
+	font-weight: 600;
+	text-shadow: none;
+	-webkit-appearance: none;
+	margin: 0;
+	font-family: "Source Sans Pro", "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+	line-height: 1.618;
+	text-rendering: optimizeLegibility;
+	text-transform: none;
+	overflow: visible;
+	box-sizing: border-box;
+	word-wrap: break-word;
+	text-align: center;
+}
+
+#sc_reorder_btn:hover {
+	background-color: #1a1a1a;
+	border-color: #1a1a1a;
+	color: #ffffff;
 }
