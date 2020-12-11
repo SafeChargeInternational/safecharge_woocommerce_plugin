@@ -16,8 +16,8 @@ class WC_SC extends WC_Payment_Gateway {
 	# payments URL
 	private $webMasterId	= 'WooCommerce ';
 	private $stop_dmn		= 0; // when 1 - stops the DMN for testing
-	private $plugin_version	= '3.4';
 	private $cuid_postfix	= '_sandbox_apm'; // postfix for Sandbox APM payments
+	private $plugin_data	= array();
 	private $sc_order;
 	
 	// the fields for the subscription
@@ -38,7 +38,8 @@ class WC_SC extends WC_Payment_Gateway {
 		$this->description	= $this->sc_get_setting('description', '');
 		$this->test			= $this->sc_get_setting('test', '');
 		$this->rewrite_dmn	= $this->sc_get_setting('rewrite_dmn', 'no');
-		$this->webMasterId .= WOOCOMMERCE_VERSION;
+		$this->webMasterId	.= WOOCOMMERCE_VERSION;
+		$this->plugin_data	= get_plugin_data(plugin_dir_path(__FILE__) . 'index.php'); // get plugin data from the index.
 		
 		$_SESSION['SC_Variables']['sc_create_logs'] = $this->sc_get_setting('save_logs');
 		
@@ -1584,7 +1585,9 @@ class WC_SC extends WC_Payment_Gateway {
 			$d = $data ? 'true' : 'false';
 		}
 		
-		$string .= '[v.' . $this->plugin_version . '] | ';
+		if (!empty($this->plugin_data['Version'])) {
+			$string .= '[v.' . $this->plugin_data['Version'] . '] | ';
+		}
 
 		if (!empty($title)) {
 			if (is_string($title)) {

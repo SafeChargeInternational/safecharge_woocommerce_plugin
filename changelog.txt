@@ -1,5 +1,8 @@
 *** WooCommerce Extension Template Changelog ***
 
+version 3.5.1
+	* Get plugin version directly from the description of the main file. Removed old plugin version variable.
+
 version 3.5
 	* If the current plugin contains "safecharge" in its plugin directory, and installed same plugin, but with "nuvei" in the folder name, auto deactivate the current one.
 	* Added latest information in readme.txt
