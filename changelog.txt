@@ -1,7 +1,12 @@
 *** WooCommerce Extension Template Changelog ***
 
+version 3.5
+	* If the current plugin contains "safecharge" in its plugin directory, and installed same plugin, but with "nuvei" in the folder name, auto deactivate the current one.
+	* Added latest information in readme.txt
+	* Removed commented unused code in sc_public.js
+
 version 3.4
-	* git 
+	* Last tested version of WooCommerce Multi-Step Checkout - 2.12
 	* Changed a variable name in a tamplate.
 	* In sc_public.js toggle APM field holder by class, not by ID.
 	* Changed a method name.

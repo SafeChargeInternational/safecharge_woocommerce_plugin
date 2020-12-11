@@ -3,7 +3,7 @@
  * Plugin Name: Nuvei Payments
  * Plugin URI: https://github.com/SafeChargeInternational/safecharge_woocommerce_plugin
  * Description: Nuvei gateway for WooCommerce
- * Version: 3.4
+ * Version: 3.5
  * Author: Nuvei
  * Author URI: https://nuvei.com
  * Require at least: 4.7
@@ -18,6 +18,16 @@ if (!session_id()) {
 	session_start();
 }
 
+// check if there is the version with "nuvei" in the name of directory, in this case deactivate the current plugin
+add_action('admin_init', function() {
+	$path_to_nuvei_plugin = dirname(plugin_dir_path(__FILE__)) . DIRECTORY_SEPARATOR
+		. 'nuvei_woocommerce_plugin' . DIRECTORY_SEPARATOR . 'index.php';
+	
+	if (strpos(basename(dirname(__FILE__)), 'safecharge') !== false && file_exists($path_to_nuvei_plugin)) {
+		deactivate_plugins(plugin_basename( __FILE__ ));
+	}
+});
+
 require_once 'sc_config.php';
 require_once 'SC_CLASS.php';
 
@@ -31,6 +41,25 @@ function woocommerce_sc_init() {
 		return;
 	}
 	
+//	if(in_array('nuvei_woocommerce_plugin/index.php', apply_filters('active_plugins', get_option('active_plugins')))){ 
+//		//plugin is activated
+//		//print_r('nuvei plugin is activated');
+//		deactivate_plugins(plugin_basename( __FILE__ ));
+//	}
+//	else {
+//		//print_r('nuvei plugin is inactive');
+//	}
+	
+$path_to_nuvei_plugin = dirname(plugin_dir_path(__FILE__)) . DIRECTORY_SEPARATOR
+	. 'nuvei_woocommerce_plugin' . DIRECTORY_SEPARATOR . 'index.php';
+
+//var_dump(file_exists($path_to_nuvei_plugin));
+//var_dump(is_plugin_active('nuvei_woocommerce_plugin' . DIRECTORY_SEPARATOR . 'index.php'));
+
+//	if (file_exists($path_to_nuvei_plugin)) {
+//		deactivate_plugins(plugin_basename( __FILE__ ));
+//	}
+
 	require_once ABSPATH . 'wp-admin/includes/plugin.php';
 	require_once 'WC_SC.php';
 	

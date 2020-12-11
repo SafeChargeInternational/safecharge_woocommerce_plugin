@@ -96,47 +96,7 @@ function scUpdateCart() {
   * When click save on modal, check for mandatory fields and validate them.
   */
 function scValidateAPMFields() {
-//	jQuery('#sc_loader_background').show();
 	console.log('scValidateAPMFields');
-	
-//	selectedPM = jQuery('input[name="sc_payment_method"]:checked').val();
-	
-//	if (typeof selectedPM == 'undefined' || selectedPM == '') {
-//		scFormFalse();
-//		return;
-//	}
-	
-//	jQuery.ajax({
-//		type: "POST",
-//		url: scTrans.ajaxurl,
-//		data: {
-//			action      : 'sc-ajax-action',
-//			security    : scTrans.security,
-//			checkCart	: 1
-//		},
-//		dataType: 'json'
-//	})
-//		.fail(function(){
-//			console.error('Cart check failed.');
-//		})
-//		.done(function(resp) {
-//			console.log(resp);
-//	
-//			if (
-//				resp === null
-//				|| ! resp.hasOwnProperty('success')
-//				|| ! resp.hasOwnProperty('isCartChanged')
-//				|| resp.success == 0
-//			) {
-//				console.error('Cart check error.');
-//			}
-////			else if(1 == resp.isCartChanged && resp.hasOwnProperty('amount')) {
-////				scOrderAmount = resp.amount;
-////			}
-//			else {
-//				console.error('Cart check report - cart was not changed or there is no amount.');
-//			}
-//		});
 		
 	var formValid			= true;	
 	var nuveiPaymentParams	= {
