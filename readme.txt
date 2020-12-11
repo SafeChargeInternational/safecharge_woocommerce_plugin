@@ -1,21 +1,21 @@
-=== SafeCharge Payments ===
+=== Nuvei Payments ===
 
-Tags: credit card, SafeCharge, woocommerce
+Tags: credit card, Nuvei, woocommerce
 Wordpress requirements: 
 	- minimum v4.7
-	- tested up to v5.4.2
+	- tested up to v5.5.3
 WooCommerce requirements: 
 	- minimum v 3.0
-	- tested up to v4.3.1
+	- tested up to v4.7.0
 Stable tag: master
 
 == Description ==
 
-SafeCharge offers major international credit and debit cards enabling you to accept payments from your global customers. 
+Nuvei offers major international credit and debit cards enabling you to accept payments from your global customers. 
 
 A wide selection of region-specific payment methods can help your business grow in new markets. Other popular payment methods from mobile payments to eWallets, can be easily implemented at your checkout page.
 
-Right payment methods at the checkout page can bring you global reach, help you increase conversions and create a seamless experience for your customers. 
+Right payment methods at the checkout page can bring you global reach, help you increase conversions and create a seamless experience for your customers.
 
 = Automatic installation =
 
@@ -39,4 +39,4 @@ Upload the provided archive and install it. As a final step you should activate 
 
 == Support ==
 
-Please, contact out Tech-Support team (tech-support@safecharge.com) in case of questions and difficulties.
+Please, contact out Tech-Support team (tech-support@nuvei.com) in case of questions and difficulties.
